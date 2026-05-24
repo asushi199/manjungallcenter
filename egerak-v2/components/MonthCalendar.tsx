@@ -417,39 +417,42 @@ function HolidayDrawerCard({
         isUmum ? "border-rose-200 bg-rose-50" : "border-yellow-400 bg-yellow-50",
       )}
     >
-      <div className="flex items-center gap-2">
+      <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 items-start">
         <span
           className={cn(
-            "inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold shrink-0",
+            "row-span-2 self-start rounded-md px-2.5 py-1.5 text-[11px] font-bold leading-tight text-center min-w-[3.25rem] mt-0.5",
             isUmum ? "bg-rose-200 text-rose-900" : "bg-yellow-300 text-yellow-950",
           )}
         >
           {badge}
         </span>
-        <div className="min-w-0">
-          <p
-            className={cn(
-              "text-xs font-semibold uppercase tracking-wide",
-              isUmum ? "text-rose-800" : "text-yellow-800",
-            )}
-          >
-            {title}
-          </p>
-          <p
-            className={cn(
-              "font-semibold leading-snug",
-              isUmum ? "text-rose-950" : "text-yellow-950",
-            )}
-          >
-            {detail.name}
-          </p>
-        </div>
-      </div>
-      {detail.note && (
-        <p className={cn("text-sm", isUmum ? "text-rose-900/90" : "text-yellow-900/90")}>
-          {detail.note}
+        <p
+          className={cn(
+            "text-xs font-semibold uppercase tracking-wide leading-snug",
+            isUmum ? "text-rose-800" : "text-yellow-800",
+          )}
+        >
+          {title}
         </p>
-      )}
+        <p
+          className={cn(
+            "text-base font-semibold leading-snug",
+            isUmum ? "text-rose-950" : "text-yellow-950",
+          )}
+        >
+          {detail.name}
+        </p>
+        {detail.note && (
+          <p
+            className={cn(
+              "col-span-2 text-sm leading-relaxed border-t pt-2",
+              isUmum ? "text-rose-900/90 border-rose-200" : "text-yellow-900/90 border-yellow-200",
+            )}
+          >
+            {detail.note}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
