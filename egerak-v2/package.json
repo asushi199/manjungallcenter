@@ -13,7 +13,8 @@
     "db:create-user": "tsx scripts/create-user.ts",
     "db:import": "tsx scripts/import-from-sheet.ts",
     "db:check-url": "tsx scripts/check-db-url.ts",
-    "holidays:sync": "tsx scripts/sync-holidays.ts"
+    "holidays:sync": "tsx scripts/sync-holidays.ts",
+    "holidays:generate": "tsx scripts/generate-public-holidays.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.7.4",
@@ -21,7 +22,6 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
-    "date-holidays": "^3.30.1",
     "drizzle-orm": "^0.36.0",
     "googleapis": "^172.0.0",
     "next": "^15.0.3",
@@ -37,6 +37,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.4.20",
+    "date-holidays": "^3.30.1",
     "dotenv": "^16.4.5",
     "drizzle-kit": "^0.28.0",
     "postcss": "^8.4.49",

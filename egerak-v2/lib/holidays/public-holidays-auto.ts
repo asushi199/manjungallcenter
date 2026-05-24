@@ -1,51 +1,50 @@
-import Holidays from "date-holidays";
 import type { HolidayDetail } from "./types";
+import { PERAK_PUBLIC_HOLIDAYS } from "./public-holidays-data";
 
-/** Perak (kod negeri date-holidays: 08) */
-const PERAK_STATE = "08";
+/**
+ * Cuti umum Perak — data pra-jana (statik) supaya bundle runtime kecil
+ * dan tiada cold-start cost dari `date-holidays` (~10MB).
+ *
+ * Jana semula setiap tahun:
+ *   npx tsx scripts/generate-public-holidays.ts
+ */
 
-const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const yearCache = new Map<number, { at: number; data: Map<string, HolidayDetail> }>();
+const PUBLIC_HOLIDAY_NOTE =
+  "Cuti umum Perak — data pra-jana. Semak portal JPM jika ada perubahan.";
 
-function loadPublicHolidaysForYearUncached(year: number): Map<string, HolidayDetail> {
-  const hd = new Holidays("MY", PERAK_STATE);
-  const list = hd.getHolidays(year);
-  const map = new Map<string, HolidayDetail>();
-
-  for (const h of list) {
-    if (h.type !== "public" && h.type !== "bank") continue;
-    const ymd = h.date.slice(0, 10);
-    map.set(ymd, {
+/** Bina peta sekali sahaja masa modul dimuatkan; selepas itu O(1) per query. */
+const HOLIDAY_MAP_BY_YEAR: Map<number, Map<string, HolidayDetail>> = (() => {
+  const byYear = new Map<number, Map<string, HolidayDetail>>();
+  for (const row of PERAK_PUBLIC_HOLIDAYS) {
+    const year = Number(row.date.slice(0, 4));
+    let m = byYear.get(year);
+    if (!m) {
+      m = new Map<string, HolidayDetail>();
+      byYear.set(year, m);
+    }
+    m.set(row.date, {
       kind: "umum",
-      name: h.name.replace(/ \(.*\)$/, ""),
-      note: "Cuti umum Perak — dikemas kini automatik (date-holidays). Semak JPM jika ada perubahan.",
+      name: row.name,
+      note: PUBLIC_HOLIDAY_NOTE,
     });
   }
+  return byYear;
+})();
 
-  return map;
-}
-
-export async function loadPublicHolidaysForYear(year: number): Promise<Map<string, HolidayDetail>> {
-  const hit = yearCache.get(year);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.data;
-
-  try {
-    const data = loadPublicHolidaysForYearUncached(year);
-    yearCache.set(year, { at: Date.now(), data });
-    return data;
-  } catch (e) {
-    console.error("[holidays] date-holidays gagal untuk tahun", year, e);
-    return new Map();
-  }
+export async function loadPublicHolidaysForYear(
+  year: number,
+): Promise<Map<string, HolidayDetail>> {
+  return HOLIDAY_MAP_BY_YEAR.get(year) ?? new Map();
 }
 
 export async function getPublicHolidaysForYears(
   years: number[],
 ): Promise<Map<string, HolidayDetail>> {
   const unique = [...new Set(years)].sort();
-  const maps = await Promise.all(unique.map((y) => loadPublicHolidaysForYear(y)));
   const merged = new Map<string, HolidayDetail>();
-  for (const m of maps) {
+  for (const y of unique) {
+    const m = HOLIDAY_MAP_BY_YEAR.get(y);
+    if (!m) continue;
     for (const [k, v] of m) merged.set(k, v);
   }
   return merged;
