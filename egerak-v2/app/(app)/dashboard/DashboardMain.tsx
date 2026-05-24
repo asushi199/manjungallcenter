@@ -1,10 +1,14 @@
+import Link from "next/link";
 import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
 import MonthCalendar, { type CalendarItem } from "@/components/MonthCalendar";
 import PergerakanCard, { type PergerakanCardData } from "@/components/PergerakanCard";
 import SektorLegend from "@/components/SektorLegend";
-import { listPergerakanForDashboard } from "@/lib/actions/pergerakan";
+import {
+  listPergerakanForDashboard,
+  type DashboardPergerakanRow,
+} from "@/lib/actions/pergerakan";
 import { TZ } from "@/lib/dates";
-import { getCalendarHolidays } from "@/lib/holidays";
+import { getCalendarHolidays, type CalendarHolidays } from "@/lib/holidays";
 import { serializeCalendarHolidays } from "@/lib/holidays/serialize";
 import { pergerakanOverlapsRange } from "@/lib/pergerakan-filter";
 
@@ -15,6 +19,29 @@ export type DashboardMainProps = {
   includeCuti: boolean;
   showSchoolHolidays: boolean;
 };
+
+const EMPTY_HOLIDAYS: CalendarHolidays = {
+  publicLabels: new Map(),
+  publicDetails: new Map(),
+  schoolLabels: new Map(),
+  schoolDetails: new Map(),
+};
+
+/** Sekali percubaan semula — cuba pulih dari cold-start Supabase / Vercel function. */
+async function fetchPergerakanWithRetry(opts: {
+  start: Date;
+  end: Date;
+  sektorIds?: number[];
+  includeCuti?: boolean;
+}): Promise<DashboardPergerakanRow[]> {
+  try {
+    return await listPergerakanForDashboard(opts);
+  } catch (e) {
+    console.warn("[dashboard] pergerakan attempt 1 failed, retrying", e);
+    await new Promise((r) => setTimeout(r, 400));
+    return listPergerakanForDashboard(opts);
+  }
+}
 
 export default async function DashboardMain({
   date,
@@ -38,20 +65,34 @@ export default async function DashboardMain({
     includeCuti,
   };
 
-  const [holidays, monthItems] = await Promise.all([
+  // Allsettled: kalau satu gagal, halaman masih boleh render.
+  const [holidaysRes, pergerakanRes] = await Promise.allSettled([
     getCalendarHolidays(month, { showSchoolHolidays }),
-    listPergerakanForDashboard({
+    fetchPergerakanWithRetry({
       start: monthStart,
       end: monthEnd,
       ...filter,
     }),
   ]);
 
+  const holidays =
+    holidaysRes.status === "fulfilled" ? holidaysRes.value : EMPTY_HOLIDAYS;
+  if (holidaysRes.status === "rejected") {
+    console.error("[dashboard] holidays fetch failed:", holidaysRes.reason);
+  }
+
+  const monthItems: DashboardPergerakanRow[] =
+    pergerakanRes.status === "fulfilled" ? pergerakanRes.value : [];
+  const pergerakanFailed = pergerakanRes.status === "rejected";
+  if (pergerakanFailed) {
+    console.error("[dashboard] pergerakan fetch failed:", pergerakanRes.reason);
+  }
+
   const dayItems = monthItems.filter((it) =>
     pergerakanOverlapsRange(it.tarikhPergi, it.tarikhKembali, dayStart, dayEnd),
   );
 
-  const toCard = (it: (typeof dayItems)[0]): PergerakanCardData => ({
+  const toCard = (it: DashboardPergerakanRow): PergerakanCardData => ({
     id: it.id,
     nama: it.nama,
     jawatan: it.jawatan,
@@ -79,9 +120,26 @@ export default async function DashboardMain({
 
   const dayLabel = formatInTimeZone(dayStart, TZ, "EEEE, dd MMMM yyyy");
   const holidayProps = serializeCalendarHolidays(holidays);
+  const retryHref = `/dashboard?_r=${Date.now()}`;
 
   return (
     <section className="space-y-6 min-w-0">
+      {pergerakanFailed && (
+        <div className="card border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-sm text-amber-900">
+            <strong>Tidak dapat memuatkan rekod pergerakan.</strong> Sambungan
+            pangkalan data mungkin sejuk. Cuba muat semula sebentar lagi.
+          </p>
+          <Link
+            href={retryHref}
+            className="btn-primary mt-2 inline-flex text-xs"
+            prefetch={false}
+          >
+            Muat semula
+          </Link>
+        </div>
+      )}
+
       <div className="space-y-3">
         <header>
           <h1 className="text-lg font-semibold">Kalendar Pergerakan</h1>
@@ -128,7 +186,9 @@ export default async function DashboardMain({
 
         {dayItems.length === 0 ? (
           <div className="card p-8 text-center text-slate-500 text-sm">
-            Tiada pergerakan pada tarikh ini.
+            {pergerakanFailed
+              ? "Rekod pergerakan tidak dimuatkan."
+              : "Tiada pergerakan pada tarikh ini."}
           </div>
         ) : (
           <div className="space-y-2">
