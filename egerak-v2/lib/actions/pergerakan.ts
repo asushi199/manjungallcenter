@@ -4,6 +4,7 @@ import { z } from "zod";
 import { and, desc, eq, gte, lte, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { withDbTimeout } from "@/lib/db-timeout";
 import { pergerakan, users, sektors, auditLog, opr } from "@/lib/schema";
 import { requireUser, requireAdmin } from "@/lib/rbac";
 import { parseLocalInput, toLocalInput, TZ } from "@/lib/dates";
@@ -348,25 +349,27 @@ export async function listPergerakanBetween(opts: {
     conditions.push(eq(pergerakan.jenis, "Pergerakan"));
   }
 
-  const rows = await db
-    .select({
-      id: pergerakan.id,
-      userId: pergerakan.userId,
-      nama: users.nama,
-      jawatan: users.jawatan,
-      sektorCode: sektors.code,
-      sektorName: sektors.name,
-      jenis: pergerakan.jenis,
-      urusan: pergerakan.urusan,
-      lokasi: pergerakan.lokasi,
-      tarikhPergi: pergerakan.tarikhPergi,
-      tarikhKembali: pergerakan.tarikhKembali,
-    })
-    .from(pergerakan)
-    .innerJoin(users, eq(users.id, pergerakan.userId))
-    .leftJoin(sektors, eq(sektors.id, pergerakan.sektorId))
-    .where(and(...conditions))
-    .orderBy(pergerakan.tarikhPergi);
+  const rows = await withDbTimeout(
+    db
+      .select({
+        id: pergerakan.id,
+        userId: pergerakan.userId,
+        nama: users.nama,
+        jawatan: users.jawatan,
+        sektorCode: sektors.code,
+        sektorName: sektors.name,
+        jenis: pergerakan.jenis,
+        urusan: pergerakan.urusan,
+        lokasi: pergerakan.lokasi,
+        tarikhPergi: pergerakan.tarikhPergi,
+        tarikhKembali: pergerakan.tarikhKembali,
+      })
+      .from(pergerakan)
+      .innerJoin(users, eq(users.id, pergerakan.userId))
+      .leftJoin(sektors, eq(sektors.id, pergerakan.sektorId))
+      .where(and(...conditions))
+      .orderBy(pergerakan.tarikhPergi),
+  );
 
   return rows.map((r) => ({
     ...r,
@@ -445,26 +448,26 @@ export async function listMine(): Promise<PergerakanListItem[]> {
 
 export async function countToday(): Promise<{ pergerakan: number; bercuti: number; total: number }> {
   await requireUser();
-  const today = new Date();
-  const startStr = `${today.toISOString().slice(0, 10)}T00:00:00+08:00`;
-  const endStr = `${today.toISOString().slice(0, 10)}T23:59:59+08:00`;
-  const start = new Date(startStr);
-  const end = new Date(endStr);
+  const ymd = formatInTimeZone(new Date(), TZ, "yyyy-MM-dd");
+  const start = new Date(`${ymd}T00:00:00+08:00`);
+  const end = new Date(`${ymd}T23:59:59+08:00`);
 
-  const rows = await db
-    .select({
-      jenis: pergerakan.jenis,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(pergerakan)
-    .where(
-      and(
-        eq(pergerakan.aktif, true),
-        lte(pergerakan.tarikhPergi, end),
-        gte(pergerakan.tarikhKembali, start),
-      ),
-    )
-    .groupBy(pergerakan.jenis);
+  const rows = await withDbTimeout(
+    db
+      .select({
+        jenis: pergerakan.jenis,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(pergerakan)
+      .where(
+        and(
+          eq(pergerakan.aktif, true),
+          lte(pergerakan.tarikhPergi, end),
+          gte(pergerakan.tarikhKembali, start),
+        ),
+      )
+      .groupBy(pergerakan.jenis),
+  );
 
   let p = 0;
   let c = 0;

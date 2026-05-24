@@ -1,8 +1,7 @@
 import Navbar from "@/components/Navbar";
-import { requireUser } from "@/lib/rbac";
 
-export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  await requireUser();
+/** Auth di middleware; jangan tunggu DB di layout (elak halaman kosong lama). */
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div id="egerak-app-shell" className="min-h-screen flex flex-col">
       <Navbar />

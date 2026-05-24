@@ -3,7 +3,8 @@
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { eq, asc } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache } from "next/cache";
+import { withDbTimeout } from "@/lib/db-timeout";
 import { db } from "@/lib/db";
 import { users, sektors, auditLog } from "@/lib/schema";
 import { requireAdmin } from "@/lib/rbac";
@@ -209,6 +210,12 @@ export async function listAllUsers() {
     .orderBy(asc(users.username));
 }
 
+const fetchAllSektors = unstable_cache(
+  async () => withDbTimeout(db.select().from(sektors).orderBy(asc(sektors.name))),
+  ["all-sektors"],
+  { revalidate: 3600 },
+);
+
 export async function listAllSektors() {
-  return db.select().from(sektors).orderBy(asc(sektors.name));
+  return fetchAllSektors();
 }

@@ -17,8 +17,9 @@ const client =
   globalForPg.pg ??
   postgres(connectionString, {
     max: isServerless ? 1 : 5,
-    idle_timeout: 20,
-    connect_timeout: 10,
+    idle_timeout: 10,
+    connect_timeout: 8,
+    max_lifetime: 60 * 5,
     /** Wajib untuk Supabase Transaction pooler (port 6543). */
     prepare: false,
   });
