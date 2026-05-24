@@ -11,14 +11,15 @@ Pegawai biasa hanya perlu URL Vercel + ID/kata laluan dari Admin.
 2. Region: pilih **Southeast Asia (Singapore)** untuk latensi terbaik dari Malaysia.
 3. Tetapkan kata laluan DB yang kuat. Simpan di tempat selamat.
 4. Tunggu projek siap dibuat (~2 minit).
-5. **Project Settings → Database → Connection string → URI** (pilih mod **Session** /
-   **Transaction pooler** untuk Vercel). Salin string penuh, contoh:
+5. **Project Settings → Database → Connection string → URI** — untuk **Vercel** wajib guna
+   **Transaction pooler** (bukan Session), port **6543**, contoh:
 
    ```
-   postgres://postgres.abcxyz:[YOUR-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+   postgres://postgres.abcxyz:[YOUR-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true
    ```
 
-   Gantikan `[YOUR-PASSWORD]` dengan kata laluan sebenar.
+   Gantikan `[YOUR-PASSWORD]` dengan kata laluan sebenar. Session mode (port 5432) mudah
+   menyebabkan ralat `max clients reached` pada trafik sederhana.
 
 ---
 
@@ -138,6 +139,7 @@ Simpan ke Drive PPD (folder USTP).
 | Gejala | Penyelesaian |
 |--------|--------------|
 | `DATABASE_URL is not set` | Pastikan `.env.local` (dev) atau Vercel env (prod) ada nilai ini |
+| `max clients reached` / 500 pada `/dashboard` | Tukar `DATABASE_URL` ke **Transaction pooler** port **6543** + `?pgbouncer=true`; redeploy |
 | `ID atau kata laluan tidak betul` (sebenarnya betul) | Mungkin `aktif=false` dalam DB; semak di Admin → Pengguna |
 | Hari ini menunjukkan rekod tetapi tidak di kalendar | Tapisan sektor / toggle cuti — semak FilterBar |
 | Lupa kata laluan Admin pertama | Re-seed: tukar `SEED_ADMIN_USERNAME` ke username baru atau hapus baris user di DB → `npm run db:seed` |

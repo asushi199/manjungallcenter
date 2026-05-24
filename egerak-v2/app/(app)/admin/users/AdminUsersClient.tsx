@@ -126,6 +126,37 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
     });
   }
 
+  function UserActions({ u }: { u: Row }) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="btn-secondary text-xs"
+          onClick={() => startEdit(u)}
+          disabled={pending || editing?.id === u.id}
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          className="btn-secondary text-xs"
+          onClick={() => onReset(u.id, u.nama)}
+          disabled={pending}
+        >
+          Reset PW
+        </button>
+        <button
+          type="button"
+          className="btn-secondary text-xs"
+          onClick={() => onToggle(u)}
+          disabled={pending}
+        >
+          {u.aktif ? "Nyahaktif" : "Aktifkan"}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-600 rounded-md bg-slate-50 border border-slate-200 px-3 py-2">
@@ -219,7 +250,54 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
       )}
 
     <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-      <div className="card overflow-x-auto">
+      {/* Senarai kad — telefon */}
+      <div className="md:hidden space-y-3 order-2 lg:order-1">
+        {users.map((u) => (
+          <div key={u.id} className="card p-4 space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="font-mono text-xs text-slate-500">{u.username}</div>
+                <div className="font-semibold">{u.nama}</div>
+                <div className="text-sm text-slate-600">{u.jawatan || "—"}</div>
+              </div>
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                <span
+                  className={
+                    "badge " +
+                    (u.peranan === "Admin"
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-slate-100 text-slate-700")
+                  }
+                >
+                  {u.peranan}
+                </span>
+                <span
+                  className={
+                    "badge " +
+                    (u.aktif
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-red-100 text-red-700")
+                  }
+                >
+                  {u.aktif ? "Aktif" : "Tidak Aktif"}
+                </span>
+              </div>
+            </div>
+            {u.sektorName && (
+              <p className="text-xs text-slate-600 leading-snug">{u.sektorName}</p>
+            )}
+            {u.mustChangePassword && (
+              <span className="badge bg-yellow-100 text-yellow-800">Tukar PW</span>
+            )}
+            <UserActions u={u} />
+          </div>
+        ))}
+        {users.length === 0 && (
+          <div className="card p-6 text-center text-slate-500 text-sm">Tiada pengguna.</div>
+        )}
+      </div>
+
+      <div className="card overflow-x-auto hidden md:block order-2 lg:order-1">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>
@@ -268,32 +346,7 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
                   )}
                 </td>
                 <td className="px-3 py-2">
-                  <div className="flex flex-col gap-1 items-start">
-                    <button
-                      type="button"
-                      className="btn-secondary text-xs"
-                      onClick={() => startEdit(u)}
-                      disabled={pending || editing?.id === u.id}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-secondary text-xs"
-                      onClick={() => onReset(u.id, u.nama)}
-                      disabled={pending}
-                    >
-                      Reset PW
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-secondary text-xs"
-                      onClick={() => onToggle(u)}
-                      disabled={pending}
-                    >
-                      {u.aktif ? "Nyahaktif" : "Aktifkan"}
-                    </button>
-                  </div>
+                  <UserActions u={u} />
                 </td>
               </tr>
             ))}
@@ -308,7 +361,7 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
         </table>
       </div>
 
-      <div className="card p-4">
+      <div className="card p-4 order-1 lg:order-2">
         <h2 className="font-semibold mb-2">Tambah Pengguna</h2>
         <form onSubmit={onCreate} className="space-y-3">
           <div>
