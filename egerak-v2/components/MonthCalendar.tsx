@@ -14,6 +14,7 @@ import {
 } from "date-fns";
 import { cn } from "@/lib/cn";
 import { sektorStyle } from "@/lib/sektor-colors";
+import { replaceWithSearchParams } from "@/lib/navigate";
 
 export type CalendarItem = {
   id: number;
@@ -94,7 +95,7 @@ export default function MonthCalendar({
       const today = ymdKey(new Date());
       next.set("date", today.startsWith(newMonth) ? today : `${newMonth}-01`);
     }
-    router.replace(`/dashboard?${next.toString()}`);
+    replaceWithSearchParams(router, "/dashboard", next);
   }
 
   function shiftMonth(delta: number) {
@@ -107,7 +108,12 @@ export default function MonthCalendar({
     const next = new URLSearchParams(urlParams?.toString());
     next.set("date", dayKey);
     next.set("month", dayKey.slice(0, 7));
-    router.replace(`/dashboard?${next.toString()}`);
+    replaceWithSearchParams(router, "/dashboard", next);
+  }
+
+  function openDayDrawer(dayKey: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    e.preventDefault();
     setOpenDay(dayKey);
   }
 
@@ -204,12 +210,14 @@ export default function MonthCalendar({
                   );
                 })}
                 {more > 0 && (
-                  <div
-                    className="text-[10px] font-semibold pl-1"
+                  <button
+                    type="button"
+                    className="text-[10px] font-semibold pl-1 text-left w-full hover:underline"
                     style={{ color: "#b81049" }}
+                    onClick={(e) => openDayDrawer(key, e)}
                   >
-                    +{more} lagi (klik)
-                  </div>
+                    +{more} lagi · senarai
+                  </button>
                 )}
               </div>
             </button>

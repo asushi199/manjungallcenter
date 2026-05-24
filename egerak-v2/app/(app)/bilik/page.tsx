@@ -1,4 +1,5 @@
 import { listRooms, listBookingsInRange, listMyBookings } from "@/lib/actions/rooms";
+import { auth } from "@/lib/auth";
 import { requireUser } from "@/lib/rbac";
 import { formatInTimeZone } from "date-fns-tz";
 import { addDays } from "date-fns";
@@ -13,6 +14,8 @@ export default async function BilikPage({
   searchParams: Promise<{ week?: string }>;
 }) {
   await requireUser();
+  const session = await auth();
+  const isAdmin = session?.user?.peranan === "Admin";
   const sp = await searchParams;
   const today = formatInTimeZone(new Date(), TZ, "yyyy-MM-dd");
   const weekStart = sp.week && /^\d{4}-\d{2}-\d{2}$/.test(sp.week) ? sp.week : today;
@@ -48,6 +51,7 @@ export default async function BilikPage({
           tarikh: String(b.tarikh),
         }))}
         weekStart={weekStart}
+        isAdmin={isAdmin}
       />
     </div>
   );

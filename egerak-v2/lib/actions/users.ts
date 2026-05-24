@@ -86,10 +86,92 @@ const toggleSchema = z.object({
   aktif: z.boolean(),
 });
 
+const updateSchema = z.object({
+  userId: z.number().int().positive(),
+  username: z.string().min(3).max(50).optional(),
+  nama: z.string().min(1).optional(),
+  jawatan: z.string().optional(),
+  sektorId: z
+    .union([z.number(), z.string(), z.null()])
+    .transform((v) => (v === "" || v === null || v === undefined ? null : Number(v)))
+    .nullable()
+    .optional(),
+  peranan: z.enum(["Admin", "Pengguna"]).optional(),
+});
+
+export async function adminUpdateUser(input: unknown): Promise<CreateUserResult> {
+  const admin = await requireAdmin();
+  const parsed = updateSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak sah" };
+
+  const { userId, username, nama, jawatan, sektorId, peranan } = parsed.data;
+  const target = await db.query.users.findFirst({ where: eq(users.id, userId) });
+  if (!target) return { ok: false, error: "Pengguna tidak dijumpai" };
+
+  if (peranan === "Pengguna" && target.peranan === "Admin") {
+    const admins = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.peranan, "Admin"));
+    if (admins.length <= 1) {
+      return { ok: false, error: "Sekurang-kurangnya satu pentadbir mesti kekal." };
+    }
+  }
+
+  const patch: Partial<typeof users.$inferInsert> = { updatedAt: new Date() };
+  if (nama !== undefined) patch.nama = nama.trim();
+  if (jawatan !== undefined) patch.jawatan = jawatan.trim();
+  if (sektorId !== undefined) patch.sektorId = sektorId;
+  if (peranan !== undefined) patch.peranan = peranan;
+
+  if (username !== undefined) {
+    const nextUsername = username.trim().toLowerCase();
+    if (nextUsername !== target.username) {
+      const clash = await db.query.users.findFirst({ where: eq(users.username, nextUsername) });
+      if (clash) return { ok: false, error: "Nama pengguna telah digunakan" };
+      patch.username = nextUsername;
+    }
+  }
+
+  if (Object.keys(patch).length <= 1) {
+    return { ok: false, error: "Tiada perubahan untuk disimpan" };
+  }
+
+  await db.update(users).set(patch).where(eq(users.id, userId));
+
+  await db.insert(auditLog).values({
+    action: "ADMIN_UPDATE_USER",
+    userId: Number(admin.id),
+    detail: { userId, fields: Object.keys(patch).filter((k) => k !== "updatedAt") },
+  });
+
+  revalidatePath("/admin/users");
+  revalidatePath("/dashboard");
+  revalidatePath("/my");
+  return { ok: true };
+}
+
 export async function adminSetAktif(input: unknown): Promise<CreateUserResult> {
   const admin = await requireAdmin();
   const parsed = toggleSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak sah" };
+
+  if (!parsed.data.aktif && parsed.data.userId === Number(admin.id)) {
+    return { ok: false, error: "Tidak boleh nyahaktifkan akaun sendiri." };
+  }
+
+  const target = await db.query.users.findFirst({ where: eq(users.id, parsed.data.userId) });
+  if (!target) return { ok: false, error: "Pengguna tidak dijumpai" };
+
+  if (!parsed.data.aktif && target.peranan === "Admin") {
+    const admins = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.peranan, "Admin"));
+    if (admins.length <= 1) {
+      return { ok: false, error: "Sekurang-kurangnya satu pentadbir mesti kekal aktif." };
+    }
+  }
 
   await db
     .update(users)

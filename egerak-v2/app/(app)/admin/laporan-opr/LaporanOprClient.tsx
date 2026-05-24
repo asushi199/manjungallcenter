@@ -13,6 +13,7 @@ import type { LaporanOprRow } from "@/lib/actions/laporan-opr";
 import type { SektorOption } from "@/components/FilterBar";
 import type { LaporanOprRange } from "@/lib/laporan-opr-period";
 import { cn } from "@/lib/cn";
+import { replaceWithSearchParams } from "@/lib/navigate";
 
 /** Baris dari RSC — tarikh diserialkan sebagai ISO string. */
 export type LaporanOprRowSerialized = Omit<
@@ -150,7 +151,7 @@ export default function LaporanOprClient({ rows, sektors, current }: Props) {
     else next.delete("q");
 
     startTransition(() => {
-      router.replace(`/admin/laporan-opr?${next.toString()}`);
+      replaceWithSearchParams(router, "/admin/laporan-opr", next);
     });
   }
 

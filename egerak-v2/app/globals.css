@@ -42,6 +42,13 @@
     margin: 8mm;
   }
 
+  html,
+  body {
+    height: auto !important;
+    min-height: 0 !important;
+    background: white !important;
+  }
+
   /* Sembunyikan navigasi laman & toolbar cetak */
   #egerak-app-shell > header,
   #egerak-app-shell > footer,
@@ -52,13 +59,18 @@
     display: none !important;
   }
 
-  #egerak-app-shell > main {
+  #egerak-app-shell,
+  #egerak-app-shell > main,
+  .opr-print-route {
+    min-height: 0 !important;
+    height: auto !important;
     padding: 0 !important;
     margin: 0 !important;
   }
 
-  body {
-    background: white !important;
+  .opr-print-route {
+    page-break-after: avoid !important;
+    break-after: avoid-page !important;
   }
 
   .opr-print {
@@ -69,6 +81,9 @@
     font-size: 8pt;
     line-height: 1.25;
     page-break-inside: avoid;
+    break-inside: avoid-page;
+    page-break-after: avoid !important;
+    break-after: avoid-page !important;
   }
 
   .opr-print-body {

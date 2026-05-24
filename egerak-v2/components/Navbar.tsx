@@ -3,16 +3,28 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { cn } from "@/lib/cn";
 import PpdLogo from "@/components/PpdLogo";
-import { AdminNavMenuDesktop, AdminNavMenuMobile } from "@/components/AdminNavMenu";
+import HeaderNavDropdown, { type NavLink } from "@/components/HeaderNavDropdown";
 
-const LINKS = [
+const MAIN_LINKS: NavLink[] = [
   { href: "/dashboard", label: "Utama" },
-  { href: "/new", label: "Isi Pergerakan" },
+  { href: "/new", label: "Daftar Pergerakan" },
   { href: "/my", label: "Pergerakan Saya" },
   { href: "/bilik", label: "Tempahan Bilik" },
 ];
+
+const PENGGUNA_LINKS: NavLink[] = [{ href: "/admin/users", label: "Pengurusan Pengguna" }];
+
+const ADMIN_LINKS: NavLink[] = [
+  { href: "/admin/laporan-opr", label: "Laporan OPR" },
+  { href: "/admin/pergerakan", label: "Padam Pergerakan" },
+  { href: "/admin/import", label: "Import Rancangan" },
+];
+
+function currentMainLabel(path: string | null) {
+  const hit = MAIN_LINKS.find((l) => path === l.href || path?.startsWith(l.href + "/"));
+  return hit?.label ?? "Menu";
+}
 
 export default function Navbar() {
   const path = usePathname();
@@ -26,94 +38,47 @@ export default function Navbar() {
 
   return (
     <header className="bg-brand-700 text-white shadow">
-      <div className="mx-auto max-w-7xl flex items-center justify-between px-4 py-2.5">
+      <div className="mx-auto max-w-7xl flex items-center justify-between gap-2 px-3 py-2.5 sm:px-4">
         <Link
           href="/dashboard"
-          className="flex items-center gap-1.5 text-lg font-bold shrink-0 min-w-0"
+          className="flex items-center gap-1.5 text-base sm:text-lg font-bold shrink min-w-0"
         >
-          <PpdLogo width={78} className="shrink-0 object-contain" />
-          <span className="leading-snug -ml-0.5">
-            eGerak <span className="font-normal opacity-90">PPD Manjung</span>
+          <PpdLogo width={72} className="sm:hidden shrink-0 object-contain" />
+          <PpdLogo width={78} className="hidden sm:block shrink-0 object-contain" />
+          <span className="leading-snug -ml-0.5 truncate">
+            eGerak <span className="font-normal opacity-90 hidden sm:inline">PPD Manjung</span>
           </span>
         </Link>
-        <nav className="hidden md:flex gap-1">
-          {LINKS.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={cn(
-                "px-3 py-1.5 rounded-md text-sm font-medium",
-                path?.startsWith(l.href)
-                  ? "bg-white text-brand-700"
-                  : "text-white/90 hover:bg-white/10",
-              )}
-            >
-              {l.label}
-            </Link>
-          ))}
+
+        <nav className="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-end">
+          <HeaderNavDropdown label={currentMainLabel(path)} links={MAIN_LINKS} />
           {isAdmin && (
             <>
-              <Link
-                href="/admin/laporan-opr"
-                className={cn(
-                  "px-3 py-1.5 rounded-md text-sm font-medium",
-                  path?.startsWith("/admin/laporan-opr")
-                    ? "bg-white text-brand-700"
-                    : "text-white/90 hover:bg-white/10",
-                )}
-              >
-                Laporan OPR
-              </Link>
-              <AdminNavMenuDesktop />
+              <HeaderNavDropdown
+                label={
+                  path?.startsWith("/admin/users") ? "Pengurusan Pengguna" : "Pengguna"
+                }
+                links={PENGGUNA_LINKS}
+              />
+              <HeaderNavDropdown label="Admin" links={ADMIN_LINKS} />
             </>
           )}
         </nav>
-        <div className="flex items-center gap-3 text-sm">
-          <div className="hidden sm:block text-right leading-tight">
+
+        <div className="flex items-center gap-2 text-sm shrink-0">
+          <div className="hidden lg:block text-right leading-tight">
             <div className="font-medium">{user?.nama}</div>
             <div className="text-xs text-white/80">{user?.username}</div>
           </div>
           <button
             type="button"
             onClick={() => signOut({ redirectTo: "/login" })}
-            className="rounded-md bg-white/15 hover:bg-white/25 px-3 py-1.5 text-xs"
+            className="rounded-md bg-white/15 hover:bg-white/25 px-2.5 py-1.5 text-xs whitespace-nowrap"
           >
             Log Keluar
           </button>
         </div>
       </div>
-      <nav className="md:hidden border-t border-white/15">
-        <div className="mx-auto max-w-7xl flex flex-wrap">
-          {LINKS.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={cn(
-                "flex-1 text-center text-sm py-2 min-w-[4.5rem]",
-                path?.startsWith(l.href) ? "bg-white text-brand-700" : "text-white/90",
-              )}
-            >
-              {l.label === "Pergerakan Saya" ? "Saya" : l.label === "Isi Pergerakan" ? "Isi" : l.label === "Tempahan Bilik" ? "Bilik" : l.label}
-            </Link>
-          ))}
-          {isAdmin && (
-            <>
-              <Link
-                href="/admin/laporan-opr"
-                className={cn(
-                  "flex-1 text-center text-sm py-2 min-w-[4.5rem]",
-                  path?.startsWith("/admin/laporan-opr")
-                    ? "bg-white text-brand-700"
-                    : "text-white/90",
-                )}
-              >
-                Laporan
-              </Link>
-              <AdminNavMenuMobile />
-            </>
-          )}
-        </div>
-      </nav>
     </header>
   );
 }

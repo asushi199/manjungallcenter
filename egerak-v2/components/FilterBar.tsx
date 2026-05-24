@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import SektorFilterDropdown from "@/components/SektorFilterDropdown";
+import { replaceWithSearchParams } from "@/lib/navigate";
 
 export type SektorOption = { id: number; code: string; name: string };
 
@@ -33,7 +34,7 @@ export default function FilterBar({
     next.set("cuti", includeCuti ? "1" : "0");
 
     startTransition(() => {
-      router.replace(`/dashboard?${next.toString()}`);
+      replaceWithSearchParams(router, "/dashboard", next);
     });
   }
 

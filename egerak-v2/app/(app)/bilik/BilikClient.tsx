@@ -3,8 +3,10 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, format, parseISO } from "date-fns";
-import { bookRoom, cancelBooking } from "@/lib/actions/rooms";
+import { bookRoom, cancelBooking, cancelBookingsBulk } from "@/lib/actions/rooms";
 import { SLOT_LABEL } from "@/lib/room-slots";
+import { replaceWithSearchParams } from "@/lib/navigate";
+import { cn } from "@/lib/cn";
 
 type Room = { id: number; code: string; name: string };
 type Booking = {
@@ -46,15 +48,19 @@ export default function BilikClient({
   bookings,
   myBookings,
   weekStart,
+  isAdmin,
 }: {
   rooms: Room[];
   bookings: Booking[];
   myBookings: MyBooking[];
   weekStart: string;
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
+  const [roomFocus, setRoomFocus] = useState(rooms[0]?.id ?? 0);
+  const [selectedBookings, setSelectedBookings] = useState<Set<number>>(new Set());
 
   const [form, setForm] = useState({
     roomId: rooms[0]?.id ?? 0,
@@ -99,7 +105,29 @@ export default function BilikClient({
 
   function shiftWeek(delta: number) {
     const next = format(addDays(parseISO(weekStart), delta * 7), "yyyy-MM-dd");
-    router.replace(`/bilik?week=${next}`);
+    replaceWithSearchParams(router, "/bilik", new URLSearchParams({ week: next }));
+  }
+
+  const tableRooms =
+    rooms.length > 1 ? rooms.filter((r) => r.id === roomFocus) : rooms;
+
+  function toggleBooking(id: number) {
+    const next = new Set(selectedBookings);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedBookings(next);
+  }
+
+  function onBulkCancelBookings() {
+    if (selectedBookings.size === 0) return;
+    if (!confirm(`Batalkan ${selectedBookings.size} tempahan?`)) return;
+    startTransition(async () => {
+      const r = await cancelBookingsBulk([...selectedBookings]);
+      if (r.error) alert(r.error);
+      else alert(`${r.cancelled} tempahan dibatalkan.`);
+      setSelectedBookings(new Set());
+      router.refresh();
+    });
   }
 
   return (
@@ -177,12 +205,33 @@ export default function BilikClient({
         </button>
       </div>
 
+      {rooms.length > 1 && (
+        <div className="md:hidden flex flex-wrap gap-2">
+          <span className="text-xs text-slate-500 w-full">Pilih bilik / dewan:</span>
+          {rooms.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => setRoomFocus(r.id)}
+              className={cn(
+                "rounded-full px-3 py-1.5 text-xs font-medium border",
+                roomFocus === r.id
+                  ? "bg-brand-600 border-brand-600 text-white"
+                  : "bg-white border-slate-300 text-slate-700",
+              )}
+            >
+              {r.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="card overflow-x-auto">
-        <table className="w-full text-xs min-w-[640px]">
+        <table className="w-full text-xs md:min-w-[640px]">
           <thead>
             <tr className="bg-slate-50">
               <th className="p-2 text-left">Tarikh</th>
-              {rooms.map((r) => (
+              {tableRooms.map((r) => (
                 <th key={r.id} colSpan={2} className="p-2 text-center border-l">
                   {r.name}
                 </th>
@@ -190,7 +239,7 @@ export default function BilikClient({
             </tr>
             <tr className="bg-slate-50/80">
               <th />
-              {rooms.map((r) =>
+              {tableRooms.map((r) =>
                 SLOTS.map((s) => (
                   <th key={`${r.id}-${s}`} className="p-1 font-normal text-slate-500 border-l">
                     {s}
@@ -203,7 +252,7 @@ export default function BilikClient({
             {days.map((d) => (
               <tr key={d} className="border-t">
                 <td className="p-2 whitespace-nowrap font-medium">{format(parseISO(d), "dd/MM")}</td>
-                {rooms.map((r) => {
+                {tableRooms.map((r) => {
                   const am = bookingKey(r.id, d, "AM");
                   const pm = bookingKey(r.id, d, "PM");
                   if (am && pm) {
@@ -254,6 +303,38 @@ export default function BilikClient({
           </tbody>
         </table>
       </div>
+
+      {isAdmin && bookings.length > 0 && (
+        <div className="card p-4 space-y-2">
+          <h2 className="font-semibold">Admin — batalkan tempahan (minggu ini)</h2>
+          <p className="text-xs text-slate-500">
+            Tandakan tempahan ujian, kemudian batalkan sekali gus.
+          </p>
+          <ul className="max-h-48 overflow-y-auto divide-y text-sm border rounded-md">
+            {bookings.map((b) => (
+              <li key={b.id} className="flex items-center gap-2 px-2 py-1.5">
+                <input
+                  type="checkbox"
+                  checked={selectedBookings.has(b.id)}
+                  onChange={() => toggleBooking(b.id)}
+                />
+                <span>
+                  {b.tarikh} {b.slot} · <strong>{b.roomName}</strong> — {b.title} (
+                  {b.pegawaiNama})
+                </span>
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            className="btn-danger"
+            disabled={selectedBookings.size === 0 || pending}
+            onClick={onBulkCancelBookings}
+          >
+            Batalkan dipilih ({selectedBookings.size})
+          </button>
+        </div>
+      )}
 
       <div className="card p-4">
         <h2 className="font-semibold mb-2">Tempahan Saya</h2>

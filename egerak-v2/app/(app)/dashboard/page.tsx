@@ -4,6 +4,7 @@ import FilterBar from "@/components/FilterBar";
 import MonthCalendar, { type CalendarItem } from "@/components/MonthCalendar";
 import PergerakanCard, { type PergerakanCardData } from "@/components/PergerakanCard";
 import SektorLegend from "@/components/SektorLegend";
+import DashboardScrollSync from "@/components/DashboardScrollSync";
 import { listAllSektors } from "@/lib/actions/users";
 import { listPergerakanBetween, countToday } from "@/lib/actions/pergerakan";
 import { TZ } from "@/lib/dates";
@@ -87,6 +88,8 @@ export default async function DashboardPage({
   const dayLabel = formatInTimeZone(dayStart, TZ, "EEEE, dd MMMM yyyy");
 
   return (
+    <>
+      <DashboardScrollSync date={date} />
     <div className="mx-auto max-w-7xl p-4 grid gap-4 lg:grid-cols-[280px_1fr]">
       <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
         <div className="card p-4">
@@ -139,8 +142,8 @@ export default async function DashboardPage({
         </div>
 
         {/* Senarai kad pegawai — bawah */}
-        <div className="space-y-3">
-          <header className="card px-4 py-3 bg-slate-50 border-b-0">
+        <div className="space-y-3" id="senarai-pergerakan">
+          <header className="card px-4 py-3 bg-slate-50 border-b-0 scroll-mt-4">
             <h2 className="text-lg font-semibold text-brand-800">
               Senarai Pergerakan — {dayLabel}
             </h2>
@@ -165,5 +168,6 @@ export default async function DashboardPage({
         </div>
       </section>
     </div>
+    </>
   );
 }

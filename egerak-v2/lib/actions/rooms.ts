@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
@@ -124,6 +124,39 @@ export async function cancelBooking(bookingId: number): Promise<BookResult> {
 
   revalidatePath("/bilik");
   return { ok: true, id: bookingId };
+}
+
+export async function cancelBookingsBulk(
+  ids: number[],
+): Promise<{ cancelled: number; error?: string }> {
+  const user = await requireUser();
+  if (user.peranan !== "Admin") {
+    return { cancelled: 0, error: "Hanya pentadbir" };
+  }
+  if (!ids?.length) return { cancelled: 0 };
+
+  const rows = await db
+    .select({ id: roomBookings.id })
+    .from(roomBookings)
+    .where(and(inArray(roomBookings.id, ids), eq(roomBookings.status, "BOOKED")));
+
+  const allowed = rows.map((r) => r.id);
+  if (!allowed.length) return { cancelled: 0 };
+
+  await db
+    .update(roomBookings)
+    .set({ status: "CANCELLED", updatedAt: new Date() })
+    .where(inArray(roomBookings.id, allowed));
+
+  await db.insert(auditLog).values({
+    action: "ROOM_CANCEL_BULK",
+    userId: Number(user.id),
+    detail: { ids: allowed },
+  });
+
+  revalidatePath("/bilik");
+  revalidatePath("/dashboard");
+  return { cancelled: allowed.length };
 }
 
 export async function listMyBookings() {

@@ -5,7 +5,7 @@ import { and, desc, eq, gte, lte, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { pergerakan, users, sektors, auditLog, opr } from "@/lib/schema";
-import { requireUser } from "@/lib/rbac";
+import { requireUser, requireAdmin } from "@/lib/rbac";
 import { parseLocalInput, toLocalInput, TZ } from "@/lib/dates";
 import { formatInTimeZone } from "date-fns-tz";
 import {
@@ -308,6 +308,8 @@ export async function deletePergerakanIds(ids: number[]): Promise<{ deleted: num
   revalidatePath("/dashboard");
   revalidatePath("/my");
   revalidatePath("/bilik");
+  revalidatePath("/admin/pergerakan");
+  revalidatePath("/admin/laporan-opr");
   return { deleted: allowed.length };
 }
 
@@ -371,6 +373,40 @@ export async function listPergerakanBetween(opts: {
     tarikhPergi: new Date(r.tarikhPergi),
     tarikhKembali: new Date(r.tarikhKembali),
     oprStatus: null,
+  }));
+}
+
+/** Semua pergerakan aktif — pentadbir sahaja (untuk padam pukal). */
+export async function listAllPergerakanAdmin(): Promise<PergerakanListItem[]> {
+  await requireAdmin();
+  const rows = await db
+    .select({
+      id: pergerakan.id,
+      userId: pergerakan.userId,
+      nama: users.nama,
+      jawatan: users.jawatan,
+      sektorCode: sektors.code,
+      sektorName: sektors.name,
+      jenis: pergerakan.jenis,
+      urusan: pergerakan.urusan,
+      lokasi: pergerakan.lokasi,
+      tarikhPergi: pergerakan.tarikhPergi,
+      tarikhKembali: pergerakan.tarikhKembali,
+      oprStatus: opr.status,
+    })
+    .from(pergerakan)
+    .innerJoin(users, eq(users.id, pergerakan.userId))
+    .leftJoin(sektors, eq(sektors.id, pergerakan.sektorId))
+    .leftJoin(opr, eq(opr.pergerakanId, pergerakan.id))
+    .where(eq(pergerakan.aktif, true))
+    .orderBy(desc(pergerakan.tarikhPergi));
+
+  return rows.map((r) => ({
+    ...r,
+    tarikhPergi: new Date(r.tarikhPergi),
+    tarikhKembali: new Date(r.tarikhKembali),
+    oprStatus:
+      r.oprStatus === "DRAFT" || r.oprStatus === "SIAP" ? r.oprStatus : null,
   }));
 }
 

@@ -22,7 +22,7 @@ export function resolveLaporanOprPeriod(sp: {
   const defaultYear = today.slice(0, 4);
 
   const range: LaporanOprRange =
-    sp.range === "year" || sp.range === "all" ? sp.range : "month";
+    sp.range === "month" || sp.range === "all" || sp.range === "year" ? sp.range : "year";
   const month =
     sp.month && /^\d{4}-\d{2}$/.test(sp.month) ? sp.month : defaultMonth;
   const year = sp.year && /^\d{4}$/.test(sp.year) ? sp.year : defaultYear;

@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 
 const LINKS = [
   { href: "/admin/laporan-opr", label: "Laporan OPR" },
+  { href: "/admin/pergerakan", label: "Padam Pergerakan" },
   { href: "/admin/users", label: "Pengguna" },
   { href: "/admin/import", label: "Import Rancangan" },
 ];
