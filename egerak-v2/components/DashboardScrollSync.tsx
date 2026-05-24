@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-/** Selepas pilih hari pada kalendar, scroll ke senarai kad (tanpa reload ke atas). */
+/** Selepas tukar tarikh dalam penapis, scroll ke senarai kad di bawah. */
 export default function DashboardScrollSync({ date }: { date: string }) {
   const first = useRef(true);
   useEffect(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   addDays,
@@ -84,9 +84,15 @@ export default function MonthCalendar({
 
   const buckets = useMemo(() => buildDayBuckets(items, gridDays), [items, gridDays]);
   const [openDay, setOpenDay] = useState<string | null>(null);
+  /** Sorotan hari — setempat (klik sel), tanpa reload pelayan */
+  const [selectedDay, setSelectedDay] = useState<string | undefined>(highlightDate);
   const router = useRouter();
   const urlParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setSelectedDay(highlightDate);
+  }, [highlightDate]);
 
   function pushDashboardParams(patch: (next: URLSearchParams) => void) {
     const next = new URLSearchParams(urlParams?.toString());
@@ -113,17 +119,16 @@ export default function MonthCalendar({
     applyMonth(newMonth);
   }
 
+  /** Klik hari: laci sebelah (data bulan ini sudah dimuat) — tiada panggilan DB. */
   function onDayClick(dayKey: string) {
-    pushDashboardParams((next) => {
-      next.set("date", dayKey);
-      next.set("month", dayKey.slice(0, 7));
-    });
+    setSelectedDay(dayKey);
+    setOpenDay(dayKey);
   }
 
   function openDayDrawer(dayKey: string, e: React.MouseEvent) {
     e.stopPropagation();
     e.preventDefault();
-    setOpenDay(dayKey);
+    onDayClick(dayKey);
   }
 
   const monthTitle = format(firstOfMonth, "MMMM yyyy");
@@ -181,7 +186,7 @@ export default function MonthCalendar({
           const key = ymdKey(d);
           const inMonth = isSameMonth(d, firstOfMonth);
           const today = isToday(d);
-          const selected = highlightDate === key;
+          const selected = selectedDay === key;
           const dayItems = buckets.get(key) ?? [];
           const shown = dayItems.slice(0, MAX_IN_CELL);
           const more = dayItems.length - shown.length;

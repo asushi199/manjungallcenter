@@ -79,7 +79,7 @@ export default async function DashboardMain({
           <h1 className="text-lg font-semibold">Kalendar Pergerakan</h1>
           <p className="text-sm text-slate-500">
             {formatInTimeZone(monthStart, TZ, "MMMM yyyy")} · {monthItems.length} rekod · warna
-            mengikut sektor · klik hari untuk senarai penuh
+            mengikut sektor · klik hari untuk butiran (laci)
           </p>
         </header>
         <MonthCalendar month={month} items={calItems} highlightDate={date} />
