@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   addDays,
@@ -86,16 +86,25 @@ export default function MonthCalendar({
   const [openDay, setOpenDay] = useState<string | null>(null);
   const router = useRouter();
   const urlParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+
+  function pushDashboardParams(patch: (next: URLSearchParams) => void) {
+    const next = new URLSearchParams(urlParams?.toString());
+    patch(next);
+    startTransition(() => {
+      replaceWithSearchParams(router, "/dashboard", next);
+    });
+  }
 
   function applyMonth(newMonth: string) {
-    const next = new URLSearchParams(urlParams?.toString());
-    next.set("month", newMonth);
-    const cur = highlightDate ?? ymdKey(new Date());
-    if (!cur.startsWith(newMonth)) {
-      const today = ymdKey(new Date());
-      next.set("date", today.startsWith(newMonth) ? today : `${newMonth}-01`);
-    }
-    replaceWithSearchParams(router, "/dashboard", next);
+    pushDashboardParams((next) => {
+      next.set("month", newMonth);
+      const cur = highlightDate ?? ymdKey(new Date());
+      if (!cur.startsWith(newMonth)) {
+        const today = ymdKey(new Date());
+        next.set("date", today.startsWith(newMonth) ? today : `${newMonth}-01`);
+      }
+    });
   }
 
   function shiftMonth(delta: number) {
@@ -105,10 +114,10 @@ export default function MonthCalendar({
   }
 
   function onDayClick(dayKey: string) {
-    const next = new URLSearchParams(urlParams?.toString());
-    next.set("date", dayKey);
-    next.set("month", dayKey.slice(0, 7));
-    replaceWithSearchParams(router, "/dashboard", next);
+    pushDashboardParams((next) => {
+      next.set("date", dayKey);
+      next.set("month", dayKey.slice(0, 7));
+    });
   }
 
   function openDayDrawer(dayKey: string, e: React.MouseEvent) {
@@ -120,7 +129,15 @@ export default function MonthCalendar({
   const monthTitle = format(firstOfMonth, "MMMM yyyy");
 
   return (
-    <div className="card overflow-hidden">
+    <div
+      className={cn("card overflow-hidden relative", isPending && "opacity-70 pointer-events-none")}
+      aria-busy={isPending}
+    >
+      {isPending && (
+        <p className="absolute top-2 right-2 z-10 text-xs font-medium text-brand-700 bg-white/90 px-2 py-1 rounded shadow-sm">
+          Memuatkan…
+        </p>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-slate-50 px-3 py-2">
         <p className="text-sm font-semibold text-slate-800">{monthTitle}</p>
         <div className="flex items-center gap-1.5">
@@ -128,6 +145,7 @@ export default function MonthCalendar({
             type="button"
             className="btn-secondary px-2 py-1.5 text-sm"
             onClick={() => shiftMonth(-1)}
+            disabled={isPending}
             aria-label="Bulan sebelumnya"
           >
             ‹
@@ -136,6 +154,7 @@ export default function MonthCalendar({
             type="month"
             className="input py-1.5 text-sm w-[9.5rem]"
             value={month}
+            disabled={isPending}
             onChange={(e) => e.target.value && applyMonth(e.target.value)}
             aria-label="Pilih bulan"
           />
@@ -143,6 +162,7 @@ export default function MonthCalendar({
             type="button"
             className="btn-secondary px-2 py-1.5 text-sm"
             onClick={() => shiftMonth(1)}
+            disabled={isPending}
             aria-label="Bulan seterusnya"
           >
             ›
@@ -166,12 +186,19 @@ export default function MonthCalendar({
           const shown = dayItems.slice(0, MAX_IN_CELL);
           const more = dayItems.length - shown.length;
           return (
-            <button
+            <div
               key={key}
-              type="button"
+              role="button"
+              tabIndex={0}
               onClick={() => onDayClick(key)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onDayClick(key);
+                }
+              }}
               className={cn(
-                "text-left min-h-[100px] border-b border-r p-1 align-top hover:bg-slate-50/80 transition",
+                "text-left min-h-[100px] border-b border-r p-1 align-top hover:bg-slate-50/80 transition cursor-pointer",
                 !inMonth && "bg-slate-50/50 text-slate-400",
                 selected && "ring-2 ring-inset ring-brand-500 bg-brand-50/30",
               )}
@@ -220,7 +247,7 @@ export default function MonthCalendar({
                   </button>
                 )}
               </div>
-            </button>
+            </div>
           );
         })}
       </div>

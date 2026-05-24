@@ -51,6 +51,11 @@ export default function FilterBar({
 
   return (
     <div className="card p-4 space-y-3">
+      {isPending && (
+        <p className="text-xs font-medium text-brand-700" role="status">
+          Memuatkan…
+        </p>
+      )}
       <div>
         <label className="label" htmlFor="filter-date">
           Tarikh (senarai kad)

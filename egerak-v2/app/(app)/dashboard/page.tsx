@@ -8,6 +8,7 @@ import DashboardScrollSync from "@/components/DashboardScrollSync";
 import { listAllSektors } from "@/lib/actions/users";
 import { listPergerakanBetween, countToday } from "@/lib/actions/pergerakan";
 import { TZ } from "@/lib/dates";
+import { pergerakanOverlapsRange } from "@/lib/pergerakan-filter";
 import { requireUser } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
@@ -52,12 +53,15 @@ export default async function DashboardPage({
     includeCuti,
   };
 
-  const [sektors, monthItems, dayItems, today] = await Promise.all([
+  const [sektors, monthItems, today] = await Promise.all([
     listAllSektors(),
     listPergerakanBetween({ start: monthStart, end: monthEnd, ...filter }),
-    listPergerakanBetween({ start: dayStart, end: dayEnd, ...filter }),
     countToday(),
   ]);
+
+  const dayItems = monthItems.filter((it) =>
+    pergerakanOverlapsRange(it.tarikhPergi, it.tarikhKembali, dayStart, dayEnd),
+  );
 
   const toCard = (it: (typeof dayItems)[0]): PergerakanCardData => ({
     id: it.id,
