@@ -1,7 +1,25 @@
 import { countToday } from "@/lib/actions/pergerakan";
 
 export default async function DashboardTodayStats() {
-  const today = await countToday();
+  let today: { total: number; pergerakan: number; bercuti: number } | null = null;
+  try {
+    today = await countToday();
+  } catch (e) {
+    console.error("[dashboard] countToday gagal:", e);
+  }
+
+  if (!today) {
+    return (
+      <div className="card p-4">
+        <h2 className="text-sm font-semibold mb-2">Pergerakan Hari Ini</h2>
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+          Statistik tidak dapat dimuatkan. Sambungan DB mungkin sejuk; sila
+          muat semula sebentar lagi.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="card p-4">
       <h2 className="text-sm font-semibold mb-2">Pergerakan Hari Ini</h2>

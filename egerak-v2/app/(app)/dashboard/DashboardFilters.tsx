@@ -12,7 +12,13 @@ export default async function DashboardFilters({
   sektorIds: number[];
   includeCuti: boolean;
 }) {
-  const sektors = await listAllSektors();
+  let sektors: Awaited<ReturnType<typeof listAllSektors>> = [];
+  try {
+    sektors = await listAllSektors();
+  } catch (e) {
+    console.error("[dashboard] listAllSektors gagal:", e);
+  }
+
   return (
     <FilterBar
       sektors={sektors.map((s) => ({ id: s.id, code: s.code, name: s.name }))}
