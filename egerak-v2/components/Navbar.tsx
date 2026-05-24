@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import PpdLogo from "@/components/PpdLogo";
 import HeaderNavDropdown, { type NavLink } from "@/components/HeaderNavDropdown";
+import MobileNavMenu from "@/components/MobileNavMenu";
 
 const MAIN_LINKS: NavLink[] = [
   { href: "/dashboard", label: "Utama" },
@@ -24,11 +25,6 @@ const ADMIN_LINKS: NavLink[] = [
 function currentMainLabel(path: string | null) {
   const hit = MAIN_LINKS.find((l) => path === l.href || path?.startsWith(l.href + "/"));
   return hit?.label ?? "Menu";
-}
-
-function allMobileLinks(isAdmin: boolean): NavLink[] {
-  if (!isAdmin) return [...MAIN_LINKS];
-  return [...MAIN_LINKS, ...PENGGUNA_LINKS, ...ADMIN_LINKS];
 }
 
 export default function Navbar() {
@@ -53,18 +49,26 @@ export default function Navbar() {
 
   return (
     <header className="bg-brand-700 text-white shadow">
-      {/* Telefon: 2 baris */}
-      <div className="mx-auto max-w-7xl px-3 py-2 sm:px-4 md:hidden space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <Link href="/dashboard" className="flex items-center gap-1.5 shrink-0 min-w-0">
-            <PpdLogo width={52} className="shrink-0 object-contain" />
-            <span className="font-bold text-sm leading-tight whitespace-nowrap">eGerak</span>
-          </Link>
-          {logoutBtn}
-        </div>
-        <div className="flex justify-end">
-          <HeaderNavDropdown label="Menu" links={allMobileLinks(!!isAdmin)} />
-        </div>
+      {/* Telefon: satu baris — jenama penuh + menu laci */}
+      <div className="mx-auto max-w-7xl md:hidden flex items-center gap-2 px-3 py-2.5 min-h-[3.25rem]">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-2 min-w-0 flex-1"
+        >
+          <PpdLogo width={44} className="shrink-0 object-contain" />
+          <span className="min-w-0 leading-tight">
+            <span className="block font-bold text-[15px] tracking-tight">eGerak</span>
+            <span className="block text-[11px] font-medium text-white/90">PPD Manjung</span>
+          </span>
+        </Link>
+        <MobileNavMenu
+          mainLinks={MAIN_LINKS}
+          penggunaLinks={PENGGUNA_LINKS}
+          adminLinks={ADMIN_LINKS}
+          isAdmin={!!isAdmin}
+          userNama={user?.nama}
+          userUsername={user?.username}
+        />
       </div>
 
       {/* Desktop: 1 baris */}
