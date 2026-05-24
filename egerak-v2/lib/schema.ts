@@ -85,6 +85,9 @@ export const pergerakan = pgTable(
     kembaliIdx: index("pergerakan_kembali_idx").on(t.tarikhKembali),
     userAktifIdx: index("pergerakan_user_aktif_idx").on(t.userId, t.aktif),
     sektorIdx: index("pergerakan_sektor_idx").on(t.sektorId),
+    aktifRangeIdx: index("pergerakan_aktif_range_idx")
+      .on(t.aktif, t.tarikhKembali, t.tarikhPergi)
+      .where(sql`${t.aktif} = true`),
   }),
 );
 

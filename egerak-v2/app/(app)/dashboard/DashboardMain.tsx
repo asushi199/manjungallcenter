@@ -2,8 +2,9 @@ import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
 import MonthCalendar, { type CalendarItem } from "@/components/MonthCalendar";
 import PergerakanCard, { type PergerakanCardData } from "@/components/PergerakanCard";
 import SektorLegend from "@/components/SektorLegend";
-import { listPergerakanBetween } from "@/lib/actions/pergerakan";
+import { listPergerakanForDashboard } from "@/lib/actions/pergerakan";
 import { TZ } from "@/lib/dates";
+import { getCalendarHolidays } from "@/lib/holidays";
 import { pergerakanOverlapsRange } from "@/lib/pergerakan-filter";
 
 export type DashboardMainProps = {
@@ -11,6 +12,7 @@ export type DashboardMainProps = {
   month: string;
   sektorIds: number[];
   includeCuti: boolean;
+  showSchoolHolidays: boolean;
 };
 
 export default async function DashboardMain({
@@ -18,6 +20,7 @@ export default async function DashboardMain({
   month,
   sektorIds,
   includeCuti,
+  showSchoolHolidays,
 }: DashboardMainProps) {
   const [y, m] = month.split("-").map(Number);
   const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
@@ -34,11 +37,14 @@ export default async function DashboardMain({
     includeCuti,
   };
 
-  const monthItems = await listPergerakanBetween({
-    start: monthStart,
-    end: monthEnd,
-    ...filter,
-  });
+  const [holidays, monthItems] = await Promise.all([
+    getCalendarHolidays(month, { showSchoolHolidays }),
+    listPergerakanForDashboard({
+      start: monthStart,
+      end: monthEnd,
+      ...filter,
+    }),
+  ]);
 
   const dayItems = monthItems.filter((it) =>
     pergerakanOverlapsRange(it.tarikhPergi, it.tarikhKembali, dayStart, dayEnd),
@@ -82,8 +88,28 @@ export default async function DashboardMain({
             mengikut sektor · klik hari untuk butiran (laci)
           </p>
         </header>
-        <MonthCalendar month={month} items={calItems} highlightDate={date} />
+        <MonthCalendar
+          month={month}
+          items={calItems}
+          highlightDate={date}
+          publicHolidays={holidays.publicLabels}
+          publicHolidayDetails={holidays.publicDetails}
+          schoolHolidays={showSchoolHolidays ? holidays.schoolLabels : undefined}
+          schoolHolidayDetails={showSchoolHolidays ? holidays.schoolDetails : undefined}
+        />
         <SektorLegend />
+        <div className="text-xs text-slate-500 space-y-1">
+          <p>
+            <span className="inline-block w-2 h-2 rounded-sm bg-rose-100 border border-rose-300 align-middle mr-1" />
+            Merah jambu = cuti umum Perak (auto dikemas kini mingguan)
+          </p>
+          {showSchoolHolidays && (
+            <p>
+              <span className="inline-block w-2 h-2 rounded-sm bg-yellow-100 border border-yellow-400 align-middle mr-1" />
+              Kuning = cuti sekolah KPM (data tahunan — semak KPM)
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="space-y-3" id="senarai-pergerakan">

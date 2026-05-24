@@ -329,16 +329,50 @@ export type PergerakanListItem = {
   oprStatus: "DRAFT" | "SIAP" | null;
 };
 
+/** Medan untuk dashboard / kalendar — tanpa join OPR atau medan tidak perlu. */
+export type DashboardPergerakanRow = {
+  id: number;
+  nama: string;
+  jawatan: string;
+  sektorCode: string | null;
+  sektorName: string | null;
+  jenis: "Pergerakan" | "Bercuti";
+  urusan: string;
+  lokasi: string;
+  tarikhPergi: Date;
+  tarikhKembali: Date;
+};
+
 export async function listPergerakanBetween(opts: {
   start: Date;
   end: Date;
   sektorIds?: number[];
   includeCuti?: boolean;
 }): Promise<PergerakanListItem[]> {
+  const rows = await listPergerakanBetweenRaw(opts);
+  return rows.map((r) => ({ ...r, oprStatus: null as PergerakanListItem["oprStatus"] }));
+}
+
+/** Query kalendar dashboard — medan minimum, indeks aktif+tarikh. */
+export async function listPergerakanForDashboard(opts: {
+  start: Date;
+  end: Date;
+  sektorIds?: number[];
+  includeCuti?: boolean;
+}): Promise<DashboardPergerakanRow[]> {
+  const rows = await listPergerakanBetweenRaw(opts);
+  return rows.map(({ userId: _u, ...rest }) => rest);
+}
+
+async function listPergerakanBetweenRaw(opts: {
+  start: Date;
+  end: Date;
+  sektorIds?: number[];
+  includeCuti?: boolean;
+}) {
   await requireUser();
   const conditions = [
     eq(pergerakan.aktif, true),
-    // overlap: tarikh_pergi <= range.end AND tarikh_kembali >= range.start
     lte(pergerakan.tarikhPergi, opts.end),
     gte(pergerakan.tarikhKembali, opts.start),
   ];
@@ -375,7 +409,6 @@ export async function listPergerakanBetween(opts: {
     ...r,
     tarikhPergi: new Date(r.tarikhPergi),
     tarikhKembali: new Date(r.tarikhKembali),
-    oprStatus: null,
   }));
 }
 

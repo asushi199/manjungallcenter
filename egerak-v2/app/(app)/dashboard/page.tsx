@@ -15,7 +15,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-type SP = { date?: string; month?: string; sektor?: string; cuti?: string };
+type SP = { date?: string; month?: string; sektor?: string; cuti?: string; sekolah?: string };
 
 function parseDateParam(sp: string | undefined): string {
   const today = formatInTimeZone(new Date(), TZ, "yyyy-MM-dd");
@@ -39,8 +39,10 @@ export default async function DashboardPage({
     .map((s) => Number(s))
     .filter((n) => Number.isFinite(n) && n > 0);
   const includeCuti = sp.cuti === "1";
+  /** Lalai: papar cuti sekolah; set sekolah=0 untuk sembunyi */
+  const showSchoolHolidays = sp.sekolah !== "0";
 
-  const mainKey = `${month}|${date}|${sektorIds.join(",")}|${includeCuti ? "1" : "0"}`;
+  const mainKey = `${month}|${date}|${sektorIds.join(",")}|${includeCuti ? "1" : "0"}|${showSchoolHolidays ? "1" : "0"}`;
 
   return (
     <>
@@ -64,6 +66,7 @@ export default async function DashboardPage({
               month={month}
               sektorIds={sektorIds}
               includeCuti={includeCuti}
+              showSchoolHolidays={showSchoolHolidays}
             />
           </Suspense>
 
@@ -78,6 +81,7 @@ export default async function DashboardPage({
             month={month}
             sektorIds={sektorIds}
             includeCuti={includeCuti}
+            showSchoolHolidays={showSchoolHolidays}
           />
         </Suspense>
       </div>
