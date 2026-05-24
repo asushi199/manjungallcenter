@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>eGerak PPD Manjung</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    :root { --eg-primary: #1e6bb8; --eg-light: #e8f4fc; }
+    body { background: #f4f7fb; font-family: 'Segoe UI', system-ui, sans-serif; }
+    .navbar-egerak { background: #fff; border-bottom: 2px solid var(--eg-primary); }
+    .card-egerak { border: none; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+    .sidebar-card { background: linear-gradient(180deg, #fff 0%, var(--eg-light) 100%); }
+    .stat-pink { background: #fce4ec; color: #c2185b; border-radius: 8px; padding: 12px; }
+    .stat-green { background: #e8f5e9; color: #2e7d32; border-radius: 8px; padding: 12px; }
+    .btn-egerak { background: var(--eg-primary); color: #fff; border: none; }
+    .btn-egerak:hover { background: #155a9e; color: #fff; }
+    .badge-bercuti { background: #4caf50; }
+    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .login-card { max-width: 420px; width: 100%; }
+    .footer-bar { font-size: 12px; color: #666; border-top: 1px solid #ddd; padding: 12px; margin-top: 24px; }
+    #view-app { display: none; }
+    .table-egerak a { color: var(--eg-primary); text-decoration: none; }
+    .modal-header { background: var(--eg-primary); color: #fff; }
+  </style>
+</head>
+<body>
+  <div id="view-login" class="login-wrap">
+    <div class="login-card card card-egerak p-4">
+      <div class="text-center mb-3">
+        <h5 class="fw-bold">eGerak® PPD Manjung</h5>
+        <p class="text-muted small">Log Masuk Sistem — akaun Google Workspace PPD</p>
+      </div>
+      <div id="login-msg" class="alert alert-warning d-none"></div>
+      <p class="small text-center">Buka aplikasi ini selepas log masuk ke akaun <strong>@ppdmanjung</strong> / MOE anda dalam pelayar yang sama.</p>
+      <button type="button" class="btn btn-egerak w-100" onclick="checkSession()">Semak Sesi &amp; Masuk</button>
+    </div>
+  </div>
+
+  <div id="view-app">
+    <nav class="navbar navbar-egerak px-3 py-2">
+      <span class="navbar-brand mb-0 h6">Aplikasi eGerak PPD Manjung</span>
+      <div class="d-flex gap-3 align-items-center flex-wrap">
+        <a href="#" class="small" onclick="showPage('utama');return false;">Utama</a>
+        <button class="btn btn-sm btn-egerak" onclick="openModalPergerakan()">+ Isi Pergerakan</button>
+        <a href="#" class="small" onclick="showPage('saya');return false;">Pergerakan Saya <span id="badge-saya" class="badge bg-danger"></span></a>
+        <a href="#" class="small" onclick="showPage('akaun');return false;">Akaun</a>
+        <span class="small text-danger" id="user-email-nav"></span>
+      </div>
+    </nav>
+
+    <div class="container-fluid py-3">
+      <div class="row g-3">
+        <div class="col-lg-3">
+          <div class="card card-egerak sidebar-card p-3 mb-3">
+            <h6 class="text-primary">Selamat Datang!</h6>
+            <p class="mb-0 fw-bold" id="profil-nama">—</p>
+            <p class="small text-muted mb-1" id="profil-jawatan">—</p>
+            <p class="small">Akaun: <span id="profil-peranan">—</span></p>
+          </div>
+          <div class="card card-egerak p-3 mb-3" id="card-stats">
+            <h6>Pergerakan Hari Ini</h6>
+            <p class="mb-2"><strong id="stat-total">0</strong>x</p>
+            <div class="row g-2">
+              <div class="col-6"><div class="stat-pink text-center"><small>Pergerakan</small><div class="fw-bold" id="stat-p">0</div></div></div>
+              <div class="col-6"><div class="stat-green text-center"><small>Bercuti</small><div class="fw-bold" id="stat-b">0</div></div></div>
+            </div>
+          </div>
+          <div class="card card-egerak p-3 mb-3">
+            <h6>Saring Pergerakan</h6>
+            <input type="date" class="form-control form-control-sm mb-2" id="filter-date" />
+            <button class="btn btn-sm btn-egerak w-100" onclick="loadSenaraiHari()">Saring</button>
+          </div>
+          <ul class="list-unstyled small">
+            <li><a href="#" onclick="showPage('utama');return false;">Laman Utama</a></li>
+            <li><a href="#" onclick="showPage('saya');return false;">Pergerakan Saya</a></li>
+          </ul>
+        </div>
+        <div class="col-lg-9">
+          <div id="page-utama">
+            <h5>Senarai Pergerakan</h5>
+            <p class="small text-muted" id="senarai-subtitle"></p>
+            <div id="senarai-hari-list"></div>
+          </div>
+          <div id="page-saya" style="display:none">
+            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+              <h5>Senarai Pergerakan Saya (<span id="total-saya">0</span>)</h5>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-danger" onclick="padamDipilih()">Padam</button>
+                <input type="text" class="form-control form-control-sm" id="search-q" placeholder="Carian" style="width:160px" />
+                <button class="btn btn-sm btn-egerak" onclick="cari()">Cari</button>
+              </div>
+            </div>
+            <div class="table-responsive card card-egerak p-2">
+              <table class="table table-sm table-egerak mb-0">
+                <thead><tr>
+                  <th><input type="checkbox" id="chk-all" onchange="toggleAll(this)" /></th>
+                  <th>#</th><th>Urusan</th><th>Lokasi</th><th>Tarikh Pergi</th><th>Tarikh Kembali</th><th>OPR</th>
+                </tr></thead>
+                <tbody id="tbody-saya"></tbody>
+              </table>
+            </div>
+          </div>
+          <div id="page-akaun" style="display:none">
+            <h5>Akaun</h5>
+            <p id="akaun-detail"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bar text-center">
+      Aplikasi eGerak® PPD Manjung (v5.0) | Sektor Perancangan PPD Manjung · © 2026
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalPergerakan" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">eGerak - Isi Pergerakan</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label">Jenis Pergerakan</label>
+          <div class="mb-3">
+            <label class="me-3"><input type="radio" name="jenis" value="Pergerakan Biasa" checked /> Pergerakan Biasa</label>
+            <label><input type="radio" name="jenis" value="Bercuti" /> Bercuti (Cuti Rehat/Cuti Sakit/Lain-lain)</label>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Lokasi Dituju</label>
+            <select class="form-select" id="lokasi-preset" onchange="onLokasiPreset()">
+              <option value="Dewan Bestari">Dewan Bestari</option>
+              <option value="Bilik Budiman">Bilik Budiman</option>
+              <option value="Pejabat PPD Manjung">Pejabat PPD Manjung</option>
+              <option value="__other__">Lain-lain...</option>
+            </select>
+            <input type="text" class="form-control mt-2 d-none" id="lokasi-other" placeholder="Taip lokasi" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Urusan Pergerakan</label>
+            <textarea class="form-control" id="urusan" rows="4" required></textarea>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Tarikh &amp; Masa Pergi</label>
+              <input type="datetime-local" class="form-control" id="tarikh-pergi" required />
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Tarikh &amp; Masa Kembali</label>
+              <input type="datetime-local" class="form-control" id="tarikh-kembali" required />
+            </div>
+          </div>
+          <div id="submit-err" class="alert alert-danger d-none"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-egerak" onclick="hantarPergerakan()">Hantar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalOpr" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Jana OPR</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="opr-id" />
+          <label class="form-label">Nota ringkas (opsyenal)</label>
+          <textarea class="form-control mb-2" id="opr-nota" rows="2"></textarea>
+          <label class="form-label">Gambar (max 5)</label>
+          <input type="file" class="form-control mb-2" id="opr-photos" accept="image/*" multiple />
+          <button type="button" class="btn btn-outline-primary btn-sm mb-3" onclick="janaDrafAi()">Jana Dapatan, Impak &amp; Refleksi (Gemini)</button>
+          <label class="form-label">Isu / Dapatan</label>
+          <textarea class="form-control mb-2" id="opr-dapatan" rows="4"></textarea>
+          <label class="form-label">Impak (Rumusan)</label>
+          <textarea class="form-control mb-2" id="opr-rumusan" rows="3"></textarea>
+          <label class="form-label">Refleksi / Tindakan Susulan / Penambahbaikan</label>
+          <textarea class="form-control mb-2" id="opr-refleksi" rows="3"></textarea>
+          <p class="small text-muted">Dijana AI – sila semak sebelum muktamad.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-egerak" onclick="muktamadOpr()">Jana Dokumen OPR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    var session = null;
+    var senaraiSaya = [];
+    var modalPg, modalOpr;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      modalPg = new bootstrap.Modal(document.getElementById('modalPergerakan'));
+      modalOpr = new bootstrap.Modal(document.getElementById('modalOpr'));
+      var t = new Date();
+      document.getElementById('filter-date').value = t.toISOString().slice(0, 10);
+      checkSession();
+    });
+
+    function run(fn, ok, err) {
+      google.script.run
+        .withSuccessHandler(ok)
+        .withFailureHandler(function(e) { if (err) err(e); else alert(e.message || e); })
+        [fn].apply(google.script.run, Array.prototype.slice.call(arguments, 3));
+    }
+
+    function checkSession() {
+      run('apiSession', function(s) {
+        session = s;
+        var msg = document.getElementById('login-msg');
+        if (!s.loggedIn) {
+          msg.classList.remove('d-none');
+          msg.textContent = 'Sesi Google tidak dijumpai. Pastikan anda log masuk Workspace.';
+          return;
+        }
+        if (!s.registered) {
+          msg.classList.remove('d-none');
+          msg.textContent = 'Akaun ' + (s.email || '') + ' belum berdaftar dalam sheet Users.';
+          return;
+        }
+        document.getElementById('view-login').style.display = 'none';
+        document.getElementById('view-app').style.display = 'block';
+        document.getElementById('profil-nama').textContent = s.user.nama;
+        document.getElementById('profil-jawatan').textContent = s.user.jawatan;
+        document.getElementById('profil-peranan').textContent = s.user.peranan;
+        document.getElementById('user-email-nav').textContent = s.user.email;
+        document.getElementById('akaun-detail').innerHTML = '<strong>' + s.user.nama + '</strong><br>' + s.user.jawatan + '<br>' + s.user.sektor;
+        loadStats();
+        loadSenaraiSaya();
+        loadSenaraiHari();
+      });
+    }
+
+    function loadStats() {
+      run('apiStats', function(st) {
+        document.getElementById('stat-total').textContent = st.todayTotal;
+        document.getElementById('stat-p').textContent = st.todayPergerakan;
+        document.getElementById('stat-b').textContent = st.todayBercuti;
+        document.getElementById('badge-saya').textContent = st.myTotal;
+      });
+    }
+
+    function loadSenaraiHari() {
+      var d = document.getElementById('filter-date').value;
+      run('apiSenaraiHari', function(list) {
+        var el = document.getElementById('senarai-hari-list');
+        document.getElementById('senarai-subtitle').textContent = 'Tarikh: ' + d;
+        if (!list.length) { el.innerHTML = '<p class="text-muted">Tiada rekod.</p>'; return; }
+        el.innerHTML = list.map(function(p) {
+          var cuti = (p.jenis || '').toLowerCase().indexOf('bercuti') >= 0;
+          return '<div class="card card-egerak p-3 mb-2">' +
+            '<strong>' + esc(p.nama) + '</strong> <small class="text-muted">' + esc(p.jawatan) + '</small>' +
+            (cuti ? ' <span class="badge badge-bercuti">Bercuti</span>' : '') +
+            '<p class="mb-1 mt-2">' + esc(p.urusan) + '</p>' +
+            '<small>📍 ' + esc(p.lokasi) + ' · 🕐 ' + esc(p.tarikh_pergi) + ' — ' + esc(p.tarikh_kembali) + '</small></div>';
+        }).join('');
+      }, null, d);
+    }
+
+    function loadSenaraiSaya() {
+      run('apiSenaraiSaya', function(list) {
+        if (!list || !Array.isArray(list)) {
+          alert('Senarai gagal dimuatkan. Sila refresh atau hubungi USTP.');
+          return;
+        }
+        senaraiSaya = list;
+        document.getElementById('total-saya').textContent = list.length;
+        document.getElementById('badge-saya').textContent = list.length;
+        var tb = document.getElementById('tbody-saya');
+        tb.innerHTML = list.map(function(p, i) {
+          var opr = p.opr_file_url ? '<a href="' + esc(p.opr_file_url) + '" target="_blank">OPR</a>' :
+            '<a href="#" onclick="openOpr(\'' + p.id + '\');return false">Jana</a>';
+          return '<tr><td><input type="checkbox" class="chk-row" value="' + p.id + '" /></td><td>' + (i+1) + '</td>' +
+            '<td><a href="#" onclick="openOpr(\'' + p.id + '\');return false">' + esc((p.urusan||'').substring(0,80)) + '</a></td>' +
+            '<td>' + esc(p.lokasi) + '</td><td>' + esc(p.tarikh_pergi) + '</td><td>' + esc(p.tarikh_kembali) + '</td><td>' + opr + '</td></tr>';
+        }).join('');
+      }, function(e) {
+        alert('Ralat senarai: ' + (e.message || e));
+      });
+    }
+
+    function showPage(name) {
+      document.getElementById('page-utama').style.display = name === 'utama' ? 'block' : 'none';
+      document.getElementById('page-saya').style.display = name === 'saya' ? 'block' : 'none';
+      document.getElementById('page-akaun').style.display = name === 'akaun' ? 'block' : 'none';
+      if (name === 'saya') loadSenaraiSaya();
+      if (name === 'utama') loadSenaraiHari();
+    }
+
+    function openModalPergerakan() {
+      document.getElementById('submit-err').classList.add('d-none');
+      modalPg.show();
+    }
+
+    function onLokasiPreset() {
+      var v = document.getElementById('lokasi-preset').value;
+      document.getElementById('lokasi-other').classList.toggle('d-none', v !== '__other__');
+    }
+
+    function getLokasi() {
+      var v = document.getElementById('lokasi-preset').value;
+      return v === '__other__' ? document.getElementById('lokasi-other').value.trim() : v;
+    }
+
+    function hantarPergerakan() {
+      var jenis = document.querySelector('input[name="jenis"]:checked').value;
+      var payload = {
+        jenis: jenis,
+        lokasi: getLokasi(),
+        urusan: document.getElementById('urusan').value.trim(),
+        tarikh_pergi: document.getElementById('tarikh-pergi').value,
+        tarikh_kembali: document.getElementById('tarikh-kembali').value,
+        source: 'web'
+      };
+      var err = document.getElementById('submit-err');
+      run('apiSubmit', function(res) {
+        modalPg.hide();
+        loadStats();
+        loadSenaraiSaya();
+        loadSenaraiHari();
+        var msg = 'Pergerakan berjaya direkodkan. ID: ' + res.id;
+        if (res.calendarNote) msg += '\n\n' + res.calendarNote;
+        alert(msg);
+      }, function(e) {
+        err.classList.remove('d-none');
+        err.textContent = e.message || String(e);
+      }, payload);
+    }
+
+    function toggleAll(el) {
+      document.querySelectorAll('.chk-row').forEach(function(c) { c.checked = el.checked; });
+    }
+
+    function padamDipilih() {
+      var ids = [];
+      document.querySelectorAll('.chk-row:checked').forEach(function(c) { ids.push(c.value); });
+      if (!ids.length) { alert('Sila pilih sekurang-kurangnya satu rekod.'); return; }
+      if (!confirm('Padam ' + ids.length + ' rekod? (Rekod akan disembunyikan dari senarai)')) return;
+      run('apiDelete', function(res) {
+        var n = (res && res.deleted) ? res.deleted : 0;
+        if (n === 0) {
+          alert('Tiada rekod dipadam. Semak lajur "aktif" dalam sheet Pergerakan atau hubungi USTP.');
+        } else {
+          alert('Berjaya padam ' + n + ' rekod.');
+        }
+        document.getElementById('chk-all').checked = false;
+        loadSenaraiSaya();
+        loadStats();
+        loadSenaraiHari();
+      }, function(e) {
+        alert('Padam gagal: ' + (e.message || e));
+      }, ids);
+    }
+
+    function cari() {
+      var q = document.getElementById('search-q').value;
+      run('apiSearch', function(list) {
+        senaraiSaya = list;
+        document.getElementById('total-saya').textContent = list.length;
+        loadSenaraiSaya();
+      }, null, q);
+    }
+
+    function openOpr(id) {
+      document.getElementById('opr-id').value = id;
+      document.getElementById('opr-dapatan').value = '';
+      document.getElementById('opr-rumusan').value = '';
+      document.getElementById('opr-refleksi').value = '';
+      modalOpr.show();
+    }
+
+    var oprPhotoIds = [];
+    function janaDrafAi() {
+      var id = document.getElementById('opr-id').value;
+      var nota = document.getElementById('opr-nota').value;
+      uploadPhotosThen(function(ids) {
+        run('apiOprDraft', function(r) {
+          document.getElementById('opr-dapatan').value = r.dapatan || '';
+          document.getElementById('opr-rumusan').value = r.rumusan || '';
+          document.getElementById('opr-refleksi').value = r.refleksi || '';
+        }, null, id, nota, ids);
+      });
+    }
+
+    function muktamadOpr() {
+      var id = document.getElementById('opr-id').value;
+      var d = document.getElementById('opr-dapatan').value;
+      var r = document.getElementById('opr-rumusan').value;
+      var f = document.getElementById('opr-refleksi').value;
+      uploadPhotosThen(function(ids) {
+        run('apiOprFinal', function(res) {
+          modalOpr.hide();
+          loadSenaraiSaya();
+          window.open(res.url, '_blank');
+        }, null, id, d, r, f, ids);
+      });
+    }
+
+    function uploadPhotosThen(cb) {
+      var inp = document.getElementById('opr-photos');
+      var files = inp.files;
+      if (!files || !files.length) { cb([]); return; }
+      oprPhotoIds = [];
+      var pending = Math.min(files.length, 5);
+      var done = 0;
+      for (var i = 0; i < pending; i++) {
+        (function(file) {
+          var reader = new FileReader();
+          reader.onload = function() {
+            var b64 = reader.result.split(',')[1];
+            run('apiUploadPhoto', function(up) {
+              oprPhotoIds.push(up.fileId);
+              if (++done >= pending) cb(oprPhotoIds);
+            }, null, b64, file.name, file.type);
+          };
+          reader.readAsDataURL(file);
+        })(files[i]);
+      }
+    }
+
+    function esc(s) {
+      if (!s) return '';
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    }
+  </script>
+</body>
+</html>

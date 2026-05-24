@@ -1,0 +1,440 @@
+"use server";
+
+import { z } from "zod";
+import { and, desc, eq, gte, lte, inArray, sql } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { db } from "@/lib/db";
+import { pergerakan, users, sektors, auditLog, opr } from "@/lib/schema";
+import { requireUser } from "@/lib/rbac";
+import { parseLocalInput, toLocalInput, TZ } from "@/lib/dates";
+import { formatInTimeZone } from "date-fns-tz";
+import {
+  resolveBookableRoomCode,
+  syncRoomBookingsFromPergerakan,
+  cancelRoomBookingsForPergerakan,
+  previewRoomBookingsForPergerakan,
+  type RoomBookingPreview,
+} from "@/lib/sync-room-bookings";
+
+const submitSchema = z
+  .object({
+    jenis: z.enum(["Pergerakan", "Bercuti"]),
+    urusan: z.string().min(1, "Urusan diperlukan").max(500),
+    lokasi: z.string().max(200).default(""),
+    tarikhPergi: z.string().min(1, "Tarikh pergi diperlukan"),
+    tarikhKembali: z.string().min(1, "Tarikh kembali diperlukan"),
+    sepenuhHari: z.boolean().optional(),
+  })
+  .refine(
+    (v) => {
+      const a = parseLocalInput(v.tarikhPergi);
+      const b = parseLocalInput(v.tarikhKembali);
+      return a && b && b.getTime() >= a.getTime();
+    },
+    { message: "Tarikh kembali mesti selepas / sama dengan tarikh pergi" },
+  );
+
+export type SubmitResult =
+  | { ok: true; id: number; roomSlotsBooked?: number }
+  | { ok: false; error: string };
+
+export type UpdateResult = SubmitResult;
+
+function inferSepenuhHari(pergi: Date, kembali: Date): boolean {
+  const p = formatInTimeZone(pergi, TZ, "HH:mm");
+  const k = formatInTimeZone(kembali, TZ, "HH:mm");
+  return p === "08:00" && k === "17:00";
+}
+
+async function loadPergerakanForUser(id: number, user: Awaited<ReturnType<typeof requireUser>>) {
+  const row = await db.query.pergerakan.findFirst({
+    where: eq(pergerakan.id, id),
+  });
+  if (!row || !row.aktif) return null;
+  const isAdmin = user.peranan === "Admin";
+  if (!isAdmin && row.userId !== Number(user.id)) return null;
+  return row;
+}
+
+export async function submitPergerakan(input: unknown): Promise<SubmitResult> {
+  const user = await requireUser();
+  const parsed = submitSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak sah" };
+  }
+  const { jenis, urusan, lokasi, tarikhPergi, tarikhKembali, sepenuhHari } = parsed.data;
+  const pergi = parseLocalInput(tarikhPergi);
+  const kembali = parseLocalInput(tarikhKembali);
+  if (!pergi || !kembali) return { ok: false, error: "Format tarikh tidak sah" };
+
+  const roomCode = jenis === "Pergerakan" ? resolveBookableRoomCode(lokasi) : null;
+
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(pergerakan)
+        .values({
+          userId: Number(user.id),
+          sektorId: user.sektorId,
+          jenis,
+          urusan: urusan.trim(),
+          lokasi: lokasi.trim(),
+          tarikhPergi: pergi,
+          tarikhKembali: kembali,
+          source: "web",
+        })
+        .returning({ id: pergerakan.id });
+
+      let roomSlotsBooked = 0;
+      if (roomCode) {
+        const sync = await syncRoomBookingsFromPergerakan(tx, {
+          pergerakanId: row.id,
+          roomCode,
+          userId: Number(user.id),
+          title: urusan.trim(),
+          pergi,
+          kembali,
+          fullDay: sepenuhHari === true,
+          auditUserId: Number(user.id),
+        });
+        if (!sync.ok) {
+          throw new Error(sync.error);
+        }
+        roomSlotsBooked = sync.count;
+      }
+
+      await tx.insert(auditLog).values({
+        action: "SUBMIT_PERGERAKAN",
+        userId: Number(user.id),
+        detail: { id: row.id, jenis, urusan, lokasi, roomSlotsBooked },
+      });
+
+      return { id: row.id, roomSlotsBooked };
+    });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/my");
+    revalidatePath("/bilik");
+    return {
+      ok: true,
+      id: result.id,
+      roomSlotsBooked: result.roomSlotsBooked || undefined,
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg.startsWith("Tempahan gagal") || msg.includes("Bilik/dewan") || msg.includes("Masa pergerakan")) {
+      return { ok: false, error: msg };
+    }
+    throw e;
+  }
+}
+
+export type RoomAvailabilityCheck = RoomBookingPreview & { checking: false };
+
+/** Semak slot bilik sebelum hantar (paparan amaran pada borang). */
+export async function checkPergerakanRoomAvailability(input: {
+  jenis: "Pergerakan" | "Bercuti";
+  lokasi: string;
+  tarikhPergi: string;
+  tarikhKembali: string;
+  sepenuhHari?: boolean;
+  excludePergerakanId?: number;
+}): Promise<RoomAvailabilityCheck> {
+  await requireUser();
+  const empty: RoomAvailabilityCheck = {
+    checking: false,
+    applies: false,
+    neededSlots: [],
+    conflicts: [],
+    fullDayBlockedDates: [],
+    canBook: true,
+    summary: null,
+  };
+
+  if (input.jenis !== "Pergerakan") return empty;
+  const roomCode = resolveBookableRoomCode(input.lokasi);
+  if (!roomCode) return empty;
+
+  const pergi = parseLocalInput(input.tarikhPergi);
+  const kembali = parseLocalInput(input.tarikhKembali);
+  if (!pergi || !kembali || kembali.getTime() < pergi.getTime()) {
+    return {
+      ...empty,
+      applies: true,
+      canBook: false,
+      summary: "Tarikh pergi / kembali tidak sah.",
+    };
+  }
+
+  const preview = await previewRoomBookingsForPergerakan(db, {
+    roomCode,
+    pergi,
+    kembali,
+    fullDay: input.sepenuhHari === true,
+    excludePergerakanId: input.excludePergerakanId,
+  });
+  return { ...preview, checking: false };
+}
+
+export type PergerakanEditData = {
+  id: number;
+  jenis: "Pergerakan" | "Bercuti";
+  urusan: string;
+  lokasi: string;
+  tarikhPergi: string;
+  tarikhKembali: string;
+  sepenuhHari: boolean;
+};
+
+export async function getPergerakanForEdit(id: number): Promise<PergerakanEditData | null> {
+  const user = await requireUser();
+  const row = await loadPergerakanForUser(id, user);
+  if (!row) return null;
+  return {
+    id: row.id,
+    jenis: row.jenis,
+    urusan: row.urusan,
+    lokasi: row.lokasi,
+    tarikhPergi: toLocalInput(new Date(row.tarikhPergi)),
+    tarikhKembali: toLocalInput(new Date(row.tarikhKembali)),
+    sepenuhHari: inferSepenuhHari(new Date(row.tarikhPergi), new Date(row.tarikhKembali)),
+  };
+}
+
+export async function updatePergerakan(id: number, input: unknown): Promise<UpdateResult> {
+  const user = await requireUser();
+  const existing = await loadPergerakanForUser(id, user);
+  if (!existing) return { ok: false, error: "Rekod tidak dijumpai atau tiada kebenaran" };
+
+  const parsed = submitSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak sah" };
+  }
+  const { jenis, urusan, lokasi, tarikhPergi, tarikhKembali, sepenuhHari } = parsed.data;
+  const pergi = parseLocalInput(tarikhPergi);
+  const kembali = parseLocalInput(tarikhKembali);
+  if (!pergi || !kembali) return { ok: false, error: "Format tarikh tidak sah" };
+
+  const roomCode = jenis === "Pergerakan" ? resolveBookableRoomCode(lokasi) : null;
+
+  try {
+    const result = await db.transaction(async (tx) => {
+      await tx
+        .update(pergerakan)
+        .set({
+          jenis,
+          urusan: urusan.trim(),
+          lokasi: lokasi.trim(),
+          tarikhPergi: pergi,
+          tarikhKembali: kembali,
+          updatedAt: new Date(),
+        })
+        .where(eq(pergerakan.id, id));
+
+      await cancelRoomBookingsForPergerakan(tx, [id], Number(user.id));
+
+      let roomSlotsBooked = 0;
+      if (roomCode) {
+        const sync = await syncRoomBookingsFromPergerakan(tx, {
+          pergerakanId: id,
+          roomCode,
+          userId: existing.userId,
+          title: urusan.trim(),
+          pergi,
+          kembali,
+          fullDay: sepenuhHari === true,
+          auditUserId: Number(user.id),
+        });
+        if (!sync.ok) throw new Error(sync.error);
+        roomSlotsBooked = sync.count;
+      }
+
+      await tx.insert(auditLog).values({
+        action: "UPDATE_PERGERAKAN",
+        userId: Number(user.id),
+        detail: { id, jenis, urusan, lokasi, roomSlotsBooked },
+      });
+
+      return { id, roomSlotsBooked };
+    });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/my");
+    revalidatePath("/bilik");
+    revalidatePath(`/my/${id}/edit`);
+    return {
+      ok: true,
+      id: result.id,
+      roomSlotsBooked: result.roomSlotsBooked || undefined,
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg.startsWith("Tempahan gagal") || msg.includes("Bilik/dewan") || msg.includes("Masa pergerakan")) {
+      return { ok: false, error: msg };
+    }
+    throw e;
+  }
+}
+
+export async function deletePergerakanIds(ids: number[]): Promise<{ deleted: number }> {
+  const user = await requireUser();
+  if (!ids?.length) return { deleted: 0 };
+  const isAdmin = user.peranan === "Admin";
+
+  const targets = await db
+    .select({ id: pergerakan.id, userId: pergerakan.userId })
+    .from(pergerakan)
+    .where(inArray(pergerakan.id, ids));
+
+  const allowed = targets
+    .filter((t) => isAdmin || t.userId === Number(user.id))
+    .map((t) => t.id);
+
+  if (!allowed.length) return { deleted: 0 };
+
+  await db.transaction(async (tx) => {
+    await cancelRoomBookingsForPergerakan(tx, allowed, Number(user.id));
+    await tx
+      .update(pergerakan)
+      .set({ aktif: false, updatedAt: new Date() })
+      .where(inArray(pergerakan.id, allowed));
+    await tx.insert(auditLog).values({
+      action: "DELETE_PERGERAKAN",
+      userId: Number(user.id),
+      detail: { ids: allowed },
+    });
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/my");
+  revalidatePath("/bilik");
+  return { deleted: allowed.length };
+}
+
+export type PergerakanListItem = {
+  id: number;
+  userId: number;
+  nama: string;
+  jawatan: string;
+  sektorCode: string | null;
+  sektorName: string | null;
+  jenis: "Pergerakan" | "Bercuti";
+  urusan: string;
+  lokasi: string;
+  tarikhPergi: Date;
+  tarikhKembali: Date;
+  oprStatus: "DRAFT" | "SIAP" | null;
+};
+
+export async function listPergerakanBetween(opts: {
+  start: Date;
+  end: Date;
+  sektorIds?: number[];
+  includeCuti?: boolean;
+}): Promise<PergerakanListItem[]> {
+  await requireUser();
+  const conditions = [
+    eq(pergerakan.aktif, true),
+    // overlap: tarikh_pergi <= range.end AND tarikh_kembali >= range.start
+    lte(pergerakan.tarikhPergi, opts.end),
+    gte(pergerakan.tarikhKembali, opts.start),
+  ];
+  if (opts.sektorIds?.length) {
+    conditions.push(inArray(pergerakan.sektorId, opts.sektorIds));
+  }
+  if (!opts.includeCuti) {
+    conditions.push(eq(pergerakan.jenis, "Pergerakan"));
+  }
+
+  const rows = await db
+    .select({
+      id: pergerakan.id,
+      userId: pergerakan.userId,
+      nama: users.nama,
+      jawatan: users.jawatan,
+      sektorCode: sektors.code,
+      sektorName: sektors.name,
+      jenis: pergerakan.jenis,
+      urusan: pergerakan.urusan,
+      lokasi: pergerakan.lokasi,
+      tarikhPergi: pergerakan.tarikhPergi,
+      tarikhKembali: pergerakan.tarikhKembali,
+    })
+    .from(pergerakan)
+    .innerJoin(users, eq(users.id, pergerakan.userId))
+    .leftJoin(sektors, eq(sektors.id, pergerakan.sektorId))
+    .where(and(...conditions))
+    .orderBy(pergerakan.tarikhPergi);
+
+  return rows.map((r) => ({
+    ...r,
+    tarikhPergi: new Date(r.tarikhPergi),
+    tarikhKembali: new Date(r.tarikhKembali),
+    oprStatus: null,
+  }));
+}
+
+export async function listMine(): Promise<PergerakanListItem[]> {
+  const user = await requireUser();
+  const rows = await db
+    .select({
+      id: pergerakan.id,
+      userId: pergerakan.userId,
+      nama: users.nama,
+      jawatan: users.jawatan,
+      sektorCode: sektors.code,
+      sektorName: sektors.name,
+      jenis: pergerakan.jenis,
+      urusan: pergerakan.urusan,
+      lokasi: pergerakan.lokasi,
+      tarikhPergi: pergerakan.tarikhPergi,
+      tarikhKembali: pergerakan.tarikhKembali,
+      oprStatus: opr.status,
+    })
+    .from(pergerakan)
+    .innerJoin(users, eq(users.id, pergerakan.userId))
+    .leftJoin(sektors, eq(sektors.id, pergerakan.sektorId))
+    .leftJoin(opr, eq(opr.pergerakanId, pergerakan.id))
+    .where(and(eq(pergerakan.userId, Number(user.id)), eq(pergerakan.aktif, true)))
+    .orderBy(desc(pergerakan.tarikhPergi));
+
+  return rows.map((r) => ({
+    ...r,
+    tarikhPergi: new Date(r.tarikhPergi),
+    tarikhKembali: new Date(r.tarikhKembali),
+    oprStatus:
+      r.oprStatus === "DRAFT" || r.oprStatus === "SIAP" ? r.oprStatus : null,
+  }));
+}
+
+export async function countToday(): Promise<{ pergerakan: number; bercuti: number; total: number }> {
+  await requireUser();
+  const today = new Date();
+  const startStr = `${today.toISOString().slice(0, 10)}T00:00:00+08:00`;
+  const endStr = `${today.toISOString().slice(0, 10)}T23:59:59+08:00`;
+  const start = new Date(startStr);
+  const end = new Date(endStr);
+
+  const rows = await db
+    .select({
+      jenis: pergerakan.jenis,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(pergerakan)
+    .where(
+      and(
+        eq(pergerakan.aktif, true),
+        lte(pergerakan.tarikhPergi, end),
+        gte(pergerakan.tarikhKembali, start),
+      ),
+    )
+    .groupBy(pergerakan.jenis);
+
+  let p = 0;
+  let c = 0;
+  for (const r of rows) {
+    if (r.jenis === "Pergerakan") p += Number(r.count);
+    else c += Number(r.count);
+  }
+  return { pergerakan: p, bercuti: c, total: p + c };
+}

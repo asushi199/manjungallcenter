@@ -1,0 +1,27 @@
+# Persekitaran & rahsia
+.env
+.env.*
+!.env*.example
+.env.local
+secrets/
+**/secrets/
+Pass.txt
+*.pem
+*.key
+*credentials*.json
+*service-account*.json
+
+# Node / Next.js
+node_modules/
+.next/
+.vercel/
+*.tsbuildinfo
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.cursor/
+
+# Data tempatan (jangan commit DB runtime)
+*.sqlite
+*.sqlite3

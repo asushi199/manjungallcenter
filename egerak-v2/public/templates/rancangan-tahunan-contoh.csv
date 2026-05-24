@@ -1,0 +1,11 @@
+email,username,urusan,lokasi,jenis,tarikh_pergi,tarikh_kembali,sektor,status_import
+#NOTA,,[FORMAT TARIKH] Wajib yyyy-mm-dd contoh 2026-06-14 atau 2026-06-14 08:00. JANGAN guna 6/14/2026.,,,,,,
+#NOTA,,[TARIKH SAHAJA] Jika tiada jam (contoh 2026-06-05) = sepanjang hari 08:00-17:00 + tempah AM/PM jika Bilik/Dewan.,,,,,,
+#NOTA,,[EXCEL] Format lajur F & G sebagai Teks sebelum taip. Semak dengan Notepad: mesti nampak 2026-06-14.,,,,,,
+#NOTA,,[PENGGUNA] Isi email ATAU username (salah satu). Mesti sudah didaftarkan di Admin - Pengguna.,,,,,,
+#NOTA,,Baris #NOTA ini dilangkau automatik semasa import. Contoh data di bawah — padam/replace ikut keperluan.,,,,,,
+ahmad@moe-dl.edu.my,,Mesyuarat panitia Matematik,Pejabat PPD Manjung,Pergerakan Biasa,2026-06-02 08:00,2026-06-02 12:00,PEMBELAJARAN,
+siti@moe-dl.edu.my,,Program NILAM tahunan,Dewan Bestari,Pergerakan Biasa,2026-06-05,2026-06-05,PEMBANGUNAN_MURID,
+kamal@moe-dl.edu.my,,Lawatan sekolah,Sekolah Menengah,Pergerakan Biasa,2026-06-10,2026-06-10 15:00,PENGURUSAN_SEKOLAH,
+,ong,Latihan pengguna sistem,Bilik Budiman,Pergerakan Biasa,2026-06-12,2026-06-14,USTP,
+fatimah@moe-dl.edu.my,,Cuti tahunan,Pejabat PPD Manjung,Bercuti,2026-07-01,2026-07-03,PENGURUSAN,

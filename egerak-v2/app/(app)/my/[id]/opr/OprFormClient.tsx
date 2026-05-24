@@ -1,0 +1,295 @@
+"use client";
+
+import { useEffect, useState, useTransition } from "react";
+import OprPhotoGallery from "./OprPhotoGallery";
+import { useRouter } from "next/navigation";
+import {
+  saveOpr,
+  generateOprDraft,
+  uploadOprPhotoAction,
+} from "@/lib/actions/opr";
+import { compressImageForOpr } from "@/lib/client/compress-image";
+import { OPR_MAX_PHOTOS } from "@/lib/opr-photos";
+import { oprStatusBadge } from "@/lib/opr-status";
+
+type Props = {
+  pergerakanId: number;
+  sektors: Array<{ id: number; code: string; name: string }>;
+  initial: {
+    sektorOverrideId: number | null;
+    maklumatTambahan: string;
+    sasaran: string;
+    notaPegawai: string;
+    dapatan: string;
+    rumusan: string;
+    refleksi: string;
+    status: "TIADA" | "DRAFT" | "SIAP";
+  };
+  photos: Array<{
+    id: number;
+    displayUrl: string | null;
+    publicUrl?: string | null;
+    storagePath?: string;
+  }>;
+  storageEnabled: boolean;
+  storageHint?: string;
+};
+
+export default function OprFormClient({
+  pergerakanId,
+  sektors,
+  initial,
+  photos: initialPhotos,
+  storageEnabled,
+  storageHint,
+}: Props) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  const [form, setForm] = useState(initial);
+  const [photos, setPhotos] = useState(initialPhotos);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const atPhotoLimit = photos.length >= OPR_MAX_PHOTOS;
+
+  useEffect(() => {
+    setPhotos(initialPhotos);
+  }, [initialPhotos]);
+
+  useEffect(() => {
+    setForm(initial);
+  }, [initial]);
+
+  function onSave(markSiap = false) {
+    setMsg(null);
+    startTransition(async () => {
+      const res = await saveOpr({
+        pergerakanId,
+        ...form,
+        sektorOverrideId: form.sektorOverrideId || null,
+        status: markSiap ? "SIAP" : form.status === "SIAP" ? "SIAP" : "DRAFT",
+      });
+      if (!res.ok) {
+        setMsg(res.error);
+        return;
+      }
+      const nextStatus = markSiap ? "SIAP" : form.status === "SIAP" ? "SIAP" : "DRAFT";
+      setForm((f) => ({ ...f, status: nextStatus }));
+      setMsg(
+        markSiap
+          ? "OPR ditandakan siap — status dipaparkan di halaman ini dan dalam senarai Pergerakan Saya."
+          : "Draf disimpan.",
+      );
+      router.refresh();
+    });
+  }
+
+  function onGenerate() {
+    setMsg(null);
+    startTransition(async () => {
+      try {
+        const draft = await generateOprDraft(pergerakanId, {
+          sektorOverrideId: form.sektorOverrideId,
+          maklumatTambahan: form.maklumatTambahan,
+          sasaran: form.sasaran,
+          notaPegawai: form.notaPegawai,
+        });
+        setForm((f) => ({
+          ...f,
+          maklumatTambahan: form.maklumatTambahan,
+          sasaran: form.sasaran,
+          notaPegawai: form.notaPegawai,
+          dapatan: draft.dapatan,
+          rumusan: draft.rumusan,
+          refleksi: draft.refleksi,
+          status: "DRAFT",
+        }));
+        setMsg(draft.disclaimer);
+      } catch (e) {
+        setMsg(e instanceof Error ? e.message : "Gagal jana draf");
+      }
+    });
+  }
+
+  function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (atPhotoLimit) {
+      setMsg(`Maksimum ${OPR_MAX_PHOTOS} gambar bagi setiap OPR.`);
+      return;
+    }
+
+    setUploadingPhoto(true);
+    setMsg(null);
+    startTransition(async () => {
+      try {
+        const { file: uploadFile, notice } = await compressImageForOpr(file);
+        const fd = new FormData();
+        fd.set("pergerakanId", String(pergerakanId));
+        fd.set("file", uploadFile);
+        const res = await uploadOprPhotoAction(fd);
+        if (!res.ok) {
+          setMsg(res.error);
+          return;
+        }
+        const url = res.displayUrl ?? res.publicUrl;
+        if (url) {
+          setPhotos((p) => [
+            ...p,
+            { id: res.id, displayUrl: url, publicUrl: res.publicUrl },
+          ]);
+        }
+        setMsg(
+          notice ??
+            `Gambar dimuat naik (${res.photoCount ?? photos.length + 1}/${OPR_MAX_PHOTOS}).`,
+        );
+        router.refresh();
+      } catch (err) {
+        setMsg(err instanceof Error ? err.message : "Gagal memproses gambar");
+      } finally {
+        setUploadingPhoto(false);
+      }
+    });
+  }
+
+  const statusBadge = oprStatusBadge(form.status);
+  const isSiap = form.status === "SIAP";
+
+  return (
+    <div className="space-y-4">
+      {isSiap && (
+        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+          <strong>OPR telah ditandakan siap.</strong> Laporan dianggap muktamad untuk rekod ini. Anda
+          masih boleh edit dan cetak semula jika perlu; gunakan &quot;Simpan Draf&quot; tidak menukar
+          status kecuali anda ubah kandungan kemudian tekan semula &quot;Tandakan Siap&quot;.
+        </div>
+      )}
+      {statusBadge && !isSiap && form.status === "DRAFT" && (
+        <p className="text-xs text-slate-500">
+          Status semasa: <span className={`badge ${statusBadge.className}`}>{statusBadge.label}</span>
+          — tekan <strong>Tandakan Siap</strong> apabila laporan siap disemak.
+        </p>
+      )}
+      {msg && (
+        <div
+          className={`rounded-md border text-sm px-3 py-2 ${
+            msg.includes("Gagal") || (msg.includes("Gemini API") && !msg.includes("Kuota"))
+              ? "bg-red-50 border-red-200 text-red-800"
+              : msg.includes("Kuota") || msg.includes("draf asas")
+                ? "bg-amber-50 border-amber-200 text-amber-900"
+                : "bg-emerald-50 border-emerald-200 text-emerald-800"
+          }`}
+        >
+          {msg}
+        </div>
+      )}
+      <div className="card p-4 space-y-3">
+        <div>
+          <label className="label">Sektor (override jika perlu)</label>
+          <select
+            className="input"
+            value={form.sektorOverrideId ?? ""}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                sektorOverrideId: e.target.value ? Number(e.target.value) : null,
+              })
+            }
+          >
+            <option value="">Ikut profil pegawai</option>
+            {sektors.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="label">Maklumat tambahan / objektif ringkas</label>
+          <textarea
+            className="input min-h-[80px]"
+            value={form.maklumatTambahan}
+            onChange={(e) => setForm({ ...form, maklumatTambahan: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="label">Sasaran</label>
+          <input
+            className="input"
+            value={form.sasaran}
+            onChange={(e) => setForm({ ...form, sasaran: e.target.value })}
+            placeholder="Contoh: Guru Besar SK, Penolong Kanan"
+          />
+        </div>
+        <div>
+          <label className="label">Nota pegawai (mentah)</label>
+          <textarea
+            className="input min-h-[60px]"
+            value={form.notaPegawai}
+            onChange={(e) => setForm({ ...form, notaPegawai: e.target.value })}
+          />
+        </div>
+        <button type="button" className="btn-primary" disabled={pending} onClick={onGenerate}>
+          {pending ? "Menjana…" : "Jana Draf (AI)"}
+        </button>
+      </div>
+
+      <div className="card p-4 space-y-3">
+        <label className="label">Dapatan</label>
+        <textarea
+          className="input min-h-[120px]"
+          value={form.dapatan}
+          onChange={(e) => setForm({ ...form, dapatan: e.target.value })}
+        />
+        <label className="label">Rumusan</label>
+        <textarea
+          className="input min-h-[80px]"
+          value={form.rumusan}
+          onChange={(e) => setForm({ ...form, rumusan: e.target.value })}
+        />
+        <label className="label">Refleksi</label>
+        <textarea
+          className="input min-h-[100px]"
+          value={form.refleksi}
+          onChange={(e) => setForm({ ...form, refleksi: e.target.value })}
+        />
+      </div>
+
+      <div className="card p-4">
+        <h2 className="font-semibold mb-2">Gambar aktiviti</h2>
+        <p className="text-xs text-slate-500 mb-2">
+          Maksimum {OPR_MAX_PHOTOS} gambar. <strong>Melintang (landskap) disyorkan</strong> untuk
+          cetakan OPR; gambar menegak juga boleh dimuat naik. Dimampatkan automatik. Dalam cetakan,
+          gambar disusun menegak di sebelah kanan.
+        </p>
+        <OprPhotoGallery
+          pergerakanId={pergerakanId}
+          photos={photos}
+          onPhotosChange={setPhotos}
+          onDeleteError={(error) => setMsg(error)}
+          storageEnabled={storageEnabled}
+          storageHint={storageHint}
+          atPhotoLimit={atPhotoLimit}
+          uploadingPhoto={uploadingPhoto}
+          pending={pending}
+          onUpload={onPhoto}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-2 justify-end">
+        <button type="button" className="btn-secondary" disabled={pending} onClick={() => onSave(false)}>
+          Simpan Draf
+        </button>
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={pending || isSiap}
+          onClick={() => onSave(true)}
+        >
+          {isSiap ? "Sudah Siap" : "Tandakan Siap"}
+        </button>
+      </div>
+
+    </div>
+  );
+}

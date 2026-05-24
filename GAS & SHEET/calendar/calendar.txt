@@ -1,0 +1,130 @@
+function onFormSubmit(e) {
+  try {
+    // 1. 获取表单提交的数据
+    var rowData = e.namedValues;
+    
+    // ⚠️重要：中括号里的名字必须跟表格第一行的表头(Row 1)一模一样（包括空格）
+    var sektor = rowData["SEKTOR"][0].trim().toUpperCase();
+    var unit = rowData["UNIT"] ? rowData["UNIT"][0].trim().toUpperCase() : ""; // 抓取 UNIT
+    var title = rowData["NAMA PROGRAM"][0];
+    var dateString = rowData["TARIKH"][0]; 
+    var location = rowData["TEMPAT"] ? rowData["TEMPAT"][0] : "";
+    var pic = rowData["PERSON IN CHARGE"] ? rowData["PERSON IN CHARGE"][0] : "";
+    
+    // 2. 建立 Sektor 到 日历 ID 的匹配字典 (映射表)
+    // MAIN TAKWIM (embed kalendar #8): c_5458a401004ee468862942871b65f87819427db963d7fe1542b979ec13e4b463@group.calendar.google.com
+    // Lihat calendar-ids.md untuk pemetaan penuh eGerak Config.gs
+
+    var calendarMap = {
+      "PEMBELAJARAN": "c_7f03058deb91e62f83e1394498c71f473b6809d95258b0053384abf4d518ea6f@group.calendar.google.com",
+      "PENGURUSAN": "c_a9cf75924aa6619e4f24ec6f0bb4d755d8de1b36a15426639a2d9813dcb40c1c@group.calendar.google.com",
+      "PSIKOLOGI DAN KAUNSELING": "c_597a5117fe45a7f463a115cca8e22513933d51e2783ef4b4fa3660b1c5be0acd@group.calendar.google.com",
+      "PERANCANGAN": "c_db1296f674e7e6e1d8ac680b7cd391cc6b08df18d8cf7177cb33daf8222317a8@group.calendar.google.com",
+      "PENGURUSAN SEKOLAH": "c_7d71e5312eb62156f15887b45a18d5b6168d9ef167b34a5e0a7c862cf8ab833d@group.calendar.google.com",
+      "PEMBANGUNAN MURID": "c_73600838a142f4d1d215a0f62fafc218e01f0bd1e6afbdcd7000be38a71130dc@group.calendar.google.com",
+      "PENTAKSIRAN DAN PEPERIKSAAN": "c_055f8536861f317c78d865cc744f49d38933c27e90c20d65730f679a21c1a9e1@group.calendar.google.com"
+    };
+    
+    // 3. 找出目标日历 ID
+    var targetCalendarId = calendarMap[sektor];
+    
+    // 🌟强行拦截：如果 Unit 是 USTP，无视 Sektor，直接派发给 USTP 日历！
+    if (unit === "SUMBER DAN TEKNOLOGI PENDIDIKAN" || unit === "USTP") {
+      targetCalendarId = "c_07ea831973519ec6379185af0a2fd2053aeec6d5c15fab56dc24461b74e5c2e2@group.calendar.google.com";
+    }
+    
+    // 4. 如果匹配成功，就在对应日历中创建全天活动 (All-day event)
+    if (targetCalendarId) {
+      var cal = CalendarApp.getCalendarById(targetCalendarId);
+      var eventDate = new Date(dateString); // 转换文本日期
+      
+      cal.createAllDayEvent(title, eventDate, {
+        location: location,
+        description: "PIC: " + pic
+      });
+    }
+  } catch (error) {
+    console.error("生成日历时出错: " + error.toString());
+  }
+}
+
+function syncOldData() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Form Responses 1"); // 确认表格名称
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  
+  // 获取第一行表头，自动定位每一列的位置
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  
+  var colTarikh = headers.indexOf("TARIKH");
+  var colProgram = headers.indexOf("NAMA PROGRAM");
+  var colTempat = headers.indexOf("TEMPAT");
+  var colPIC = headers.indexOf("PERSON IN CHARGE");
+  var colSektor = headers.indexOf("SEKTOR");
+  var colUnit = headers.indexOf("UNIT"); // 抓取 UNIT
+  var colStatus = headers.indexOf("Sync Status");
+  
+  // 安全检查
+  if (colStatus === -1) {
+    SpreadsheetApp.getUi().alert("请先在表格第一行（最右侧）创建一个名为 'Sync Status' 的列！");
+    return;
+  }
+  
+  // 日历字典
+  var calendarMap = {
+    "PEMBELAJARAN": "c_7f03058deb91e62f83e1394498c71f473b6809d95258b0053384abf4d518ea6f@group.calendar.google.com",
+    "PENGURUSAN": "c_a9cf75924aa6619e4f24ec6f0bb4d755d8de1b36a15426639a2d9813dcb40c1c@group.calendar.google.com",
+    "PSIKOLOGI DAN KAUNSELING": "c_597a5117fe45a7f463a115cca8e22513933d51e2783ef4b4fa3660b1c5be0acd@group.calendar.google.com",
+    "PERANCANGAN": "c_db1296f674e7e6e1d8ac680b7cd391cc6b08df18d8cf7177cb33daf8222317a8@group.calendar.google.com",
+    "PENGURUSAN SEKOLAH": "c_7d71e5312eb62156f15887b45a18d5b6168d9ef167b34a5e0a7c862cf8ab833d@group.calendar.google.com",
+    "PEMBANGUNAN MURID": "c_73600838a142f4d1d215a0f62fafc218e01f0bd1e6afbdcd7000be38a71130dc@group.calendar.google.com",
+    "PENTAKSIRAN DAN PEPERIKSAAN": "c_055f8536861f317c78d865cc744f49d38933c27e90c20d65730f679a21c1a9e1@group.calendar.google.com"
+  };
+
+  // 根据你之前的设定，大塞车是从第 784 行开始的
+  var startRow = 784; 
+  var numRows = lastRow - startRow + 1;
+  
+  if (numRows <= 0) return;
+  
+  var data = sheet.getRange(startRow, 1, numRows, lastCol).getValues();
+  
+  for (var i = 0; i < data.length; i++) {
+    var row = data[i];
+    var status = row[colStatus];
+    
+    // 如果这行已经写了 Done，或者根本没有活动名称，就直接跳过
+    if (status === "Done" || !row[colProgram]) continue;
+    
+    var sektor = String(row[colSektor]).trim().toUpperCase();
+    var unit = colUnit !== -1 ? String(row[colUnit]).trim().toUpperCase() : ""; // 读取 UNIT
+    var targetCalendarId = calendarMap[sektor];
+    
+    // 🌟强行拦截：如果 Unit 是 USTP，无视 Sektor，直接派发给 USTP 日历！
+    if (unit === "SUMBER DAN TEKNOLOGI PENDIDIKAN" || unit === "USTP") {
+      targetCalendarId = "c_07ea831973519ec6379185af0a2fd2053aeec6d5c15fab56dc24461b74e5c2e2@group.calendar.google.com";
+    }
+    
+    if (targetCalendarId) {
+      try {
+        var cal = CalendarApp.getCalendarById(targetCalendarId);
+        var eventDate = new Date(row[colTarikh]);
+        
+        cal.createAllDayEvent(row[colProgram], eventDate, {
+          location: row[colTempat] ? row[colTempat] : "",
+          description: row[colPIC] ? row[colPIC] : ""
+        });
+        
+        // 成功建立后，在对应的 Sync Status 单元格打上 "Done"
+        sheet.getRange(startRow + i, colStatus + 1).setValue("Done");
+        
+        // 稍微暂停0.3秒，免得建得太快被 Google 系统当成恶意发帖给拉黑
+        Utilities.sleep(300); 
+        
+      } catch (e) {
+         // 如果报错，把错误原因写进表格，方便查明
+         sheet.getRange(startRow + i, colStatus + 1).setValue("Error: " + e.message);
+      }
+    }
+  }
+}

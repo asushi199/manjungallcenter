@@ -1,0 +1,291 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  addDays,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameMonth,
+  isToday,
+  startOfMonth,
+  startOfWeek,
+} from "date-fns";
+import { cn } from "@/lib/cn";
+import { sektorStyle } from "@/lib/sektor-colors";
+
+export type CalendarItem = {
+  id: number;
+  nama: string;
+  jawatan: string;
+  sektorCode: string | null;
+  sektorName: string | null;
+  jenis: "Pergerakan" | "Bercuti";
+  urusan: string;
+  lokasi: string;
+  tarikhPergi: string;
+  tarikhKembali: string;
+};
+
+const DAY_LABELS = ["Isn", "Sel", "Rab", "Kha", "Jum", "Sab", "Aha"];
+
+/** Bilangan aktiviti dipapar dalam sel; selebihnya: "+N lagi" + klik untuk laci */
+const MAX_IN_CELL = 4;
+
+function ymdKey(d: Date) {
+  return format(d, "yyyy-MM-dd");
+}
+
+function buildDayBuckets(items: CalendarItem[], gridDays: Date[]) {
+  const map = new Map<string, CalendarItem[]>();
+  for (const d of gridDays) map.set(ymdKey(d), []);
+  for (const it of items) {
+    const start = new Date(it.tarikhPergi);
+    const end = new Date(it.tarikhKembali);
+    for (const d of gridDays) {
+      const dayStart = new Date(d);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(d);
+      dayEnd.setHours(23, 59, 59, 999);
+      if (start <= dayEnd && end >= dayStart) {
+        map.get(ymdKey(d))!.push(it);
+      }
+    }
+  }
+  return map;
+}
+
+export default function MonthCalendar({
+  month,
+  items,
+  highlightDate,
+}: {
+  month: string;
+  items: CalendarItem[];
+  /** Tarikh dipilih di penapis (garis biru pada sel) */
+  highlightDate?: string;
+}) {
+  const [y, m] = month.split("-").map(Number);
+  const firstOfMonth = new Date(y, m - 1, 1);
+  const gridStart = startOfWeek(startOfMonth(firstOfMonth), { weekStartsOn: 1 });
+  const gridEnd = endOfWeek(endOfMonth(firstOfMonth), { weekStartsOn: 1 });
+
+  const gridDays = useMemo(() => {
+    const out: Date[] = [];
+    let d = gridStart;
+    while (d <= gridEnd) {
+      out.push(d);
+      d = addDays(d, 1);
+    }
+    return out;
+  }, [gridStart, gridEnd]);
+
+  const buckets = useMemo(() => buildDayBuckets(items, gridDays), [items, gridDays]);
+  const [openDay, setOpenDay] = useState<string | null>(null);
+  const router = useRouter();
+  const urlParams = useSearchParams();
+
+  function applyMonth(newMonth: string) {
+    const next = new URLSearchParams(urlParams?.toString());
+    next.set("month", newMonth);
+    const cur = highlightDate ?? ymdKey(new Date());
+    if (!cur.startsWith(newMonth)) {
+      const today = ymdKey(new Date());
+      next.set("date", today.startsWith(newMonth) ? today : `${newMonth}-01`);
+    }
+    router.replace(`/dashboard?${next.toString()}`);
+  }
+
+  function shiftMonth(delta: number) {
+    const d = new Date(y, m - 1 + delta, 1);
+    const newMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    applyMonth(newMonth);
+  }
+
+  function onDayClick(dayKey: string) {
+    const next = new URLSearchParams(urlParams?.toString());
+    next.set("date", dayKey);
+    next.set("month", dayKey.slice(0, 7));
+    router.replace(`/dashboard?${next.toString()}`);
+    setOpenDay(dayKey);
+  }
+
+  const monthTitle = format(firstOfMonth, "MMMM yyyy");
+
+  return (
+    <div className="card overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-slate-50 px-3 py-2">
+        <p className="text-sm font-semibold text-slate-800">{monthTitle}</p>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            className="btn-secondary px-2 py-1.5 text-sm"
+            onClick={() => shiftMonth(-1)}
+            aria-label="Bulan sebelumnya"
+          >
+            ‹
+          </button>
+          <input
+            type="month"
+            className="input py-1.5 text-sm w-[9.5rem]"
+            value={month}
+            onChange={(e) => e.target.value && applyMonth(e.target.value)}
+            aria-label="Pilih bulan"
+          />
+          <button
+            type="button"
+            className="btn-secondary px-2 py-1.5 text-sm"
+            onClick={() => shiftMonth(1)}
+            aria-label="Bulan seterusnya"
+          >
+            ›
+          </button>
+        </div>
+      </div>
+      <div className="grid grid-cols-7 text-center text-xs font-semibold text-slate-500 bg-slate-50 border-b">
+        {DAY_LABELS.map((d) => (
+          <div key={d} className="py-2">
+            {d}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7">
+        {gridDays.map((d) => {
+          const key = ymdKey(d);
+          const inMonth = isSameMonth(d, firstOfMonth);
+          const today = isToday(d);
+          const selected = highlightDate === key;
+          const dayItems = buckets.get(key) ?? [];
+          const shown = dayItems.slice(0, MAX_IN_CELL);
+          const more = dayItems.length - shown.length;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onDayClick(key)}
+              className={cn(
+                "text-left min-h-[100px] border-b border-r p-1 align-top hover:bg-slate-50/80 transition",
+                !inMonth && "bg-slate-50/50 text-slate-400",
+                selected && "ring-2 ring-inset ring-brand-500 bg-brand-50/30",
+              )}
+            >
+              <div className="flex items-center justify-between px-0.5">
+                <span
+                  className={cn(
+                    "text-xs font-semibold",
+                    today &&
+                      "inline-flex w-6 h-6 items-center justify-center rounded-full bg-brand-600 text-white",
+                  )}
+                >
+                  {format(d, "d")}
+                </span>
+                {dayItems.length > 0 && (
+                  <span className="text-[10px] font-medium text-slate-600">{dayItems.length}</span>
+                )}
+              </div>
+              <div className="mt-0.5 space-y-0.5">
+                {shown.map((it) => {
+                  const st = sektorStyle(it.sektorCode, it.jenis);
+                  return (
+                    <div
+                      key={it.id}
+                      className="truncate rounded-sm px-1 py-0.5 text-[10px] font-medium border-l-[3px]"
+                      style={{
+                        backgroundColor: st.bg,
+                        color: st.text,
+                        borderLeftColor: st.border,
+                      }}
+                      title={`${it.urusan}${it.sektorName ? ` · ${it.sektorName}` : ""}`}
+                    >
+                      {it.jenis === "Bercuti" ? "[Cuti] " : ""}
+                      {it.urusan}
+                    </div>
+                  );
+                })}
+                {more > 0 && (
+                  <div
+                    className="text-[10px] font-semibold pl-1"
+                    style={{ color: "#b81049" }}
+                  >
+                    +{more} lagi (klik)
+                  </div>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {openDay && (
+        <DayDrawer
+          day={openDay}
+          items={buckets.get(openDay) ?? []}
+          onClose={() => setOpenDay(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function DayDrawer({
+  day,
+  items,
+  onClose,
+}: {
+  day: string;
+  items: CalendarItem[];
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-40">
+      <div className="absolute inset-0 bg-slate-900/40" onClick={onClose} />
+      <aside className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-xl overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between">
+          <div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">Pergerakan</div>
+            <div className="font-semibold">{format(new Date(day), "EEEE, dd MMM yyyy")}</div>
+          </div>
+          <button type="button" className="btn-secondary" onClick={onClose}>
+            Tutup
+          </button>
+        </div>
+        {items.length === 0 ? (
+          <p className="p-6 text-sm text-slate-500">Tiada rekod pada tarikh ini.</p>
+        ) : (
+          <ul className="divide-y">
+            {items.map((it) => {
+              const st = sektorStyle(it.sektorCode, it.jenis);
+              return (
+                <li key={it.id} className="px-4 py-3 border-l-4" style={{ borderLeftColor: st.border }}>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: st.chip }}
+                    />
+                    <span className="font-medium">{it.nama}</span>
+                    {it.jenis === "Bercuti" && (
+                      <span className="badge bg-emerald-100 text-emerald-700">Bercuti</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-500">{it.jawatan}</div>
+                  <div className="text-xs text-slate-500">
+                    {it.sektorName ?? "(Sektor tidak ditetapkan)"}
+                  </div>
+                  <p className="mt-1 text-sm">{it.urusan}</p>
+                  <div className="mt-1 text-xs text-slate-600">
+                    <div>Lokasi: {it.lokasi || "-"}</div>
+                    <div>
+                      {format(new Date(it.tarikhPergi), "dd-MM-yyyy HH:mm")} sehingga{" "}
+                      {format(new Date(it.tarikhKembali), "dd-MM-yyyy HH:mm")}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </aside>
+    </div>
+  );
+}

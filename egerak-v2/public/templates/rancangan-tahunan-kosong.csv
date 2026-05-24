@@ -1,0 +1,3 @@
+email,username,urusan,lokasi,jenis,tarikh_pergi,tarikh_kembali,sektor,status_import
+#NOTA,,[FORMAT TARIKH] Wajib yyyy-mm-dd (2026-06-14) atau 2026-06-14 08:00. Jangan 6/14/2026. Tarikh sahaja = sepanjang hari.,,,,,,
+#NOTA,,[EXCEL] Lajur F & G = Teks. [PENGGUNA] email atau username. Baris #NOTA dilangkau import.,,,,,,

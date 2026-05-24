@@ -1,0 +1,182 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn border-brand-600 bg-brand-600 text-white hover:bg-brand-700;
+  }
+  .btn-secondary {
+    @apply btn border-slate-300 bg-white text-slate-800 hover:bg-slate-100;
+  }
+  .btn-danger {
+    @apply btn border-red-500 bg-white text-red-700 hover:bg-red-50;
+  }
+  .card {
+    @apply rounded-lg border border-slate-200 bg-white shadow-sm;
+  }
+  .input {
+    @apply block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm placeholder-slate-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500;
+  }
+  .label {
+    @apply block text-sm font-medium text-slate-700 mb-1;
+  }
+  .badge {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+
+  /* Sembunyikan navigasi laman & toolbar cetak */
+  #egerak-app-shell > header,
+  #egerak-app-shell > footer,
+  header,
+  footer,
+  .app-site-footer,
+  .print\\:hidden {
+    display: none !important;
+  }
+
+  #egerak-app-shell > main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  .opr-print {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-size: 8pt;
+    line-height: 1.25;
+    page-break-inside: avoid;
+  }
+
+  .opr-print-body {
+    display: grid;
+    grid-template-columns: 1fr 32%;
+    gap: 3mm;
+    align-items: start;
+  }
+
+  .opr-print-section-title {
+    font-size: 7.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    border-bottom: 0.5pt solid #000;
+    margin-bottom: 0.5mm;
+  }
+
+  .opr-print-section-body {
+    font-size: 7.5pt;
+    line-height: 1.2;
+  }
+
+  .opr-print-photo-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 2mm;
+  }
+
+  .opr-print-photo-frame {
+    width: 100%;
+    height: 32mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 0.3pt solid #ccc;
+    border-radius: 1mm;
+    background: #f8fafc;
+  }
+
+  /* Kekalkan nisbah aspek — elak gambar kelihatan "pipih" */
+  .opr-print-photo {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    object-position: center;
+  }
+
+  .opr-print-footer {
+    margin-top: 2mm;
+  }
+
+  .opr-print-logo {
+    width: 30mm !important;
+    height: auto !important;
+    max-height: 34mm;
+    object-fit: contain;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* Halaman pratonton cetak: sembunyikan navigasi & footer laman */
+body.opr-print-page #egerak-app-shell > footer,
+body.opr-print-page .app-site-footer {
+  display: none;
+}
+
+/* Pratonton skrin — susun atur sama seperti cetak */
+.opr-print-logo {
+  @apply w-[132px] h-auto max-h-[140px] object-contain mx-auto block;
+}
+
+.opr-print {
+  padding: 1rem;
+}
+
+.opr-print-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .opr-print-body {
+    grid-template-columns: 1fr 32%;
+  }
+}
+
+.opr-print-section-title {
+  @apply text-xs font-bold uppercase border-b border-slate-300 mb-1;
+}
+
+.opr-print-section-body {
+  @apply text-xs leading-snug text-slate-800;
+}
+
+.opr-print-photo-stack {
+  @apply flex flex-col gap-1.5;
+}
+
+.opr-print-photo-frame {
+  @apply w-full h-28 flex items-center justify-center overflow-hidden border rounded bg-slate-50;
+}
+
+.opr-print-photo {
+  @apply max-w-full max-h-full w-auto h-auto object-contain;
+}

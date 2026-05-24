@@ -1,0 +1,297 @@
+"use server";
+
+import { count, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { db } from "@/lib/db";
+import { opr, oprPhotos, pergerakan, users, sektors, auditLog } from "@/lib/schema";
+import { requireUser } from "@/lib/rbac";
+import { generateOprWithGemini, type OprPromptInput } from "@/lib/gemini";
+import { formatDateTime } from "@/lib/dates";
+import { OPR_MAX_PHOTOS } from "@/lib/opr-photos";
+import { oprPhotoDisplayUrl } from "@/lib/opr-photo-url";
+import { getStorageSetupHint, isStorageConfigured, uploadOprPhoto } from "@/lib/storage";
+
+async function assertPergerakanAccess(pergerakanId: number, userId: number, isAdmin: boolean) {
+  const row = await db.query.pergerakan.findFirst({
+    where: eq(pergerakan.id, pergerakanId),
+    with: { user: true, sektor: true },
+  });
+  if (!row) return null;
+  if (!isAdmin && row.userId !== userId) return null;
+  return row;
+}
+
+export async function getOrCreateOpr(pergerakanId: number) {
+  const session = await requireUser();
+  const row = await assertPergerakanAccess(
+    pergerakanId,
+    Number(session.id),
+    session.peranan === "Admin",
+  );
+  if (!row) throw new Error("Tiada kebenaran atau rekod tidak dijumpai");
+
+  let record = await db.query.opr.findFirst({
+    where: eq(opr.pergerakanId, pergerakanId),
+    with: { photos: true, sektorOverride: true },
+  });
+
+  if (!record) {
+    const [created] = await db
+      .insert(opr)
+      .values({ pergerakanId, status: "DRAFT" })
+      .returning();
+    record = await db.query.opr.findFirst({
+      where: eq(opr.id, created.id),
+      with: { photos: true, sektorOverride: true },
+    });
+  }
+
+  return { pergerakan: row, opr: record! };
+}
+
+const saveSchema = z.object({
+  pergerakanId: z.number(),
+  sektorOverrideId: z.number().nullable().optional(),
+  maklumatTambahan: z.string().optional(),
+  sasaran: z.string().optional(),
+  notaPegawai: z.string().optional(),
+  dapatan: z.string().optional(),
+  rumusan: z.string().optional(),
+  refleksi: z.string().optional(),
+  status: z.enum(["DRAFT", "SIAP"]).optional(),
+});
+
+export async function saveOpr(input: unknown) {
+  const session = await requireUser();
+  const parsed = saveSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, error: "Input tidak sah" };
+
+  const { pergerakanId, ...data } = parsed.data;
+  const row = await assertPergerakanAccess(
+    pergerakanId,
+    Number(session.id),
+    session.peranan === "Admin",
+  );
+  if (!row) return { ok: false as const, error: "Tiada kebenaran" };
+
+  const existing = await db.query.opr.findFirst({ where: eq(opr.pergerakanId, pergerakanId) });
+  if (!existing) return { ok: false as const, error: "OPR tidak dijumpai" };
+
+  await db
+    .update(opr)
+    .set({
+      sektorOverrideId: data.sektorOverrideId ?? null,
+      maklumatTambahan: data.maklumatTambahan ?? "",
+      sasaran: data.sasaran ?? "",
+      notaPegawai: data.notaPegawai ?? "",
+      dapatan: data.dapatan ?? "",
+      rumusan: data.rumusan ?? "",
+      refleksi: data.refleksi ?? "",
+      status: data.status ?? existing.status,
+      updatedAt: new Date(),
+    })
+    .where(eq(opr.id, existing.id));
+
+  await db.insert(auditLog).values({
+    action: data.status === "SIAP" ? "OPR_FINAL" : "OPR_SAVED",
+    userId: Number(session.id),
+    detail: { pergerakanId, oprId: existing.id },
+  });
+
+  revalidatePath(`/my/${pergerakanId}/opr`);
+  revalidatePath("/my");
+  return { ok: true as const };
+}
+
+export async function generateOprDraft(
+  pergerakanId: number,
+  form?: {
+    sektorOverrideId?: number | null;
+    maklumatTambahan?: string;
+    sasaran?: string;
+    notaPegawai?: string;
+  },
+) {
+  const session = await requireUser();
+  const data = await getOrCreateOpr(pergerakanId);
+  const row = data.pergerakan;
+  const o = data.opr;
+
+  const maklumatTambahan = form?.maklumatTambahan ?? o.maklumatTambahan ?? "";
+  const sasaran = form?.sasaran ?? o.sasaran ?? "";
+  const notaPegawai = form?.notaPegawai ?? o.notaPegawai ?? "";
+  const sektorOverrideId =
+    form?.sektorOverrideId !== undefined ? form.sektorOverrideId : o.sektorOverrideId;
+
+  await db
+    .update(opr)
+    .set({
+      maklumatTambahan,
+      sasaran,
+      notaPegawai,
+      sektorOverrideId: sektorOverrideId ?? null,
+      updatedAt: new Date(),
+    })
+    .where(eq(opr.id, o.id));
+
+  let sektorName = row.sektor?.name ?? "PPD Manjung";
+  if (sektorOverrideId) {
+    const s = await db.query.sektors.findFirst({ where: eq(sektors.id, sektorOverrideId) });
+    if (s) sektorName = s.name;
+  }
+
+  const promptInput: OprPromptInput = {
+    nama: row.user?.nama ?? session.nama,
+    jawatan: row.user?.jawatan ?? "",
+    sektor: sektorName,
+    urusan: row.urusan,
+    lokasi: row.lokasi,
+    tarikh: `${formatDateTime(row.tarikhPergi)} hingga ${formatDateTime(row.tarikhKembali)}`,
+    maklumatTambahan,
+    sasaran,
+    notaPegawai,
+  };
+
+  const { draft, notice } = await generateOprWithGemini(promptInput);
+
+  await db
+    .update(opr)
+    .set({
+      dapatan: draft.dapatan,
+      rumusan: draft.rumusan,
+      refleksi: draft.refleksi,
+      status: "DRAFT",
+      updatedAt: new Date(),
+    })
+    .where(eq(opr.id, o.id));
+
+  await db.insert(auditLog).values({
+    action: "OPR_DRAFT",
+    userId: Number(session.id),
+    detail: { pergerakanId },
+  });
+
+  revalidatePath(`/my/${pergerakanId}/opr`);
+  return {
+    ...draft,
+    disclaimer: notice,
+  };
+}
+
+export type UploadOprPhotoResult =
+  | { ok: false; error: string }
+  | {
+      ok: true;
+      publicUrl: string;
+      displayUrl: string;
+      id: number;
+      photoCount: number;
+      maxPhotos: number;
+    };
+
+export async function uploadOprPhotoAction(
+  formData: FormData,
+): Promise<UploadOprPhotoResult> {
+  const session = await requireUser();
+  const pergerakanId = Number(formData.get("pergerakanId"));
+  const file = formData.get("file") as File | null;
+  if (!file || !pergerakanId) return { ok: false as const, error: "Fail tidak sah" };
+
+  if (!isStorageConfigured()) {
+    return {
+      ok: false as const,
+      error: getStorageSetupHint(),
+    };
+  }
+
+  if (!file.type.startsWith("image/")) {
+    return { ok: false as const, error: "Hanya fail gambar (JPG, PNG, …) dibenarkan." };
+  }
+
+  const data = await getOrCreateOpr(pergerakanId);
+  if (data.pergerakan.userId !== Number(session.id) && session.peranan !== "Admin") {
+    return { ok: false as const, error: "Tiada kebenaran" };
+  }
+
+  const [{ value: photoCount }] = await db
+    .select({ value: count() })
+    .from(oprPhotos)
+    .where(eq(oprPhotos.oprId, data.opr.id));
+
+  if (photoCount >= OPR_MAX_PHOTOS) {
+    return {
+      ok: false as const,
+      error: `Maksimum ${OPR_MAX_PHOTOS} gambar bagi setiap OPR.`,
+    };
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const mimeType = file.type || "image/jpeg";
+  const { path, publicUrl } = await uploadOprPhoto(data.opr.id, {
+    name: file.name,
+    type: mimeType,
+    buffer,
+  });
+
+  const [inserted] = await db
+    .insert(oprPhotos)
+    .values({
+      oprId: data.opr.id,
+      storagePath: path,
+      publicUrl,
+      mimeType,
+    })
+    .returning({ id: oprPhotos.id });
+
+  const displayUrl =
+    oprPhotoDisplayUrl({ storagePath: path, publicUrl }) ?? publicUrl;
+
+  revalidatePath(`/my/${pergerakanId}/opr`);
+  return {
+    ok: true,
+    publicUrl,
+    displayUrl,
+    id: inserted.id,
+    photoCount: photoCount + 1,
+    maxPhotos: OPR_MAX_PHOTOS,
+  };
+}
+
+export async function deleteOprPhotoAction(photoId: number, pergerakanId: number) {
+  const session = await requireUser();
+  if (!Number.isFinite(photoId) || !Number.isFinite(pergerakanId)) {
+    return { ok: false as const, error: "Permintaan tidak sah" };
+  }
+
+  const row = await assertPergerakanAccess(
+    pergerakanId,
+    Number(session.id),
+    session.peranan === "Admin",
+  );
+  if (!row) return { ok: false as const, error: "Tiada kebenaran" };
+
+  const photo = await db.query.oprPhotos.findFirst({
+    where: eq(oprPhotos.id, photoId),
+    with: { opr: true },
+  });
+  if (!photo || photo.opr.pergerakanId !== pergerakanId) {
+    return { ok: false as const, error: "Gambar tidak dijumpai" };
+  }
+
+  await db.delete(oprPhotos).where(eq(oprPhotos.id, photoId));
+
+  await db.insert(auditLog).values({
+    action: "OPR_PHOTO_DELETE",
+    userId: Number(session.id),
+    detail: { pergerakanId, photoId, storagePath: photo.storagePath },
+  });
+
+  revalidatePath(`/my/${pergerakanId}/opr`);
+  revalidatePath(`/my/${pergerakanId}/opr/print`);
+  return { ok: true as const };
+}
+
+export async function listSektorsForOpr() {
+  return db.select().from(sektors);
+}

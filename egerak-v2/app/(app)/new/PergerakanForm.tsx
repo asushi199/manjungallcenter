@@ -1,0 +1,357 @@
+"use client";
+
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  submitPergerakan,
+  updatePergerakan,
+  checkPergerakanRoomAvailability,
+  type RoomAvailabilityCheck,
+  type PergerakanEditData,
+} from "@/lib/actions/pergerakan";
+import { resolveLokasiFields } from "@/lib/pergerakan-presets";
+import { formatTarikhBm } from "@/lib/room-slots";
+import DateTimeField from "@/components/DateTimeField";
+import { DEFAULT_TIME_KEMBALI, DEFAULT_TIME_PERGI } from "@/lib/datetime-picker";
+
+const emptyAvailability: RoomAvailabilityCheck = {
+  checking: false,
+  applies: false,
+  neededSlots: [],
+  conflicts: [],
+  fullDayBlockedDates: [],
+  canBook: true,
+  summary: null,
+};
+
+type Props = {
+  lokasiPresets: string[];
+  mode?: "create" | "edit";
+  editId?: number;
+  initial?: PergerakanEditData;
+};
+
+export default function PergerakanForm({
+  lokasiPresets,
+  mode = "create",
+  editId,
+  initial,
+}: Props) {
+  const isEdit = mode === "edit" && editId != null && initial != null;
+  const lokasiInit = initial
+    ? resolveLokasiFields(initial.lokasi, lokasiPresets)
+    : { lokasiSel: lokasiPresets[0], lokasiLain: "" };
+
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [okMsg, setOkMsg] = useState<string | null>(null);
+  const [showBilikLink, setShowBilikLink] = useState(false);
+  const [availability, setAvailability] = useState<RoomAvailabilityCheck>(emptyAvailability);
+  const [checkingRoom, setCheckingRoom] = useState(false);
+
+  const [jenis, setJenis] = useState<"Pergerakan" | "Bercuti">(initial?.jenis ?? "Pergerakan");
+  const [lokasiSel, setLokasiSel] = useState(lokasiInit.lokasiSel);
+  const [lokasiLain, setLokasiLain] = useState(lokasiInit.lokasiLain);
+  const [urusan, setUrusan] = useState(initial?.urusan ?? "");
+  const [tarikhPergi, setTarikhPergi] = useState(initial?.tarikhPergi ?? "");
+  const [tarikhKembali, setTarikhKembali] = useState(initial?.tarikhKembali ?? "");
+  const [sepenuhHari, setSepenuhHari] = useState(initial?.sepenuhHari ?? false);
+
+  const isLainLain = lokasiSel === lokasiPresets[lokasiPresets.length - 1];
+  const lokasi = isLainLain ? lokasiLain : lokasiSel;
+  const needsRoom = /budiman|bestari/i.test(lokasi) && jenis === "Pergerakan";
+
+  useEffect(() => {
+    if (!needsRoom || !tarikhPergi || !tarikhKembali) {
+      setAvailability(emptyAvailability);
+      setCheckingRoom(false);
+      return;
+    }
+
+    setCheckingRoom(true);
+    const timer = setTimeout(() => {
+      checkPergerakanRoomAvailability({
+        jenis,
+        lokasi,
+        tarikhPergi,
+        tarikhKembali,
+        sepenuhHari,
+        excludePergerakanId: isEdit ? editId : undefined,
+      })
+        .then(setAvailability)
+        .catch(() =>
+          setAvailability({
+            ...emptyAvailability,
+            applies: true,
+            canBook: false,
+            summary: "Gagal menyemak slot bilik. Cuba lagi.",
+          }),
+        )
+        .finally(() => setCheckingRoom(false));
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [needsRoom, jenis, lokasi, tarikhPergi, tarikhKembali, sepenuhHari, isEdit, editId]);
+
+  const hasRoomConflict = needsRoom && availability.applies && !availability.canBook;
+  const slotCount = availability.neededSlots.length;
+
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setOkMsg(null);
+    setShowBilikLink(false);
+
+    if (hasRoomConflict) {
+      setError(availability.summary ?? "Slot bilik/dewan bertembung. Sila ubah tarikh atau masa.");
+      return;
+    }
+
+    startTransition(async () => {
+      const payload = {
+        jenis,
+        urusan,
+        lokasi,
+        tarikhPergi,
+        tarikhKembali,
+        sepenuhHari,
+      };
+      const res = isEdit
+        ? await updatePergerakan(editId, payload)
+        : await submitPergerakan(payload);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setShowBilikLink(Boolean(needsRoom && res.roomSlotsBooked));
+      if (isEdit) {
+        setOkMsg(
+          needsRoom && res.roomSlotsBooked
+            ? `Rekod dikemas kini. ${res.roomSlotsBooked} slot bilik/dewan diselaraskan.`
+            : "Rekod dikemas kini.",
+        );
+        setTimeout(() => {
+          router.push("/my");
+          router.refresh();
+        }, 800);
+        return;
+      }
+      setOkMsg(
+        jenis === "Bercuti"
+          ? "Cuti direkodkan."
+          : needsRoom && res.roomSlotsBooked
+            ? `Pergerakan direkodkan. ${res.roomSlotsBooked} slot bilik/dewan telah ditempah automatik.`
+            : needsRoom
+              ? "Pergerakan direkodkan."
+              : "Pergerakan direkodkan dan akan muncul di kalendar.",
+      );
+      setUrusan("");
+      setTarikhPergi("");
+      setTarikhKembali("");
+      setSepenuhHari(false);
+      setTimeout(() => {
+        router.push("/dashboard");
+        router.refresh();
+      }, 800);
+    });
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div>
+        <div className="label">Jenis</div>
+        <div className="flex gap-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              name="jenis"
+              value="Pergerakan"
+              checked={jenis === "Pergerakan"}
+              onChange={() => setJenis("Pergerakan")}
+            />
+            Pergerakan Biasa
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              name="jenis"
+              value="Bercuti"
+              checked={jenis === "Bercuti"}
+              onChange={() => setJenis("Bercuti")}
+            />
+            Bercuti
+          </label>
+        </div>
+      </div>
+
+      <div>
+        <label className="label" htmlFor="urusan">
+          Urusan / Aktiviti
+        </label>
+        <textarea
+          id="urusan"
+          className="input min-h-[96px]"
+          required
+          value={urusan}
+          onChange={(e) => setUrusan(e.target.value)}
+          placeholder="Contoh: Mesyuarat Pengurusan Kewangan PPD Manjung"
+        />
+      </div>
+
+      <div>
+        <label className="label" htmlFor="lokasi-preset">
+          Lokasi
+        </label>
+        <select
+          id="lokasi-preset"
+          className="input"
+          value={lokasiSel}
+          onChange={(e) => setLokasiSel(e.target.value)}
+        >
+          {lokasiPresets.map((l) => (
+            <option key={l} value={l}>
+              {l}
+            </option>
+          ))}
+        </select>
+        {isLainLain && (
+          <input
+            className="input mt-2"
+            placeholder="Taip lokasi sendiri"
+            value={lokasiLain}
+            onChange={(e) => setLokasiLain(e.target.value)}
+          />
+        )}
+        {needsRoom && (
+          <p className="text-xs text-slate-500 mt-2">
+            {sepenuhHari
+              ? "Aktiviti sepanjang hari: setiap tarikh dalam julat akan ambil slot Pagi (AM) dan Petang (PM)."
+              : "Slot Pagi / Petang ditempah automatik mengikut masa pergi & kembali (8 pagi – 5 petang)."}
+          </p>
+        )}
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3">
+        <DateTimeField
+          id="pergi"
+          label="Tarikh & Masa Pergi"
+          value={tarikhPergi}
+          onChange={setTarikhPergi}
+          defaultTime={DEFAULT_TIME_PERGI}
+          required
+        />
+        <DateTimeField
+          id="kembali"
+          label="Tarikh & Masa Kembali"
+          value={tarikhKembali}
+          onChange={setTarikhKembali}
+          defaultTime={DEFAULT_TIME_KEMBALI}
+          required
+        />
+      </div>
+
+      {needsRoom && (
+        <label className="flex items-start gap-2 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={sepenuhHari}
+            onChange={(e) => setSepenuhHari(e.target.checked)}
+          />
+          <span>
+            <strong>Aktiviti sepanjang hari</strong> — tempah Pagi & Petang untuk setiap tarikh
+            antara pergi dan kembali (seluruh hari tidak tersedia di kalendar tempahan).
+          </span>
+        </label>
+      )}
+
+      {needsRoom && tarikhPergi && tarikhKembali && (
+        <div
+          className={`rounded-md border text-sm px-3 py-2 space-y-1 ${
+            checkingRoom
+              ? "bg-slate-50 border-slate-200 text-slate-600"
+              : hasRoomConflict
+                ? "bg-red-50 border-red-200 text-red-800"
+                : availability.applies && slotCount > 0
+                  ? "bg-amber-50 border-amber-200 text-amber-900"
+                  : "bg-slate-50 border-slate-200 text-slate-600"
+          }`}
+        >
+          {checkingRoom ? (
+            <p>Menyemak ketersediaan {availability.roomName ?? "bilik/dewan"}…</p>
+          ) : hasRoomConflict ? (
+            <>
+              <p className="font-semibold">Slot bertembung — tidak boleh dihantar</p>
+              <p>{availability.summary}</p>
+              {availability.fullDayBlockedDates.length > 0 && (
+                <ul className="list-disc list-inside text-xs mt-1">
+                  {availability.fullDayBlockedDates.map((d) => (
+                    <li key={d}>
+                      {formatTarikhBm(d)}: sepanjang hari penuh (Pagi & Petang sudah ditempah)
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Link href="/bilik" className="inline-block text-xs font-medium underline mt-1">
+                Lihat kalendar Tempahan Bilik →
+              </Link>
+            </>
+          ) : availability.applies && slotCount > 0 ? (
+            <p>
+              <strong>{availability.roomName}</strong>: {slotCount} slot akan ditempah automatik
+              {availability.fullDayBlockedDates.length === 0 &&
+                sepenuhHari &&
+                " (termasuk sepanjang hari bagi setiap tarikh)"}
+              . Tiada konflik.
+            </p>
+          ) : availability.summary ? (
+            <p>{availability.summary}</p>
+          ) : null}
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">
+          {error}
+        </div>
+      )}
+      {okMsg && (
+        <div className="rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm px-3 py-2 space-y-2">
+          <p>{okMsg}</p>
+          {showBilikLink && (
+            <Link href="/bilik" className="inline-block font-medium underline">
+              Lihat di Tempahan Bilik →
+            </Link>
+          )}
+        </div>
+      )}
+
+      <div className="flex justify-end gap-2">
+        {isEdit ? (
+          <Link href="/my" className="btn-secondary">
+            Batal
+          </Link>
+        ) : (
+          <button type="reset" className="btn-secondary" disabled={pending}>
+            Reset
+          </button>
+        )}
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={pending || checkingRoom || hasRoomConflict}
+        >
+          {pending
+            ? "Memproses..."
+            : hasRoomConflict
+              ? "Slot penuh"
+              : isEdit
+                ? "Simpan"
+                : "Hantar"}
+        </button>
+      </div>
+    </form>
+  );
+}
