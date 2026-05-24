@@ -192,17 +192,33 @@ export default function BilikClient({
         {msg && <p className="text-sm mt-2 text-brand-700">{msg}</p>}
       </div>
 
-      <div className="flex items-center justify-between">
-        <button type="button" className="btn-secondary" onClick={() => shiftWeek(-1)}>
-          ← Minggu lepas
-        </button>
-        <span className="text-sm text-slate-600">
-          {format(parseISO(weekStart), "dd MMM yyyy")} —{" "}
-          {format(addDays(parseISO(weekStart), 13), "dd MMM yyyy")}
-        </span>
-        <button type="button" className="btn-secondary" onClick={() => shiftWeek(1)}>
-          Minggu depan →
-        </button>
+      <div className="card p-3 space-y-3 sm:p-4 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:space-y-0">
+        <p className="text-sm font-medium text-slate-700 text-center sm:order-2 sm:flex-1 sm:px-2 leading-snug">
+          <span className="sm:hidden">
+            {format(parseISO(weekStart), "d MMM")} –{" "}
+            {format(addDays(parseISO(weekStart), 13), "d MMM yyyy")}
+          </span>
+          <span className="hidden sm:inline">
+            {format(parseISO(weekStart), "dd MMM yyyy")} —{" "}
+            {format(addDays(parseISO(weekStart), 13), "dd MMM yyyy")}
+          </span>
+        </p>
+        <div className="grid grid-cols-2 gap-2 sm:contents">
+          <button
+            type="button"
+            className="btn-secondary w-full justify-center text-sm py-2.5 whitespace-nowrap sm:order-1 sm:w-auto sm:min-w-[8.5rem]"
+            onClick={() => shiftWeek(-1)}
+          >
+            ← Minggu lepas
+          </button>
+          <button
+            type="button"
+            className="btn-secondary w-full justify-center text-sm py-2.5 whitespace-nowrap sm:order-3 sm:w-auto sm:min-w-[8.5rem]"
+            onClick={() => shiftWeek(1)}
+          >
+            Minggu depan →
+          </button>
+        </div>
       </div>
 
       {rooms.length > 1 && (
