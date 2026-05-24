@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, format, parseISO } from "date-fns";
 import { bookRoom, cancelBooking, cancelBookingsBulk } from "@/lib/actions/rooms";
@@ -43,6 +43,19 @@ function BookingCell({ booking }: { booking: Booking }) {
 
 const SLOTS: Array<"AM" | "PM"> = ["AM", "PM"];
 
+/** md breakpoint — desktop shows all rooms; mobile one room + tabs */
+function useIsMdUp() {
+  const [mdUp, setMdUp] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const apply = () => setMdUp(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+  return mdUp;
+}
+
 export default function BilikClient({
   rooms,
   bookings,
@@ -57,6 +70,7 @@ export default function BilikClient({
   isAdmin?: boolean;
 }) {
   const router = useRouter();
+  const mdUp = useIsMdUp();
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [roomFocus, setRoomFocus] = useState(rooms[0]?.id ?? 0);
@@ -108,8 +122,9 @@ export default function BilikClient({
     replaceWithSearchParams(router, "/bilik", new URLSearchParams({ week: next }));
   }
 
+  /** Desktop: jadual semua bilik sebelah-menyebelah; telefon: satu bilik + tab */
   const tableRooms =
-    rooms.length > 1 ? rooms.filter((r) => r.id === roomFocus) : rooms;
+    rooms.length > 1 && !mdUp ? rooms.filter((r) => r.id === roomFocus) : rooms;
 
   function toggleBooking(id: number) {
     const next = new Set(selectedBookings);
@@ -140,7 +155,11 @@ export default function BilikClient({
             <select
               className="input"
               value={form.roomId}
-              onChange={(e) => setForm({ ...form, roomId: Number(e.target.value) })}
+              onChange={(e) => {
+                const roomId = Number(e.target.value);
+                setForm({ ...form, roomId });
+                setRoomFocus(roomId);
+              }}
             >
               {rooms.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -221,9 +240,9 @@ export default function BilikClient({
         </div>
       </div>
 
-      {rooms.length > 1 && (
-        <div className="md:hidden flex flex-wrap gap-2">
-          <span className="text-xs text-slate-500 w-full">Pilih bilik / dewan:</span>
+      {rooms.length > 1 && !mdUp && (
+        <div className="flex flex-wrap gap-2">
+          <span className="text-xs text-slate-500 w-full">Pilih bilik / dewan (jadual):</span>
           {rooms.map((r) => (
             <button
               key={r.id}
