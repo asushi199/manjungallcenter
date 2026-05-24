@@ -17,7 +17,6 @@ export default function FilterBar({
     month: string;
     sektorIds: number[];
     includeCuti: boolean;
-    showSchoolHolidays: boolean;
   };
 }) {
   const router = useRouter();
@@ -30,7 +29,6 @@ export default function FilterBar({
       month: string;
       sektorIds: number[];
       includeCuti: boolean;
-      showSchoolHolidays: boolean;
     }>,
   ) {
     const next = new URLSearchParams(params?.toString());
@@ -38,15 +36,12 @@ export default function FilterBar({
     const month = patch.month ?? current.month;
     const sektorIds = patch.sektorIds ?? current.sektorIds;
     const includeCuti = patch.includeCuti ?? current.includeCuti;
-    const showSchoolHolidays = patch.showSchoolHolidays ?? current.showSchoolHolidays;
 
     next.set("date", date);
     next.set("month", month);
     if (sektorIds.length) next.set("sektor", sektorIds.join(","));
     else next.delete("sektor");
     next.set("cuti", includeCuti ? "1" : "0");
-    if (showSchoolHolidays) next.delete("sekolah");
-    else next.set("sekolah", "0");
 
     startTransition(() => {
       replaceWithSearchParams(router, "/dashboard", next);
@@ -132,16 +127,6 @@ export default function FilterBar({
           disabled={isPending}
         />
         Tunjukkan rekod cuti
-      </label>
-
-      <label className="flex items-center gap-2 text-sm text-slate-700">
-        <input
-          type="checkbox"
-          checked={current.showSchoolHolidays}
-          onChange={(e) => update({ showSchoolHolidays: e.target.checked })}
-          disabled={isPending}
-        />
-        Tunjuk cuti sekolah (KPM)
       </label>
     </div>
   );

@@ -8,8 +8,6 @@ import {
   type DashboardPergerakanRow,
 } from "@/lib/actions/pergerakan";
 import { TZ } from "@/lib/dates";
-import { getCalendarHolidays, type CalendarHolidays } from "@/lib/holidays";
-import { serializeCalendarHolidays } from "@/lib/holidays/serialize";
 import { pergerakanOverlapsRange } from "@/lib/pergerakan-filter";
 
 export type DashboardMainProps = {
@@ -17,14 +15,6 @@ export type DashboardMainProps = {
   month: string;
   sektorIds: number[];
   includeCuti: boolean;
-  showSchoolHolidays: boolean;
-};
-
-const EMPTY_HOLIDAYS: CalendarHolidays = {
-  publicLabels: new Map(),
-  publicDetails: new Map(),
-  schoolLabels: new Map(),
-  schoolDetails: new Map(),
 };
 
 /** Sekali percubaan semula — cuba pulih dari cold-start Supabase / Vercel function. */
@@ -48,7 +38,6 @@ export default async function DashboardMain({
   month,
   sektorIds,
   includeCuti,
-  showSchoolHolidays,
 }: DashboardMainProps) {
   const [y, m] = month.split("-").map(Number);
   const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
@@ -65,27 +54,17 @@ export default async function DashboardMain({
     includeCuti,
   };
 
-  // Allsettled: kalau satu gagal, halaman masih boleh render.
-  const [holidaysRes, pergerakanRes] = await Promise.allSettled([
-    getCalendarHolidays(month, { showSchoolHolidays }),
-    fetchPergerakanWithRetry({
+  let monthItems: DashboardPergerakanRow[] = [];
+  let pergerakanFailed = false;
+  try {
+    monthItems = await fetchPergerakanWithRetry({
       start: monthStart,
       end: monthEnd,
       ...filter,
-    }),
-  ]);
-
-  const holidays =
-    holidaysRes.status === "fulfilled" ? holidaysRes.value : EMPTY_HOLIDAYS;
-  if (holidaysRes.status === "rejected") {
-    console.error("[dashboard] holidays fetch failed:", holidaysRes.reason);
-  }
-
-  const monthItems: DashboardPergerakanRow[] =
-    pergerakanRes.status === "fulfilled" ? pergerakanRes.value : [];
-  const pergerakanFailed = pergerakanRes.status === "rejected";
-  if (pergerakanFailed) {
-    console.error("[dashboard] pergerakan fetch failed:", pergerakanRes.reason);
+    });
+  } catch (e) {
+    pergerakanFailed = true;
+    console.error("[dashboard] pergerakan fetch failed:", e);
   }
 
   const dayItems = monthItems.filter((it) =>
@@ -119,7 +98,6 @@ export default async function DashboardMain({
   }));
 
   const dayLabel = formatInTimeZone(dayStart, TZ, "EEEE, dd MMMM yyyy");
-  const holidayProps = serializeCalendarHolidays(holidays);
   const retryHref = `/dashboard?_r=${Date.now()}`;
 
   return (
@@ -152,24 +130,8 @@ export default async function DashboardMain({
           month={month}
           items={calItems}
           highlightDate={date}
-          publicHolidays={holidayProps.publicLabels}
-          publicHolidayDetails={holidayProps.publicDetails}
-          schoolHolidays={showSchoolHolidays ? holidayProps.schoolLabels : undefined}
-          schoolHolidayDetails={showSchoolHolidays ? holidayProps.schoolDetails : undefined}
         />
         <SektorLegend />
-        <div className="text-xs text-slate-500 space-y-1">
-          <p>
-            <span className="inline-block w-2 h-2 rounded-sm bg-rose-100 border border-rose-300 align-middle mr-1" />
-            Merah jambu = cuti umum Perak (auto dikemas kini mingguan)
-          </p>
-          {showSchoolHolidays && (
-            <p>
-              <span className="inline-block w-2 h-2 rounded-sm bg-yellow-100 border border-yellow-400 align-middle mr-1" />
-              Kuning = cuti sekolah KPM (data tahunan — semak KPM)
-            </p>
-          )}
-        </div>
       </div>
 
       <div className="space-y-3" id="senarai-pergerakan">

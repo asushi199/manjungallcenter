@@ -14,7 +14,6 @@ import {
 } from "date-fns";
 import { cn } from "@/lib/cn";
 import { buildDayBuckets } from "@/lib/calendar-buckets";
-import type { HolidayDetail } from "@/lib/holidays/types";
 import { sektorStyle } from "@/lib/sektor-colors";
 import { replaceWithSearchParams } from "@/lib/navigate";
 
@@ -44,21 +43,11 @@ export default function MonthCalendar({
   month,
   items,
   highlightDate,
-  publicHolidays,
-  publicHolidayDetails,
-  schoolHolidays,
-  schoolHolidayDetails,
 }: {
   month: string;
   items: CalendarItem[];
   /** Tarikh dipilih di penapis (garis biru pada sel) */
   highlightDate?: string;
-  /** Cuti umum — Record (serializable dari RSC) */
-  publicHolidays?: Record<string, string>;
-  publicHolidayDetails?: Record<string, HolidayDetail>;
-  /** Cuti sekolah KPM */
-  schoolHolidays?: Record<string, string>;
-  schoolHolidayDetails?: Record<string, HolidayDetail>;
 }) {
   const [y, m] = month.split("-").map(Number);
   const firstOfMonth = new Date(y, m - 1, 1);
@@ -183,8 +172,6 @@ export default function MonthCalendar({
           const dayItems = buckets.get(key) ?? [];
           const shown = dayItems.slice(0, MAX_IN_CELL);
           const more = dayItems.length - shown.length;
-          const publicHolidayName = publicHolidays?.[key];
-          const schoolHolidayName = schoolHolidays?.[key];
           return (
             <div
               key={key}
@@ -217,26 +204,6 @@ export default function MonthCalendar({
                   <span className="text-[10px] font-medium text-slate-600">{dayItems.length}</span>
                 )}
               </div>
-              {publicHolidayName && (
-                <button
-                  type="button"
-                  className="text-left w-full text-[9px] leading-tight font-semibold text-rose-800 bg-rose-50 hover:bg-rose-100 rounded px-0.5 py-px truncate mt-0.5"
-                  title={`${publicHolidayName} — klik untuk butiran`}
-                  onClick={(e) => openDayDrawer(key, e)}
-                >
-                  {publicHolidayName}
-                </button>
-              )}
-              {schoolHolidayName && (
-                <button
-                  type="button"
-                  className="text-left w-full text-[9px] leading-tight font-semibold text-yellow-900 bg-yellow-100 hover:bg-yellow-200 border border-yellow-300/80 rounded px-0.5 py-px truncate mt-0.5"
-                  title={`${schoolHolidayName} — klik untuk butiran`}
-                  onClick={(e) => openDayDrawer(key, e)}
-                >
-                  {schoolHolidayName}
-                </button>
-              )}
               <div className="mt-0.5 space-y-0.5">
                 {shown.map((it) => {
                   const st = sektorStyle(it.sektorCode, it.jenis);
@@ -276,18 +243,6 @@ export default function MonthCalendar({
         <DayDrawer
           day={openDay}
           items={buckets.get(openDay) ?? []}
-          publicHoliday={
-            publicHolidayDetails?.[openDay] ??
-            (publicHolidays?.[openDay]
-              ? { kind: "umum", name: publicHolidays[openDay] }
-              : undefined)
-          }
-          schoolHoliday={
-            schoolHolidayDetails?.[openDay] ??
-            (schoolHolidays?.[openDay]
-              ? { kind: "sekolah", name: schoolHolidays[openDay] }
-              : undefined)
-          }
           onClose={() => setOpenDay(null)}
         />
       )}
@@ -298,24 +253,13 @@ export default function MonthCalendar({
 function DayDrawer({
   day,
   items,
-  publicHoliday,
-  schoolHoliday,
   onClose,
 }: {
   day: string;
   items: CalendarItem[];
-  publicHoliday?: HolidayDetail;
-  schoolHoliday?: HolidayDetail;
   onClose: () => void;
 }) {
   const hasPergerakan = items.length > 0;
-  const hasAnyHoliday = !!publicHoliday || !!schoolHoliday;
-
-  let subtitle = "Pergerakan";
-  if (hasAnyHoliday && hasPergerakan) subtitle = "Cuti & pergerakan";
-  else if (publicHoliday && schoolHoliday) subtitle = "Cuti umum & sekolah";
-  else if (publicHoliday) subtitle = "Cuti umum";
-  else if (schoolHoliday) subtitle = "Cuti sekolah";
 
   return (
     <div className="fixed inset-0 z-40">
@@ -323,7 +267,7 @@ function DayDrawer({
       <aside className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-xl overflow-y-auto">
         <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between z-10">
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">{subtitle}</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">Pergerakan</div>
             <div className="font-semibold">{format(new Date(day), "EEEE, dd MMM yyyy")}</div>
           </div>
           <button type="button" className="btn-secondary" onClick={onClose}>
@@ -331,128 +275,49 @@ function DayDrawer({
           </button>
         </div>
 
-        {publicHoliday && (
-          <HolidayDrawerCard
-            detail={publicHoliday}
-            tone="umum"
-            title="Cuti umum (Perak)"
-            badge="Umum"
-          />
-        )}
-
-        {schoolHoliday && (
-          <HolidayDrawerCard
-            detail={schoolHoliday}
-            tone="sekolah"
-            title="Cuti sekolah (KPM)"
-            badge="Sekolah"
-          />
-        )}
-
         {hasPergerakan ? (
           <>
             <p className="px-4 pt-4 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
               Pergerakan berdaftar ({items.length})
             </p>
             <ul className="divide-y border-t">
-            {items.map((it) => {
-              const st = sektorStyle(it.sektorCode, it.jenis);
-              return (
-                <li key={it.id} className="px-4 py-3 border-l-4" style={{ borderLeftColor: st.border }}>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: st.chip }}
-                    />
-                    <span className="font-medium">{it.nama}</span>
-                    {it.jenis === "Bercuti" && (
-                      <span className="badge bg-emerald-100 text-emerald-700">Bercuti</span>
-                    )}
-                  </div>
-                  <div className="text-xs text-slate-500">{it.jawatan}</div>
-                  <div className="text-xs text-slate-500">
-                    {it.sektorName ?? "(Sektor tidak ditetapkan)"}
-                  </div>
-                  <p className="mt-1 text-sm">{it.urusan}</p>
-                  <div className="mt-1 text-xs text-slate-600">
-                    <div>Lokasi: {it.lokasi || "-"}</div>
-                    <div>
-                      {format(new Date(it.tarikhPergi), "dd-MM-yyyy HH:mm")} sehingga{" "}
-                      {format(new Date(it.tarikhKembali), "dd-MM-yyyy HH:mm")}
+              {items.map((it) => {
+                const st = sektorStyle(it.sektorCode, it.jenis);
+                return (
+                  <li key={it.id} className="px-4 py-3 border-l-4" style={{ borderLeftColor: st.border }}>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: st.chip }}
+                      />
+                      <span className="font-medium">{it.nama}</span>
+                      {it.jenis === "Bercuti" && (
+                        <span className="badge bg-emerald-100 text-emerald-700">Bercuti</span>
+                      )}
                     </div>
-                  </div>
-                </li>
-              );
-            })}
+                    <div className="text-xs text-slate-500">{it.jawatan}</div>
+                    <div className="text-xs text-slate-500">
+                      {it.sektorName ?? "(Sektor tidak ditetapkan)"}
+                    </div>
+                    <p className="mt-1 text-sm">{it.urusan}</p>
+                    <div className="mt-1 text-xs text-slate-600">
+                      <div>Lokasi: {it.lokasi || "-"}</div>
+                      <div>
+                        {format(new Date(it.tarikhPergi), "dd-MM-yyyy HH:mm")} sehingga{" "}
+                        {format(new Date(it.tarikhKembali), "dd-MM-yyyy HH:mm")}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </>
         ) : (
           <p className="p-6 text-sm text-slate-500">
-            {hasAnyHoliday
-              ? "Tiada pergerakan didaftarkan pada tarikh ini."
-              : "Tiada rekod pergerakan pada tarikh ini."}
+            Tiada rekod pergerakan pada tarikh ini.
           </p>
         )}
       </aside>
-    </div>
-  );
-}
-
-function HolidayDrawerCard({
-  detail,
-  tone,
-  title,
-  badge,
-}: {
-  detail: HolidayDetail;
-  tone: "umum" | "sekolah";
-  title: string;
-  badge: string;
-}) {
-  const isUmum = tone === "umum";
-  return (
-    <div
-      className={cn(
-        "mx-4 mt-4 rounded-lg border p-4 space-y-2",
-        isUmum ? "border-rose-200 bg-rose-50" : "border-yellow-400 bg-yellow-50",
-      )}
-    >
-      <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 items-start">
-        <span
-          className={cn(
-            "row-span-2 self-start rounded-md px-2.5 py-1.5 text-[11px] font-bold leading-tight text-center min-w-[3.25rem] mt-0.5",
-            isUmum ? "bg-rose-200 text-rose-900" : "bg-yellow-300 text-yellow-950",
-          )}
-        >
-          {badge}
-        </span>
-        <p
-          className={cn(
-            "text-xs font-semibold uppercase tracking-wide leading-snug",
-            isUmum ? "text-rose-800" : "text-yellow-800",
-          )}
-        >
-          {title}
-        </p>
-        <p
-          className={cn(
-            "text-base font-semibold leading-snug",
-            isUmum ? "text-rose-950" : "text-yellow-950",
-          )}
-        >
-          {detail.name}
-        </p>
-        {detail.note && (
-          <p
-            className={cn(
-              "col-span-2 text-sm leading-relaxed border-t pt-2",
-              isUmum ? "text-rose-900/90 border-rose-200" : "text-yellow-900/90 border-yellow-200",
-            )}
-          >
-            {detail.note}
-          </p>
-        )}
-      </div>
     </div>
   );
 }
