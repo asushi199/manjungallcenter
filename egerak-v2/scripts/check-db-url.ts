@@ -1,7 +1,11 @@
 import "./load-env";
 
-const raw = process.env.DATABASE_URL?.trim();
-if (!raw) {
+import { normalizeDatabaseUrl } from "../lib/database-url";
+
+let raw: string;
+try {
+  raw = normalizeDatabaseUrl(process.env.DATABASE_URL);
+} catch {
   console.error("DATABASE_URL kosong. Semak fail .env.local dalam folder egerak-v2.");
   process.exit(1);
 }

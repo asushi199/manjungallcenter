@@ -140,6 +140,7 @@ Simpan ke Drive PPD (folder USTP).
 |--------|--------------|
 | `DATABASE_URL is not set` | Pastikan `.env.local` (dev) atau Vercel env (prod) ada nilai ini |
 | `max clients reached` / 500 pada `/dashboard` | Tukar `DATABASE_URL` ke **Transaction pooler** port **6543** + `?pgbouncer=true`; redeploy |
+| Build: `Invalid URL` / `ERR_INVALID_URL` | Jangan letak tanda `"` pada nilai `DATABASE_URL` di Vercel — tampal terus `postgresql://...` sahaja |
 | `ID atau kata laluan tidak betul` (sebenarnya betul) | Mungkin `aktif=false` dalam DB; semak di Admin → Pengguna |
 | Hari ini menunjukkan rekod tetapi tidak di kalendar | Tapisan sektor / toggle cuti — semak FilterBar |
 | Lupa kata laluan Admin pertama | Re-seed: tukar `SEED_ADMIN_USERNAME` ke username baru atau hapus baris user di DB → `npm run db:seed` |
