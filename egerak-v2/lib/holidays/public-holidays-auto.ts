@@ -1,9 +1,11 @@
 import Holidays from "date-holidays";
-import { unstable_cache } from "next/cache";
 import type { HolidayDetail } from "./types";
 
 /** Perak (kod negeri date-holidays: 08) */
 const PERAK_STATE = "08";
+
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const yearCache = new Map<number, { at: number; data: Map<string, HolidayDetail> }>();
 
 function loadPublicHolidaysForYearUncached(year: number): Map<string, HolidayDetail> {
   const hd = new Holidays("MY", PERAK_STATE);
@@ -23,12 +25,18 @@ function loadPublicHolidaysForYearUncached(year: number): Map<string, HolidayDet
   return map;
 }
 
-async function loadPublicHolidaysForYear(year: number): Promise<Map<string, HolidayDetail>> {
-  return unstable_cache(
-    async () => loadPublicHolidaysForYearUncached(year),
-    ["public-holidays-perak", String(year)],
-    { revalidate: 60 * 60 * 24 * 7 },
-  )();
+export async function loadPublicHolidaysForYear(year: number): Promise<Map<string, HolidayDetail>> {
+  const hit = yearCache.get(year);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.data;
+
+  try {
+    const data = loadPublicHolidaysForYearUncached(year);
+    yearCache.set(year, { at: Date.now(), data });
+    return data;
+  } catch (e) {
+    console.error("[holidays] date-holidays gagal untuk tahun", year, e);
+    return new Map();
+  }
 }
 
 export async function getPublicHolidaysForYears(

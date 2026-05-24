@@ -5,6 +5,7 @@ import SektorLegend from "@/components/SektorLegend";
 import { listPergerakanForDashboard } from "@/lib/actions/pergerakan";
 import { TZ } from "@/lib/dates";
 import { getCalendarHolidays } from "@/lib/holidays";
+import { serializeCalendarHolidays } from "@/lib/holidays/serialize";
 import { pergerakanOverlapsRange } from "@/lib/pergerakan-filter";
 
 export type DashboardMainProps = {
@@ -77,6 +78,7 @@ export default async function DashboardMain({
   }));
 
   const dayLabel = formatInTimeZone(dayStart, TZ, "EEEE, dd MMMM yyyy");
+  const holidayProps = serializeCalendarHolidays(holidays);
 
   return (
     <section className="space-y-6 min-w-0">
@@ -92,10 +94,10 @@ export default async function DashboardMain({
           month={month}
           items={calItems}
           highlightDate={date}
-          publicHolidays={holidays.publicLabels}
-          publicHolidayDetails={holidays.publicDetails}
-          schoolHolidays={showSchoolHolidays ? holidays.schoolLabels : undefined}
-          schoolHolidayDetails={showSchoolHolidays ? holidays.schoolDetails : undefined}
+          publicHolidays={holidayProps.publicLabels}
+          publicHolidayDetails={holidayProps.publicDetails}
+          schoolHolidays={showSchoolHolidays ? holidayProps.schoolLabels : undefined}
+          schoolHolidayDetails={showSchoolHolidays ? holidayProps.schoolDetails : undefined}
         />
         <SektorLegend />
         <div className="text-xs text-slate-500 space-y-1">

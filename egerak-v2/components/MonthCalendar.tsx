@@ -53,12 +53,12 @@ export default function MonthCalendar({
   items: CalendarItem[];
   /** Tarikh dipilih di penapis (garis biru pada sel) */
   highlightDate?: string;
-  /** Cuti umum (Perak) — kunci yyyy-MM-dd, nama ringkas untuk sel */
-  publicHolidays?: Map<string, string>;
-  publicHolidayDetails?: Map<string, HolidayDetail>;
+  /** Cuti umum — Record (serializable dari RSC) */
+  publicHolidays?: Record<string, string>;
+  publicHolidayDetails?: Record<string, HolidayDetail>;
   /** Cuti sekolah KPM */
-  schoolHolidays?: Map<string, string>;
-  schoolHolidayDetails?: Map<string, HolidayDetail>;
+  schoolHolidays?: Record<string, string>;
+  schoolHolidayDetails?: Record<string, HolidayDetail>;
 }) {
   const [y, m] = month.split("-").map(Number);
   const firstOfMonth = new Date(y, m - 1, 1);
@@ -183,8 +183,8 @@ export default function MonthCalendar({
           const dayItems = buckets.get(key) ?? [];
           const shown = dayItems.slice(0, MAX_IN_CELL);
           const more = dayItems.length - shown.length;
-          const publicHolidayName = publicHolidays?.get(key);
-          const schoolHolidayName = schoolHolidays?.get(key);
+          const publicHolidayName = publicHolidays?.[key];
+          const schoolHolidayName = schoolHolidays?.[key];
           return (
             <div
               key={key}
@@ -277,15 +277,15 @@ export default function MonthCalendar({
           day={openDay}
           items={buckets.get(openDay) ?? []}
           publicHoliday={
-            publicHolidayDetails?.get(openDay) ??
-            (publicHolidays?.get(openDay)
-              ? { kind: "umum", name: publicHolidays.get(openDay)! }
+            publicHolidayDetails?.[openDay] ??
+            (publicHolidays?.[openDay]
+              ? { kind: "umum", name: publicHolidays[openDay] }
               : undefined)
           }
           schoolHoliday={
-            schoolHolidayDetails?.get(openDay) ??
-            (schoolHolidays?.get(openDay)
-              ? { kind: "sekolah", name: schoolHolidays.get(openDay)! }
+            schoolHolidayDetails?.[openDay] ??
+            (schoolHolidays?.[openDay]
+              ? { kind: "sekolah", name: schoolHolidays[openDay] }
               : undefined)
           }
           onClose={() => setOpenDay(null)}
