@@ -6,6 +6,7 @@ import { z } from "zod";
 import { authConfig } from "./auth.config";
 import { db } from "./db";
 import { users } from "./schema";
+import type { UserPeranan } from "./roles";
 
 declare module "next-auth" {
   interface Session {
@@ -14,7 +15,7 @@ declare module "next-auth" {
       username: string;
       nama: string;
       jawatan: string;
-      peranan: "Admin" | "Pengguna";
+      peranan: UserPeranan;
       sektorId: number | null;
       mustChangePassword: boolean;
     } & DefaultSession["user"];

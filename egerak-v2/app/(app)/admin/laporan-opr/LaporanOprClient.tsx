@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { SortableTh, type SortDir } from "@/components/SortableTh";
 import { formatInTimeZone } from "date-fns-tz";
 import SektorFilterDropdown from "@/components/SektorFilterDropdown";
@@ -28,6 +28,8 @@ export type LaporanOprRowSerialized = Omit<
 type Props = {
   rows: LaporanOprRowSerialized[];
   sektors: SektorOption[];
+  /** Ketua Unit — tapisan sektor dikunci pada profil. */
+  sektorFilterLocked?: boolean;
   current: {
     range: LaporanOprRange;
     month: string;
@@ -51,7 +53,17 @@ type Group = {
   items: LaporanOprRowSerialized[];
 };
 
-type SortKey = "nama" | "urusan" | "lokasi" | "tarikh" | "jawatan";
+type SortKey = "nama" | "jawatan" | "urusan" | "lokasi" | "tarikh" | "updatedAt" | "sektor";
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "tarikh", label: "Tarikh aktiviti" },
+  { value: "updatedAt", label: "Tarikh siap OPR" },
+  { value: "nama", label: "Nama pegawai" },
+  { value: "jawatan", label: "Jawatan" },
+  { value: "urusan", label: "Urusan / program" },
+  { value: "lokasi", label: "Lokasi" },
+  { value: "sektor", label: "Sektor" },
+];
 
 function compareRows(a: LaporanOprRowSerialized, b: LaporanOprRowSerialized, key: SortKey): number {
   switch (key) {
@@ -65,17 +77,27 @@ function compareRows(a: LaporanOprRowSerialized, b: LaporanOprRowSerialized, key
       return (a.lokasi || "").localeCompare(b.lokasi || "", "ms");
     case "tarikh":
       return new Date(a.tarikhPergi).getTime() - new Date(b.tarikhPergi).getTime();
+    case "updatedAt":
+      return new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+    case "sektor":
+      return (a.sektorName || "").localeCompare(b.sektorName || "", "ms") || compareRows(a, b, "nama");
     default:
       return 0;
   }
 }
 
-export default function LaporanOprClient({ rows, sektors, current }: Props) {
+export default function LaporanOprClient({
+  rows,
+  sektors,
+  current,
+  sektorFilterLocked = false,
+}: Props) {
   const router = useRouter();
   const params = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [sortKey, setSortKey] = useState<SortKey>("tarikh");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const filtered = useMemo(() => {
     const q = current.q.trim().toLowerCase();
@@ -102,9 +124,11 @@ export default function LaporanOprClient({ rows, sektors, current }: Props) {
     if (sortKey === column) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else {
       setSortKey(column);
-      setSortDir(column === "tarikh" ? "desc" : "asc");
+      setSortDir(column === "tarikh" || column === "updatedAt" ? "desc" : "asc");
     }
   }
+
+  const activeSortLabel = SORT_OPTIONS.find((o) => o.value === sortKey)?.label ?? sortKey;
 
   const groups = useMemo(() => {
     const map = new Map<string, Group>();
@@ -125,6 +149,37 @@ export default function LaporanOprClient({ rows, sektors, current }: Props) {
     list.sort((a, b) => a.sektorName.localeCompare(b.sektorName, "ms"));
     return list;
   }, [sortedFiltered]);
+
+  useEffect(() => {
+    // Sektor baharu (cth. selepas tapisan) — default sembunyi.
+    setCollapsed((prev) => {
+      const next = { ...prev };
+      for (const g of groups) {
+        const key = g.sektorId != null ? String(g.sektorId) : "_none";
+        if (!(key in next)) next[key] = true;
+      }
+      return next;
+    });
+  }, [groups]);
+
+  function toggleGroup(key: string) {
+    setCollapsed((m) => ({ ...m, [key]: !(m[key] ?? true) }));
+  }
+
+  function isGroupCollapsed(key: string) {
+    return collapsed[key] ?? true;
+  }
+
+  function setAllCollapsed(nextCollapsed: boolean) {
+    setCollapsed((m) => {
+      const next = { ...m };
+      for (const g of groups) {
+        const key = g.sektorId != null ? String(g.sektorId) : "_none";
+        next[key] = nextCollapsed;
+      }
+      return next;
+    });
+  }
 
   function replaceParams(
     patch: Partial<{
@@ -328,13 +383,15 @@ export default function LaporanOprClient({ rows, sektors, current }: Props) {
 
         <p className="text-xs text-slate-500">{periodHint}</p>
 
-        <SektorFilterDropdown
-          label="Sektor"
-          sektors={sektors}
-          selectedIds={current.sektorIds}
-          onChange={(sektorIds) => replaceParams({ sektorIds })}
-          disabled={isPending}
-        />
+        {!sektorFilterLocked && (
+          <SektorFilterDropdown
+            label="Sektor"
+            sektors={sektors}
+            selectedIds={current.sektorIds}
+            onChange={(sektorIds) => replaceParams({ sektorIds })}
+            disabled={isPending}
+          />
+        )}
       </div>
 
       <div className="card px-4 py-3 flex flex-wrap items-center justify-between gap-2 bg-slate-50">
@@ -347,31 +404,90 @@ export default function LaporanOprClient({ rows, sektors, current }: Props) {
         <p className="text-xs text-slate-500">Hanya status Siap dipaparkan</p>
       </div>
 
+      {filtered.length > 0 && (
+        <div className="card p-3 flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[10rem]">
+            <label className="label" htmlFor="laporan-sort">
+              Susun mengikut
+            </label>
+            <select
+              id="laporan-sort"
+              className="input"
+              value={sortKey}
+              onChange={(e) => onSort(e.target.value as SortKey)}
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            className="btn-secondary shrink-0"
+            onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+            title={sortDir === "asc" ? "Menaik" : "Menurun"}
+          >
+            {sortDir === "asc" ? "↑ Menaik" : "↓ Menurun"}
+          </button>
+          <p className="text-xs text-slate-500 w-full sm:w-auto sm:ml-auto">
+            Juga boleh klik tajuk lajur jadual · semasa:{" "}
+            <strong>{activeSortLabel}</strong> ({sortDir === "asc" ? "menaik" : "menurun"})
+          </p>
+        </div>
+      )}
+
       {filtered.length === 0 ? (
         <div className="card p-8 text-center text-slate-500 text-sm">
           Tiada laporan OPR siap untuk tempoh dan tapisan ini.
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2 items-center">
+            <button type="button" className="btn-secondary" onClick={() => setAllCollapsed(false)}>
+              Kembangkan semua
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => setAllCollapsed(true)}>
+              Runtuhkan semua
+            </button>
+            <p className="text-xs text-slate-500">
+              Petua: klik tajuk sektor untuk buka/tutup.
+            </p>
+          </div>
+
+          <div className="space-y-6">
           {groups.map((g) => {
             const st = sektorStyle(g.sektorCode);
+            const key = g.sektorId != null ? String(g.sektorId) : "_none";
+            const isCollapsed = isGroupCollapsed(key);
             return (
               <section key={g.sektorId ?? "_none"} className="space-y-2">
-                <header
-                  className="flex items-center justify-between gap-2 rounded-md border px-3 py-2"
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-left"
                   style={{ backgroundColor: st.bg, borderColor: st.border }}
+                  onClick={() => toggleGroup(key)}
+                  aria-expanded={!isCollapsed}
                 >
-                  <h2 className="font-semibold text-sm" style={{ color: st.text }}>
-                    {g.sektorName}
-                    {g.sektorCode ? (
-                      <span className="font-normal opacity-80"> · {g.sektorCode}</span>
-                    ) : null}
-                  </h2>
-                  <span className="text-xs font-medium" style={{ color: st.text }}>
-                    {g.items.length} laporan
+                  <div className="min-w-0">
+                    <h2 className="font-semibold text-sm truncate" style={{ color: st.text }}>
+                      {g.sektorName}
+                      {g.sektorCode ? (
+                        <span className="font-normal opacity-80"> · {g.sektorCode}</span>
+                      ) : null}
+                    </h2>
+                    <span className="text-xs font-medium" style={{ color: st.text }}>
+                      {g.items.length} laporan
+                    </span>
+                  </div>
+                  <span className="text-xs font-semibold" style={{ color: st.text }} aria-hidden>
+                    {isCollapsed ? "Tunjuk ▾" : "Sembunyi ▴"}
                   </span>
-                </header>
-                <div className="card overflow-x-auto">
+                </button>
+
+                {!isCollapsed && (
+                  <div className="card overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50 text-slate-600">
                       <tr>
@@ -379,6 +495,13 @@ export default function LaporanOprClient({ rows, sektors, current }: Props) {
                         <SortableTh
                           label="Pegawai"
                           column="nama"
+                          activeColumn={sortKey}
+                          dir={sortDir}
+                          onSort={onSort}
+                        />
+                        <SortableTh
+                          label="Jawatan"
+                          column="jawatan"
                           activeColumn={sortKey}
                           dir={sortDir}
                           onSort={onSort}
@@ -404,6 +527,13 @@ export default function LaporanOprClient({ rows, sektors, current }: Props) {
                           dir={sortDir}
                           onSort={onSort}
                         />
+                        <SortableTh
+                          label="Siap OPR"
+                          column="updatedAt"
+                          activeColumn={sortKey}
+                          dir={sortDir}
+                          onSort={onSort}
+                        />
                         <th className="px-3 py-2 text-left text-slate-600 font-medium">
                           Tindakan
                         </th>
@@ -419,8 +549,8 @@ export default function LaporanOprClient({ rows, sektors, current }: Props) {
                           <td className="px-3 py-2 text-slate-500">{i + 1}</td>
                           <td className="px-3 py-2">
                             <div className="font-medium text-slate-900">{r.nama}</div>
-                            <div className="text-xs text-slate-600">{r.jawatan}</div>
                           </td>
+                          <td className="px-3 py-2 text-slate-700">{r.jawatan || "—"}</td>
                           <td className="px-3 py-2 text-slate-900">{r.urusan}</td>
                           <td className="px-3 py-2 text-slate-700">{r.lokasi || "—"}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-slate-700">
@@ -428,6 +558,9 @@ export default function LaporanOprClient({ rows, sektors, current }: Props) {
                             {r.tarikhKembali.slice(0, 10) !== r.tarikhPergi.slice(0, 10) && (
                               <> – {formatDate(r.tarikhKembali)}</>
                             )}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-slate-600 text-xs">
+                            {formatDate(r.updatedAt)}
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap">
                             <Link
@@ -443,10 +576,12 @@ export default function LaporanOprClient({ rows, sektors, current }: Props) {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                  </div>
+                )}
               </section>
             );
           })}
+          </div>
         </div>
       )}
     </div>

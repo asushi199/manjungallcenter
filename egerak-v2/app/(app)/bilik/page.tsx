@@ -15,7 +15,7 @@ export default async function BilikPage({
 }) {
   await requireUser();
   const session = await auth();
-  const isAdmin = session?.user?.peranan === "Admin";
+  const isAdmin = session?.user?.peranan === "Admin"; // pentadbir bilik — batalkan tempahan orang lain
   const sp = await searchParams;
   const today = formatInTimeZone(new Date(), TZ, "yyyy-MM-dd");
   const weekStart = sp.week && /^\d{4}-\d{2}-\d{2}$/.test(sp.week) ? sp.week : today;

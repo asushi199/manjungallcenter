@@ -15,6 +15,34 @@
       "when": 1779585702000,
       "tag": "0001_phase2",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779585703000,
+      "tag": "0002_peranan_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779585704000,
+      "tag": "0003_ppd_penyelia_sektor",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779585705000,
+      "tag": "0004_ppd_sektor_rename",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779585706000,
+      "tag": "0005_timbalan_ppd",
+      "breakpoints": true
     }
   ]
 }

@@ -13,7 +13,13 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
-export const peranan = pgEnum("peranan", ["Admin", "Pengguna"]);
+export const peranan = pgEnum("peranan", [
+  "Admin",
+  "Penyelia",
+  "Timbalan_PPD",
+  "Ketua_Unit",
+  "Pengguna",
+]);
 export const jenis = pgEnum("jenis", ["Pergerakan", "Bercuti"]);
 export const sourceEnum = pgEnum("source", ["web", "bulk"]);
 export const roomSlot = pgEnum("room_slot", ["AM", "PM"]);
@@ -42,6 +48,8 @@ export const users = pgTable(
     nama: text("nama").notNull(),
     jawatan: text("jawatan").notNull().default(""),
     sektorId: integer("sektor_id").references(() => sektors.id, { onDelete: "set null" }),
+    /** Skop sektor Laporan OPR untuk Timbalan_PPD (ID sektor, tanpa Pegawai PPD). */
+    laporanSektorIds: jsonb("laporan_sektor_ids").$type<number[]>().notNull().default([]),
     peranan: peranan("peranan").notNull().default("Pengguna"),
     aktif: boolean("aktif").notNull().default(true),
     mustChangePassword: boolean("must_change_password").notNull().default(true),

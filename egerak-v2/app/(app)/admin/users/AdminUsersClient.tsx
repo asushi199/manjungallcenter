@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   adminCreateUser,
@@ -8,6 +8,15 @@ import {
   adminSetAktif,
   adminUpdateUser,
 } from "@/lib/actions/users";
+import LaporanSektorScopePicker from "@/components/LaporanSektorScopePicker";
+import {
+  PERANAN_SELECT_OPTIONS,
+  PERANAN_LABELS,
+  perananBadgeClass,
+  perananUsesLaporanSektorScope,
+  type UserPeranan,
+} from "@/lib/roles";
+import { filterSektorsForPeranan, isPenyeliaOnlySektorCode } from "@/lib/sektors";
 
 type Sektor = { id: number; code: string; name: string };
 type Row = {
@@ -18,11 +27,23 @@ type Row = {
   sektorId: number | null;
   sektorCode: string | null;
   sektorName: string | null;
-  peranan: "Admin" | "Pengguna";
+  peranan: UserPeranan;
+  laporanSektorIds: number[];
   aktif: boolean;
   mustChangePassword: boolean;
   createdAt: string;
 };
+
+function clearPenyeliaSektorIfNeeded(
+  peranan: UserPeranan,
+  sektorId: string | number,
+  allSektors: Sektor[],
+): string | number {
+  if (sektorId === "" || peranan === "Penyelia") return sektorId;
+  const sek = allSektors.find((s) => s.id === Number(sektorId));
+  if (sek && isPenyeliaOnlySektorCode(sek.code)) return "";
+  return sektorId;
+}
 
 export default function AdminUsersClient({ users, sektors }: { users: Row[]; sektors: Sektor[] }) {
   const router = useRouter();
@@ -35,7 +56,8 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
     nama: "",
     jawatan: "",
     sektorId: "" as string | number,
-    peranan: "Pengguna" as "Admin" | "Pengguna",
+    peranan: "Pengguna" as UserPeranan,
+    laporanSektorIds: [] as number[],
   });
 
   const [editing, setEditing] = useState<Row | null>(null);
@@ -44,8 +66,18 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
     nama: "",
     jawatan: "",
     sektorId: "" as string | number,
-    peranan: "Pengguna" as "Admin" | "Pengguna",
+    peranan: "Pengguna" as UserPeranan,
+    laporanSektorIds: [] as number[],
   });
+
+  const createSektors = useMemo(
+    () => filterSektorsForPeranan(sektors, form.peranan),
+    [sektors, form.peranan],
+  );
+  const editSektors = useMemo(
+    () => filterSektorsForPeranan(sektors, editForm.peranan),
+    [sektors, editForm.peranan],
+  );
 
   function onCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -54,6 +86,9 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
       const res = await adminCreateUser({
         ...form,
         sektorId: form.sektorId === "" ? null : Number(form.sektorId),
+        laporanSektorIds: perananUsesLaporanSektorScope(form.peranan)
+          ? form.laporanSektorIds
+          : [],
       });
       if (!res.ok) {
         setErr(res.error);
@@ -66,6 +101,7 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
         jawatan: "",
         sektorId: "",
         peranan: "Pengguna",
+        laporanSektorIds: [],
       });
       router.refresh();
     });
@@ -92,6 +128,7 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
       jawatan: u.jawatan,
       sektorId: u.sektorId ?? "",
       peranan: u.peranan,
+      laporanSektorIds: u.laporanSektorIds ?? [],
     });
     setErr(null);
   }
@@ -108,6 +145,9 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
         jawatan: editForm.jawatan,
         sektorId: editForm.sektorId === "" ? null : Number(editForm.sektorId),
         peranan: editForm.peranan,
+        laporanSektorIds: perananUsesLaporanSektorScope(editForm.peranan)
+          ? editForm.laporanSektorIds
+          : [],
       });
       if (!res.ok) {
         setErr(res.error);
@@ -204,7 +244,7 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
                 onChange={(e) => setEditForm({ ...editForm, sektorId: e.target.value })}
               >
                 <option value="">(Tiada)</option>
-                {sektors.map((s) => (
+                {editSektors.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                   </option>
@@ -216,14 +256,39 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
               <select
                 className="input"
                 value={editForm.peranan}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, peranan: e.target.value as "Admin" | "Pengguna" })
-                }
+                onChange={(e) => {
+                  const peranan = e.target.value as UserPeranan;
+                  setEditForm({
+                    ...editForm,
+                    peranan,
+                    sektorId: clearPenyeliaSektorIfNeeded(peranan, editForm.sektorId, sektors),
+                    laporanSektorIds: perananUsesLaporanSektorScope(peranan)
+                      ? editForm.laporanSektorIds
+                      : [],
+                  });
+                }}
               >
-                <option value="Pengguna">Pengguna</option>
-                <option value="Admin">Admin</option>
+                {PERANAN_SELECT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
+              <p className="text-xs text-slate-500 mt-1">{PERANAN_LABELS[editForm.peranan]}</p>
             </div>
+            {perananUsesLaporanSektorScope(editForm.peranan) && (
+              <div className="sm:col-span-2">
+                <label className="label">Sektor Laporan OPR (Timbalan)</label>
+                <LaporanSektorScopePicker
+                  sektors={sektors}
+                  selectedIds={editForm.laporanSektorIds}
+                  onChange={(laporanSektorIds) =>
+                    setEditForm({ ...editForm, laporanSektorIds })
+                  }
+                  disabled={pending}
+                />
+              </div>
+            )}
             {err && (
               <div className="sm:col-span-2 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">
                 {err}
@@ -261,15 +326,8 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
                 <div className="text-sm text-slate-600">{u.jawatan || "—"}</div>
               </div>
               <div className="flex flex-col items-end gap-1 shrink-0">
-                <span
-                  className={
-                    "badge " +
-                    (u.peranan === "Admin"
-                      ? "bg-amber-100 text-amber-800"
-                      : "bg-slate-100 text-slate-700")
-                  }
-                >
-                  {u.peranan}
+                <span className={"badge " + perananBadgeClass(u.peranan)}>
+                  {PERANAN_SELECT_OPTIONS.find((o) => o.value === u.peranan)?.label ?? u.peranan}
                 </span>
                 <span
                   className={
@@ -319,15 +377,8 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
                 </td>
                 <td className="px-3 py-2 text-xs text-slate-600">{u.sektorName ?? "-"}</td>
                 <td className="px-3 py-2">
-                  <span
-                    className={
-                      "badge " +
-                      (u.peranan === "Admin"
-                        ? "bg-amber-100 text-amber-800"
-                        : "bg-slate-100 text-slate-700")
-                    }
-                  >
-                    {u.peranan}
+                  <span className={"badge " + perananBadgeClass(u.peranan)}>
+                    {PERANAN_SELECT_OPTIONS.find((o) => o.value === u.peranan)?.label ?? u.peranan}
                   </span>
                 </td>
                 <td className="px-3 py-2">
@@ -410,26 +461,54 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
               onChange={(e) => setForm({ ...form, sektorId: e.target.value })}
             >
               <option value="">(Tiada)</option>
-              {sektors.map((s) => (
+              {createSektors.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
                 </option>
               ))}
             </select>
+            {form.peranan === "Penyelia" && (
+              <p className="text-xs text-slate-500 mt-1">
+                Untuk Ketua PPD / pentadbiran, pilih <strong>Pegawai PPD</strong>.
+              </p>
+            )}
           </div>
           <div>
             <label className="label">Peranan</label>
             <select
               className="input"
               value={form.peranan}
-              onChange={(e) =>
-                setForm({ ...form, peranan: e.target.value as "Admin" | "Pengguna" })
-              }
+              onChange={(e) => {
+                const peranan = e.target.value as UserPeranan;
+                setForm({
+                  ...form,
+                  peranan,
+                  sektorId: clearPenyeliaSektorIfNeeded(peranan, form.sektorId, sektors),
+                  laporanSektorIds: perananUsesLaporanSektorScope(peranan)
+                    ? form.laporanSektorIds
+                    : [],
+                });
+              }}
             >
-              <option value="Pengguna">Pengguna</option>
-              <option value="Admin">Admin</option>
+              {PERANAN_SELECT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
             </select>
+            <p className="text-xs text-slate-500 mt-1">{PERANAN_LABELS[form.peranan]}</p>
           </div>
+          {perananUsesLaporanSektorScope(form.peranan) && (
+            <div>
+              <label className="label">Sektor Laporan OPR (Timbalan)</label>
+              <LaporanSektorScopePicker
+                sektors={sektors}
+                selectedIds={form.laporanSektorIds}
+                onChange={(laporanSektorIds) => setForm({ ...form, laporanSektorIds })}
+                disabled={pending}
+              />
+            </div>
+          )}
           {err && (
             <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">
               {err}

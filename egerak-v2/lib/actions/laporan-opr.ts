@@ -1,10 +1,14 @@
 "use server";
 
-import { and, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, eq, gte, lte } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/lib/db";
 import { opr, pergerakan, sektors, users } from "@/lib/schema";
-import { requireAdmin } from "@/lib/rbac";
+import { requireLaporanOprAccess } from "@/lib/rbac";
+import {
+  intersectSektorIds,
+  normalizeLaporanSektorIds,
+} from "@/lib/laporan-sektor-scope";
 
 const sektorPg = alias(sektors, "sektor_pg");
 const sektorOv = alias(sektors, "sektor_ov");
@@ -25,12 +29,34 @@ export type LaporanOprRow = {
   updatedAt: Date;
 };
 
+export async function getUserLaporanSektorScope(userId: number): Promise<number[]> {
+  const row = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { peranan: true, laporanSektorIds: true },
+  });
+  if (!row || row.peranan !== "Timbalan_PPD") return [];
+  return normalizeLaporanSektorIds(row.laporanSektorIds);
+}
+
 export async function listSiapOprLaporan(opts: {
   start?: Date;
   end?: Date;
   sektorIds?: number[];
 }): Promise<LaporanOprRow[]> {
-  await requireAdmin();
+  const sessionUser = await requireLaporanOprAccess();
+  const userId = Number(sessionUser.id);
+
+  let effectiveSektorIds = opts.sektorIds;
+
+  if (sessionUser.peranan === "Ketua_Unit") {
+    const sid = sessionUser.sektorId != null ? Number(sessionUser.sektorId) : null;
+    if (!sid) return [];
+    effectiveSektorIds = [sid];
+  } else if (sessionUser.peranan === "Timbalan_PPD") {
+    const scope = await getUserLaporanSektorScope(userId);
+    if (!scope.length) return [];
+    effectiveSektorIds = intersectSektorIds(opts.sektorIds, scope);
+  }
 
   const conditions = [eq(opr.status, "SIAP"), eq(pergerakan.aktif, true)];
   if (opts.start && opts.end) {
@@ -85,7 +111,7 @@ export async function listSiapOprLaporan(opts: {
     };
   });
 
-  if (!opts.sektorIds?.length) return mapped;
-  const allowed = new Set(opts.sektorIds);
+  if (!effectiveSektorIds?.length) return mapped;
+  const allowed = new Set(effectiveSektorIds);
   return mapped.filter((r) => r.sektorId != null && allowed.has(r.sektorId));
 }

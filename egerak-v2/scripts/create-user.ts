@@ -4,18 +4,26 @@ import postgres from "postgres";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import * as schema from "../lib/schema";
+import { isKnownPeranan, perananRequiresSektor, type UserPeranan } from "../lib/roles";
+import { isPenyeliaOnlySektorCode } from "../lib/sektors";
 
 /**
  * Penggunaan:
- *   pnpm tsx scripts/create-user.ts <username> <password> <nama> <jawatan> <sektor_code> [Admin|Pengguna]
+ *   pnpm tsx scripts/create-user.ts <username> <password> <nama> <jawatan> <sektor_code> [peranan]
+ *
+ * peranan: Admin | Penyelia | Ketua_Unit | Pengguna (lalai: Pengguna)
  */
 async function main() {
-  const [usernameRaw, password, nama, jawatan, sektorCode, peranan = "Pengguna"] = process.argv.slice(2);
+  const [usernameRaw, password, nama, jawatan, sektorCode, perananArg = "Pengguna"] =
+    process.argv.slice(2);
   if (!usernameRaw || !password || !nama) {
-    console.error("Penggunaan: tsx scripts/create-user.ts <username> <password> <nama> <jawatan> <sektor_code> [Admin|Pengguna]");
+    console.error(
+      "Penggunaan: tsx scripts/create-user.ts <username> <password> <nama> <jawatan> <sektor_code> [Admin|Penyelia|Ketua_Unit|Pengguna]",
+    );
     process.exit(1);
   }
   const username = usernameRaw.toLowerCase();
+  const peranan: UserPeranan = isKnownPeranan(perananArg) ? perananArg : "Pengguna";
 
   const url = process.env.DATABASE_URL!;
   const client = postgres(url, { max: 1, prepare: false });
@@ -24,6 +32,15 @@ async function main() {
   const sektor = sektorCode
     ? await db.query.sektors.findFirst({ where: eq(schema.sektors.code, sektorCode) })
     : null;
+
+  if (perananRequiresSektor(peranan) && !sektor?.id) {
+    console.error("Ketua Unit memerlukan sektor_code yang sah.");
+    process.exit(1);
+  }
+  if (sektor && isPenyeliaOnlySektorCode(sektor.code) && peranan !== "Penyelia") {
+    console.error("Kod sektor PPD_PENTADBIRAN hanya untuk peranan Penyelia.");
+    process.exit(1);
+  }
 
   const existing = await db.query.users.findFirst({ where: eq(schema.users.username, username) });
   if (existing) {
@@ -38,12 +55,12 @@ async function main() {
     nama,
     jawatan: jawatan ?? "",
     sektorId: sektor?.id ?? null,
-    peranan: peranan === "Admin" ? "Admin" : "Pengguna",
+    peranan,
     aktif: true,
     mustChangePassword: true,
   });
 
-  console.log("Pengguna dicipta:", username);
+  console.log("Pengguna dicipta:", username, "—", peranan);
   await client.end();
 }
 

@@ -1,4 +1,3 @@
-import AdminNav from "@/components/AdminNav";
 import { requireAdmin } from "@/lib/rbac";
 import ImportClient from "./ImportClient";
 
@@ -8,7 +7,6 @@ export default async function AdminImportPage() {
   await requireAdmin();
   return (
     <div className="mx-auto max-w-4xl p-4 space-y-4">
-      <AdminNav />
       <div>
         <h1 className="text-xl font-semibold">Import Rancangan Tahunan</h1>
         <p className="text-sm text-slate-500">

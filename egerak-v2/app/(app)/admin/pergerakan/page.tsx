@@ -1,4 +1,3 @@
-import AdminNav from "@/components/AdminNav";
 import { listAllPergerakanAdmin } from "@/lib/actions/pergerakan";
 import { requireAdmin } from "@/lib/rbac";
 import AdminPergerakanClient from "./AdminPergerakanClient";
@@ -11,7 +10,6 @@ export default async function AdminPergerakanPage() {
 
   return (
     <div className="mx-auto max-w-6xl p-4 space-y-4">
-      <AdminNav />
       <div>
         <h1 className="text-xl font-semibold">Padam Pergerakan (Admin)</h1>
         <p className="text-sm text-slate-500">

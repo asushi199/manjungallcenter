@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/cn";
-import type { NavLink } from "@/components/HeaderNavDropdown";
+import type { AppNavLink } from "@/lib/app-nav";
 
 function isActive(path: string | null, href: string) {
   return path === href || (path?.startsWith(href + "/") ?? false);
@@ -18,7 +18,7 @@ function NavSection({
   onNavigate,
 }: {
   title: string;
-  links: NavLink[];
+  links: AppNavLink[];
   path: string | null;
   onNavigate: () => void;
 }) {
@@ -50,16 +50,14 @@ function NavSection({
 
 export default function MobileNavMenu({
   mainLinks,
-  penggunaLinks,
   adminLinks,
-  isAdmin,
+  showAdminSection,
   userNama,
   userUsername,
 }: {
-  mainLinks: NavLink[];
-  penggunaLinks: NavLink[];
-  adminLinks: NavLink[];
-  isAdmin: boolean;
+  mainLinks: AppNavLink[];
+  adminLinks: AppNavLink[];
+  showAdminSection: boolean;
   userNama?: string;
   userUsername?: string;
 }) {
@@ -152,16 +150,8 @@ export default function MobileNavMenu({
 
             <nav className="flex-1 overflow-y-auto">
               <NavSection title="Utama" links={mainLinks} path={path} onNavigate={close} />
-              {isAdmin && (
-                <>
-                  <NavSection
-                    title="Pengguna"
-                    links={penggunaLinks}
-                    path={path}
-                    onNavigate={close}
-                  />
-                  <NavSection title="Pentadbir" links={adminLinks} path={path} onNavigate={close} />
-                </>
+              {showAdminSection && (
+                <NavSection title="Pentadbir" links={adminLinks} path={path} onNavigate={close} />
               )}
             </nav>
 

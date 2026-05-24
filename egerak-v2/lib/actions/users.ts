@@ -3,11 +3,71 @@
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { eq, asc } from "drizzle-orm";
-import { revalidatePath, unstable_cache } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { withDbTimeout } from "@/lib/db-timeout";
 import { db } from "@/lib/db";
 import { users, sektors, auditLog } from "@/lib/schema";
 import { requireAdmin } from "@/lib/rbac";
+import {
+  PERANAN_VALUES,
+  perananRequiresSektor,
+  perananUsesLaporanSektorScope,
+  type UserPeranan,
+} from "@/lib/roles";
+import { normalizeLaporanSektorIds } from "@/lib/laporan-sektor-scope";
+import { isPenyeliaOnlySektorCode } from "@/lib/sektors";
+
+const perananSchema = z.enum(PERANAN_VALUES);
+
+async function validateSektorPeranan(
+  peranan: UserPeranan,
+  sektorId: number | null | undefined,
+): Promise<string | null> {
+  if (perananRequiresSektor(peranan) && !sektorId) {
+    return "Ketua Unit mesti mempunyai sektor.";
+  }
+  if (!sektorId) return null;
+  const sek = await db.query.sektors.findFirst({ where: eq(sektors.id, sektorId) });
+  if (sek && isPenyeliaOnlySektorCode(sek.code) && peranan !== "Penyelia") {
+    return "Sektor Pegawai PPD hanya untuk peranan Penyelia.";
+  }
+  return null;
+}
+
+async function validateLaporanSektorIds(
+  peranan: UserPeranan,
+  laporanSektorIds: number[],
+): Promise<string | null> {
+  if (perananUsesLaporanSektorScope(peranan)) {
+    if (!laporanSektorIds.length) {
+      return "Timbalan PPD mesti pilih sekurang-kurangnya satu sektor untuk laporan OPR.";
+    }
+  } else if (laporanSektorIds.length) {
+    return "Skop sektor laporan hanya untuk peranan Timbalan PPD.";
+  }
+  for (const id of laporanSektorIds) {
+    const sek = await db.query.sektors.findFirst({ where: eq(sektors.id, id) });
+    if (!sek) return "Sektor laporan tidak sah.";
+    if (isPenyeliaOnlySektorCode(sek.code)) {
+      return "Pegawai PPD tidak boleh dalam skop Timbalan PPD.";
+    }
+  }
+  return null;
+}
+
+const laporanSektorIdsSchema = z
+  .union([z.array(z.number()), z.string()])
+  .optional()
+  .transform((v) => {
+    if (v === undefined) return undefined;
+    if (typeof v === "string") {
+      return v
+        .split(",")
+        .map((s) => Number(s))
+        .filter((n) => Number.isFinite(n) && n > 0);
+    }
+    return normalizeLaporanSektorIds(v);
+  });
 
 const createSchema = z.object({
   username: z.string().min(3, "Username minimum 3 aksara").max(50),
@@ -19,7 +79,8 @@ const createSchema = z.object({
     .transform((v) => (v === "" || v === null ? null : Number(v)))
     .nullable()
     .optional(),
-  peranan: z.enum(["Admin", "Pengguna"]).default("Pengguna"),
+  peranan: perananSchema.default("Pengguna"),
+  laporanSektorIds: laporanSektorIdsSchema,
 });
 
 export type CreateUserResult = { ok: true } | { ok: false; error: string };
@@ -34,6 +95,15 @@ export async function adminCreateUser(input: unknown): Promise<CreateUserResult>
   const existing = await db.query.users.findFirst({ where: eq(users.username, username) });
   if (existing) return { ok: false, error: "Nama pengguna telah wujud" };
 
+  const sektorErr = await validateSektorPeranan(data.peranan, data.sektorId ?? null);
+  if (sektorErr) return { ok: false, error: sektorErr };
+
+  const laporanIds = perananUsesLaporanSektorScope(data.peranan)
+    ? normalizeLaporanSektorIds(data.laporanSektorIds ?? [])
+    : [];
+  const laporanErr = await validateLaporanSektorIds(data.peranan, laporanIds);
+  if (laporanErr) return { ok: false, error: laporanErr };
+
   const passwordHash = await bcrypt.hash(data.password, 10);
   await db.insert(users).values({
     username,
@@ -41,6 +111,7 @@ export async function adminCreateUser(input: unknown): Promise<CreateUserResult>
     nama: data.nama.trim(),
     jawatan: (data.jawatan ?? "").trim(),
     sektorId: data.sektorId ?? null,
+    laporanSektorIds: laporanIds,
     peranan: data.peranan,
     aktif: true,
     mustChangePassword: true,
@@ -97,7 +168,8 @@ const updateSchema = z.object({
     .transform((v) => (v === "" || v === null || v === undefined ? null : Number(v)))
     .nullable()
     .optional(),
-  peranan: z.enum(["Admin", "Pengguna"]).optional(),
+  peranan: perananSchema.optional(),
+  laporanSektorIds: laporanSektorIdsSchema,
 });
 
 export async function adminUpdateUser(input: unknown): Promise<CreateUserResult> {
@@ -105,11 +177,24 @@ export async function adminUpdateUser(input: unknown): Promise<CreateUserResult>
   const parsed = updateSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak sah" };
 
-  const { userId, username, nama, jawatan, sektorId, peranan } = parsed.data;
+  const { userId, username, nama, jawatan, sektorId, peranan, laporanSektorIds } = parsed.data;
   const target = await db.query.users.findFirst({ where: eq(users.id, userId) });
   if (!target) return { ok: false, error: "Pengguna tidak dijumpai" };
 
-  if (peranan === "Pengguna" && target.peranan === "Admin") {
+  const nextPeranan = (peranan ?? target.peranan) as UserPeranan;
+  const nextSektorId = sektorId !== undefined ? sektorId : target.sektorId;
+  const sektorErr = await validateSektorPeranan(nextPeranan, nextSektorId);
+  if (sektorErr) return { ok: false, error: sektorErr };
+
+  const nextLaporanIds = perananUsesLaporanSektorScope(nextPeranan)
+    ? normalizeLaporanSektorIds(
+        laporanSektorIds !== undefined ? laporanSektorIds : target.laporanSektorIds,
+      )
+    : [];
+  const laporanErr = await validateLaporanSektorIds(nextPeranan, nextLaporanIds);
+  if (laporanErr) return { ok: false, error: laporanErr };
+
+  if (peranan !== undefined && peranan !== "Admin" && target.peranan === "Admin") {
     const admins = await db
       .select({ id: users.id })
       .from(users)
@@ -124,6 +209,7 @@ export async function adminUpdateUser(input: unknown): Promise<CreateUserResult>
   if (jawatan !== undefined) patch.jawatan = jawatan.trim();
   if (sektorId !== undefined) patch.sektorId = sektorId;
   if (peranan !== undefined) patch.peranan = peranan;
+  patch.laporanSektorIds = nextLaporanIds;
 
   if (username !== undefined) {
     const nextUsername = username.trim().toLowerCase();
@@ -201,6 +287,7 @@ export async function listAllUsers() {
       sektorCode: sektors.code,
       sektorName: sektors.name,
       peranan: users.peranan,
+      laporanSektorIds: users.laporanSektorIds,
       aktif: users.aktif,
       mustChangePassword: users.mustChangePassword,
       createdAt: users.createdAt,
@@ -210,12 +297,7 @@ export async function listAllUsers() {
     .orderBy(asc(users.username));
 }
 
-const fetchAllSektors = unstable_cache(
-  async () => withDbTimeout(db.select().from(sektors).orderBy(asc(sektors.name))),
-  ["all-sektors"],
-  { revalidate: 3600 },
-);
-
+/** Senarai sektor — tidak di-cache supaya sektor baharu (cth. Pegawai PPD) terus muncul selepas SQL/seed. */
 export async function listAllSektors() {
-  return fetchAllSektors();
+  return withDbTimeout(db.select().from(sektors).orderBy(asc(sektors.name)));
 }
