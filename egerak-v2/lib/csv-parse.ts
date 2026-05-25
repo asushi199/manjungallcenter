@@ -1,3 +1,5 @@
+import type { UserPeranan } from "./roles";
+
 /**
  * Format tarikh CSV (zon Asia/Kuala_Lumpur):
  *
@@ -171,4 +173,39 @@ export function mapJenis(raw: string): "Pergerakan" | "Bercuti" {
   const j = raw.toLowerCase();
   if (j.includes("cuti") || j.includes("bercuti")) return "Bercuti";
   return "Pergerakan";
+}
+
+/** Tafsiran peranan dari lajur CSV (BM / kod sistem). */
+export function mapPerananCsv(raw: string): UserPeranan | null {
+  const t = raw.trim();
+  if (!t) return "Pengguna";
+  const norm = t.toLowerCase().replace(/\s+/g, "_");
+  const aliases: Record<string, UserPeranan> = {
+    admin: "Admin",
+    pentadbir: "Admin",
+    penyelia: "Penyelia",
+    timbalan_ppd: "Timbalan_PPD",
+    timbalan: "Timbalan_PPD",
+    ketua_unit: "Ketua_Unit",
+    ketua: "Ketua_Unit",
+    pengguna: "Pengguna",
+  };
+  if (aliases[norm]) return aliases[norm];
+  const exact: UserPeranan[] = [
+    "Admin",
+    "Penyelia",
+    "Timbalan_PPD",
+    "Ketua_Unit",
+    "Pengguna",
+  ];
+  if ((exact as readonly string[]).includes(t)) return t as UserPeranan;
+  return null;
+}
+
+/** Kod sektor dipisahkan koma/semicolon (untuk laporan Timbalan). */
+export function parseSektorCodeList(raw: string): string[] {
+  return raw
+    .split(/[,;]/)
+    .map((s) => normalizeSektorCode(s))
+    .filter(Boolean);
 }

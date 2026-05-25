@@ -20,6 +20,11 @@ export function isFullAdmin(peranan: string | undefined | null): boolean {
   return peranan === "Admin";
 }
 
+/** Lihat Analisis Program (pergerakan, bukan cuti). */
+export function canViewAnalisisPergerakan(peranan: string | undefined | null): boolean {
+  return peranan === "Admin" || peranan === "Penyelia";
+}
+
 /** Lihat halaman Laporan OPR. */
 export function canViewLaporanOpr(peranan: string | undefined | null): boolean {
   return (

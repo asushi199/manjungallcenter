@@ -19,7 +19,7 @@ import { isPenyeliaOnlySektorCode } from "@/lib/sektors";
 
 const perananSchema = z.enum(PERANAN_VALUES);
 
-async function validateSektorPeranan(
+export async function validateSektorPeranan(
   peranan: UserPeranan,
   sektorId: number | null | undefined,
 ): Promise<string | null> {
@@ -34,7 +34,7 @@ async function validateSektorPeranan(
   return null;
 }
 
-async function validateLaporanSektorIds(
+export async function validateLaporanSektorIds(
   peranan: UserPeranan,
   laporanSektorIds: number[],
 ): Promise<string | null> {

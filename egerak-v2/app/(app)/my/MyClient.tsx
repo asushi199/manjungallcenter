@@ -5,15 +5,21 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
 import { deletePergerakanIds } from "@/lib/actions/pergerakan";
-import { sektorRowStyle } from "@/lib/sektor-colors";
-import { oprStatusBadge } from "@/lib/opr-status";
-import { SortableTh, type SortDir } from "@/components/SortableTh";
+import PergerakanCard, { type PergerakanCardData } from "@/components/PergerakanCard";
 
-type SortKey = "urusan" | "lokasi" | "sektor" | "tarikh" | "tindakan";
+type SortKey = "tarikh" | "urusan" | "lokasi" | "sektor" | "opr";
 
 const OPR_SORT_RANK: Record<string, number> = { SIAP: 2, DRAFT: 1 };
 
-function compareItems(a: Item, b: Item, key: SortKey): number {
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: "tarikh", label: "Tarikh" },
+  { key: "urusan", label: "Urusan" },
+  { key: "lokasi", label: "Lokasi" },
+  { key: "sektor", label: "Sektor" },
+  { key: "opr", label: "Status OPR" },
+];
+
+function compareItems(a: MyItem, b: MyItem, key: SortKey): number {
   switch (key) {
     case "urusan":
       return a.urusan.localeCompare(b.urusan, "ms") || a.jenis.localeCompare(b.jenis, "ms");
@@ -23,7 +29,7 @@ function compareItems(a: Item, b: Item, key: SortKey): number {
       return (a.sektorName || "").localeCompare(b.sektorName || "", "ms");
     case "tarikh":
       return new Date(a.tarikhPergi).getTime() - new Date(b.tarikhPergi).getTime();
-    case "tindakan": {
+    case "opr": {
       const ra = OPR_SORT_RANK[a.oprStatus ?? ""] ?? 0;
       const rb = OPR_SORT_RANK[b.oprStatus ?? ""] ?? 0;
       return ra - rb || a.urusan.localeCompare(b.urusan, "ms");
@@ -33,35 +39,32 @@ function compareItems(a: Item, b: Item, key: SortKey): number {
   }
 }
 
-type Item = {
-  id: number;
-  jenis: "Pergerakan" | "Bercuti";
-  urusan: string;
-  lokasi: string;
-  sektorCode: string | null;
-  sektorName: string | null;
-  tarikhPergi: string;
-  tarikhKembali: string;
-  oprStatus: "DRAFT" | "SIAP" | null;
-};
+type MyItem = PergerakanCardData & { id: number };
 
-export default function MyClient({ items }: { items: Item[] }) {
+function monthLabel(ym: string) {
+  const [y, m] = ym.split("-").map(Number);
+  const d = new Date(y, m - 1, 1);
+  return format(d, "MMMM yyyy");
+}
+
+export default function MyClient({ items }: { items: MyItem[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("tarikh");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  const filtered = items.filter((it) => {
-    if (!query.trim()) return true;
-    const q = query.toLowerCase();
-    return (
-      it.urusan.toLowerCase().includes(q) ||
-      it.lokasi.toLowerCase().includes(q) ||
-      (it.sektorName ?? "").toLowerCase().includes(q)
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter(
+      (it) =>
+        it.urusan.toLowerCase().includes(q) ||
+        it.lokasi.toLowerCase().includes(q) ||
+        (it.sektorName ?? "").toLowerCase().includes(q),
     );
-  });
+  }, [items, query]);
 
   const sorted = useMemo(() => {
     const list = [...filtered];
@@ -72,13 +75,16 @@ export default function MyClient({ items }: { items: Item[] }) {
     return list;
   }, [filtered, sortKey, sortDir]);
 
-  function onSort(column: SortKey) {
-    if (sortKey === column) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else {
-      setSortKey(column);
-      setSortDir(column === "tarikh" ? "desc" : "asc");
+  const grouped = useMemo(() => {
+    const map = new Map<string, MyItem[]>();
+    for (const it of sorted) {
+      const ym = format(new Date(it.tarikhPergi), "yyyy-MM");
+      const list = map.get(ym) ?? [];
+      list.push(it);
+      map.set(ym, list);
     }
-  }
+    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }, [sorted]);
 
   function toggle(id: number) {
     const next = new Set(selected);
@@ -104,14 +110,45 @@ export default function MyClient({ items }: { items: Item[] }) {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-4">
+      <div className="card p-3 flex flex-wrap items-center gap-2">
         <input
           className="input flex-1 min-w-[200px]"
           placeholder="Carian urusan / lokasi / sektor..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
+        <label className="flex items-center gap-1.5 text-sm text-slate-600">
+          <span className="whitespace-nowrap">Susun</span>
+          <select
+            className="input py-1.5 text-sm w-auto min-w-[7rem]"
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.key} value={o.key}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <select
+            className="input py-1.5 text-sm w-auto"
+            value={sortDir}
+            onChange={(e) => setSortDir(e.target.value as "asc" | "desc")}
+            aria-label="Arah susunan"
+          >
+            <option value="desc">Terbaharu</option>
+            <option value="asc">Terlama</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer ml-auto">
+          <input
+            type="checkbox"
+            checked={sorted.length > 0 && selected.size === sorted.length}
+            onChange={toggleAll}
+          />
+          Pilih semua
+        </label>
         <button
           className="btn-danger"
           disabled={selected.size === 0 || pending}
@@ -121,120 +158,33 @@ export default function MyClient({ items }: { items: Item[] }) {
         </button>
       </div>
 
-      <div className="card overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-600">
-            <tr>
-              <th className="px-3 py-2 text-left w-8">
-                <input
-                  type="checkbox"
-                  checked={sorted.length > 0 && selected.size === sorted.length}
-                  onChange={toggleAll}
-                />
-              </th>
-              <SortableTh
-                label="Urusan"
-                column="urusan"
-                activeColumn={sortKey}
-                dir={sortDir}
-                onSort={onSort}
-              />
-              <SortableTh
-                label="Lokasi"
-                column="lokasi"
-                activeColumn={sortKey}
-                dir={sortDir}
-                onSort={onSort}
-              />
-              <SortableTh
-                label="Sektor"
-                column="sektor"
-                activeColumn={sortKey}
-                dir={sortDir}
-                onSort={onSort}
-              />
-              <SortableTh
-                label="Tarikh"
-                column="tarikh"
-                activeColumn={sortKey}
-                dir={sortDir}
-                onSort={onSort}
-              />
-              <SortableTh
-                label="Tindakan"
-                column="tindakan"
-                activeColumn={sortKey}
-                dir={sortDir}
-                onSort={onSort}
-              />
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={6} className="text-center py-8 text-slate-500">
-                  Tiada rekod.
-                </td>
-              </tr>
-            )}
-            {sorted.map((it) => {
-              const rowStyle = sektorRowStyle(it.sektorCode, it.jenis);
-              return (
-                <tr key={it.id} className="border-t border-black/5" style={rowStyle}>
-                  <td className="px-3 py-2 align-top">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(it.id)}
-                      onChange={() => toggle(it.id)}
-                    />
-                  </td>
-                  <td className="px-3 py-2 align-top">
-                    <div>
-                      <span className="font-medium text-slate-900">{it.urusan}</span>
-                    </div>
-                    {it.jenis === "Bercuti" && (
-                      <span className="badge bg-emerald-100 text-emerald-700 mt-1">Bercuti</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 align-top text-slate-600">{it.lokasi || "-"}</td>
-                  <td className="px-3 py-2 align-top text-slate-600">
-                    {it.sektorName ?? "-"}
-                  </td>
-                  <td className="px-3 py-2 align-top text-slate-600 whitespace-nowrap">
-                    {format(new Date(it.tarikhPergi), "dd-MM-yyyy HH:mm")}
-                    <br />
-                    <span className="text-xs">
-                      hingga {format(new Date(it.tarikhKembali), "dd-MM-yyyy HH:mm")}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 align-top">
-                    <div className="flex flex-col gap-1">
-                      <Link
-                        href={`/my/${it.id}/edit`}
-                        className="text-xs text-brand-600 hover:underline font-medium"
-                      >
-                        Edit
-                      </Link>
-                      <Link
-                        href={`/my/${it.id}/opr`}
-                        className="text-xs text-slate-600 hover:underline"
-                      >
-                        OPR
-                      </Link>
-                      {(() => {
-                        const badge = oprStatusBadge(it.oprStatus ?? undefined);
-                        return badge ? (
-                          <span className={`badge ${badge.className} w-fit`}>{badge.label}</span>
-                        ) : null;
-                      })()}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {sorted.length === 0 ? (
+        <div className="card p-8 text-center text-slate-500 space-y-3">
+          <p>Tiada rekod pergerakan.</p>
+          <Link href="/new" className="btn-primary inline-flex">
+            Daftar pergerakan baharu
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {grouped.map(([ym, groupItems]) => (
+            <section key={ym} className="space-y-2">
+              <h2 className="text-sm font-semibold text-slate-600 px-0.5">{monthLabel(ym)}</h2>
+              <div className="space-y-2">
+                {groupItems.map((it) => (
+                  <PergerakanCard
+                    key={it.id}
+                    variant="mine"
+                    item={it}
+                    selected={selected.has(it.id)}
+                    onToggleSelect={() => toggle(it.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -12,7 +12,7 @@ export default async function AdminUsersPage() {
       <div>
         <h1 className="text-xl font-semibold">Pengurusan Pengguna</h1>
         <p className="text-sm text-slate-500">
-          Hanya pentadbir boleh menambah / edit / nyahaktif pengguna.
+          Tambah satu-satu, import CSV (kemas kini jika username wujud), atau nyahaktif pengguna.
         </p>
       </div>
       <AdminUsersClient

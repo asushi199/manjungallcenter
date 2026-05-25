@@ -2,6 +2,7 @@ import type { Session } from "next-auth";
 import { redirect } from "next/navigation";
 import { auth } from "./auth";
 import {
+  canViewAnalisisPergerakan,
   canViewLaporanOpr,
   isFullAdmin,
   type UserPeranan,
@@ -26,6 +27,13 @@ export async function requireAdmin(): Promise<SessionUser> {
 export async function requireLaporanOprAccess(): Promise<SessionUser> {
   const user = await requireUser();
   if (!canViewLaporanOpr(user.peranan)) redirect("/dashboard");
+  return user;
+}
+
+/** Analisis program — Admin & Penyelia. */
+export async function requireAnalisisAccess(): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!canViewAnalisisPergerakan(user.peranan)) redirect("/dashboard");
   return user;
 }
 

@@ -1,4 +1,4 @@
-import { canViewLaporanOpr, isFullAdmin } from "./roles";
+import { canViewAnalisisPergerakan, canViewLaporanOpr, isFullAdmin } from "./roles";
 
 export type AppNavLink = { href: string; label: string };
 
@@ -14,9 +14,15 @@ export const LAPORAN_OPR_LINK: AppNavLink = {
   label: "Laporan OPR",
 };
 
+export const ANALISIS_PROGRAM_LINK: AppNavLink = {
+  href: "/admin/analisis-pergerakan",
+  label: "Analisis Program",
+};
+
 /** Menu pentadbir penuh (Admin sahaja). */
 export const FULL_ADMIN_NAV_LINKS: AppNavLink[] = [
   { href: "/admin/users", label: "Pengurusan Pengguna" },
+  ANALISIS_PROGRAM_LINK,
   LAPORAN_OPR_LINK,
   { href: "/admin/pergerakan", label: "Padam Pergerakan" },
   { href: "/admin/import", label: "Import Rancangan" },
@@ -27,6 +33,9 @@ export const ADMIN_NAV_LINKS = FULL_ADMIN_NAV_LINKS;
 
 export function mainNavLinksForPeranan(peranan: string | undefined | null): AppNavLink[] {
   const links = [...MAIN_NAV_LINKS];
+  if (canViewAnalisisPergerakan(peranan) && !isFullAdmin(peranan)) {
+    links.push(ANALISIS_PROGRAM_LINK);
+  }
   if (canViewLaporanOpr(peranan) && !isFullAdmin(peranan)) {
     links.push(LAPORAN_OPR_LINK);
   }

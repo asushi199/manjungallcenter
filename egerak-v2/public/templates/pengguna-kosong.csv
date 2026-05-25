@@ -1,0 +1,4 @@
+username,email,nama,jawatan,sektor,peranan,laporan_sektor
+#NOTA,,[WAJIB] username atau email. Jika email: username = bahagian sebelum @,,,,,
+#NOTA,,[SEKTOR] kod seperti USTP PEMBELAJARAN PERANCANGAN (rujuk panduan),,,,
+#NOTA,,[PERANAN] kosong=Pengguna | Ketua_Unit | Timbalan_PPD | Penyelia | Admin,,,,

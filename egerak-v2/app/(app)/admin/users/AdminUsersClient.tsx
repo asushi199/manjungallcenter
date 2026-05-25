@@ -17,6 +17,7 @@ import {
   type UserPeranan,
 } from "@/lib/roles";
 import { filterSektorsForPeranan, isPenyeliaOnlySektorCode } from "@/lib/sektors";
+import AdminUsersImport from "@/components/AdminUsersImport";
 
 type Sektor = { id: number; code: string; name: string };
 type Row = {
@@ -205,6 +206,8 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
         dipautkan pada akaun tersebut. Untuk pengganti jawatan, gunakan <strong>Edit</strong> pada
         baris yang sama (nama, ID, sektor, jawatan) + Reset PW.
       </p>
+
+      <AdminUsersImport />
 
       {editing && (
         <div className="card p-4 border-brand-200 bg-brand-50/40">

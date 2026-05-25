@@ -193,7 +193,12 @@ export default async function DashboardMain({
         ) : (
           <div className="space-y-2">
             {dayItems.map((it, i) => (
-              <PergerakanCard key={it.id} index={i + 1} item={toCard(it)} />
+              <PergerakanCard
+                key={it.id}
+                variant="dashboard"
+                index={i + 1}
+                item={toCard(it)}
+              />
             ))}
           </div>
         )}

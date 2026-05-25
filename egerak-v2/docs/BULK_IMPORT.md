@@ -31,7 +31,7 @@ Dalam aplikasi (dev/prod): muat turun dari `/templates/rancangan-tahunan-kosong.
 
 ## Nota
 
-- Pengguna mesti **sudah wujud** dalam sistem (Admin → Pengguna).
+- Pengguna mesti **sudah wujud** dalam sistem — daftar di **Admin → Pengurusan Pengguna** (satu-satu atau **Import CSV**; username wujud = dikemas kini).
 - Import menulis ke `pergerakan` dengan `source = bulk`.
 - Lokasi **Bilik Budiman** / **Dewan Bestari**: tempahan slot AM/PM automatik (sama seperti borang web); gagal jika slot bertembung.
 
