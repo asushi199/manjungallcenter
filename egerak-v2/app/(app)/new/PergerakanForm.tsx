@@ -58,13 +58,16 @@ export default function PergerakanForm({
   const [tarikhPergi, setTarikhPergi] = useState(initial?.tarikhPergi ?? "");
   const [tarikhKembali, setTarikhKembali] = useState(initial?.tarikhKembali ?? "");
   const [sepenuhHari, setSepenuhHari] = useState(initial?.sepenuhHari ?? false);
+  /** true = penganjur tempah slot; false = sertai aktiviti sedia ada */
+  const [tempahBilik, setTempahBilik] = useState(initial?.tempahBilik ?? true);
 
   const isLainLain = lokasiSel === lokasiPresets[lokasiPresets.length - 1];
   const lokasi = isLainLain ? lokasiLain : lokasiSel;
   const needsRoom = /budiman|bestari/i.test(lokasi) && jenis === "Pergerakan";
+  const willBookRoom = needsRoom && tempahBilik;
 
   useEffect(() => {
-    if (!needsRoom || !tarikhPergi || !tarikhKembali) {
+    if (!willBookRoom || !tarikhPergi || !tarikhKembali) {
       setAvailability(emptyAvailability);
       setCheckingRoom(false);
       return;
@@ -78,6 +81,7 @@ export default function PergerakanForm({
         tarikhPergi,
         tarikhKembali,
         sepenuhHari,
+        tempahBilik: true,
         excludePergerakanId: isEdit ? editId : undefined,
       })
         .then(setAvailability)
@@ -93,9 +97,9 @@ export default function PergerakanForm({
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [needsRoom, jenis, lokasi, tarikhPergi, tarikhKembali, sepenuhHari, isEdit, editId]);
+  }, [willBookRoom, jenis, lokasi, tarikhPergi, tarikhKembali, sepenuhHari, isEdit, editId]);
 
-  const hasRoomConflict = needsRoom && availability.applies && !availability.canBook;
+  const hasRoomConflict = willBookRoom && availability.applies && !availability.canBook;
   const slotCount = availability.neededSlots.length;
 
   function onSubmit(e: React.FormEvent) {
@@ -117,6 +121,7 @@ export default function PergerakanForm({
         tarikhPergi,
         tarikhKembali,
         sepenuhHari,
+        tempahBilik: needsRoom ? tempahBilik : undefined,
       };
       const res = isEdit
         ? await updatePergerakan(editId, payload)
@@ -125,12 +130,14 @@ export default function PergerakanForm({
         setError(res.error);
         return;
       }
-      setShowBilikLink(Boolean(needsRoom && res.roomSlotsBooked));
+      setShowBilikLink(Boolean(willBookRoom && res.roomSlotsBooked));
       if (isEdit) {
         setOkMsg(
-          needsRoom && res.roomSlotsBooked
-            ? `Rekod dikemas kini. ${res.roomSlotsBooked} slot bilik/dewan diselaraskan.`
-            : "Rekod dikemas kini.",
+          needsRoom && !tempahBilik
+            ? "Rekod dikemas kini (sertai aktiviti — tiada tempahan slot baharu)."
+            : needsRoom && res.roomSlotsBooked
+              ? `Rekod dikemas kini. ${res.roomSlotsBooked} slot bilik/dewan diselaraskan.`
+              : "Rekod dikemas kini.",
         );
         setTimeout(() => {
           router.push("/my");
@@ -141,16 +148,19 @@ export default function PergerakanForm({
       setOkMsg(
         jenis === "Bercuti"
           ? "Cuti direkodkan."
-          : needsRoom && res.roomSlotsBooked
-            ? `Pergerakan direkodkan. ${res.roomSlotsBooked} slot bilik/dewan telah ditempah automatik.`
-            : needsRoom
-              ? "Pergerakan direkodkan."
-              : "Pergerakan direkodkan dan akan muncul di kalendar.",
+          : needsRoom && !tempahBilik
+            ? "Pergerakan direkodkan (sertai aktiviti sedia ada — slot bilik/dewan tidak ditempah)."
+            : needsRoom && res.roomSlotsBooked
+              ? `Pergerakan direkodkan. ${res.roomSlotsBooked} slot bilik/dewan telah ditempah automatik.`
+              : needsRoom
+                ? "Pergerakan direkodkan."
+                : "Pergerakan direkodkan dan akan muncul di kalendar.",
       );
       setUrusan("");
       setTarikhPergi("");
       setTarikhKembali("");
       setSepenuhHari(false);
+      setTempahBilik(true);
       setTimeout(() => {
         router.push("/dashboard");
         router.refresh();
@@ -224,14 +234,47 @@ export default function PergerakanForm({
             onChange={(e) => setLokasiLain(e.target.value)}
           />
         )}
-        {needsRoom && (
-          <p className="text-xs text-slate-500 mt-2">
-            {sepenuhHari
-              ? "Aktiviti sepanjang hari: setiap tarikh dalam julat akan ambil slot Pagi (AM) dan Petang (PM)."
-              : "Slot Pagi / Petang ditempah automatik mengikut masa pergi & kembali (8 pagi – 5 petang)."}
-          </p>
-        )}
       </div>
+
+      {needsRoom && (
+        <fieldset className="rounded-md border border-slate-200 bg-slate-50/80 px-3 py-3 space-y-2">
+          <legend className="text-sm font-semibold text-slate-800 px-1">
+            Bilik / Dewan
+          </legend>
+          <label className="flex items-start gap-2 text-sm cursor-pointer">
+            <input
+              type="radio"
+              name="tempah-bilik"
+              className="mt-0.5"
+              checked={tempahBilik}
+              onChange={() => setTempahBilik(true)}
+            />
+            <span>
+              <strong>Tempah bilik/dewan (penganjur)</strong>
+              <span className="block text-xs text-slate-600 mt-0.5">
+                Slot Pagi / Petang ditempah automatik. Hanya seorang penganjur per slot
+                masa.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm cursor-pointer">
+            <input
+              type="radio"
+              name="tempah-bilik"
+              className="mt-0.5"
+              checked={!tempahBilik}
+              onChange={() => setTempahBilik(false)}
+            />
+            <span>
+              <strong>Sertai aktiviti sedia ada</strong>
+              <span className="block text-xs text-slate-600 mt-0.5">
+                Rekod pergerakan anda di kalendar tanpa menempah slot. Pilih ini jika
+                penganjur sudah tempah {lokasi}.
+              </span>
+            </span>
+          </label>
+        </fieldset>
+      )}
 
       <div className="grid sm:grid-cols-2 gap-3">
         <DateTimeField
@@ -252,7 +295,7 @@ export default function PergerakanForm({
         />
       </div>
 
-      {needsRoom && (
+      {willBookRoom && (
         <label className="flex items-start gap-2 text-sm cursor-pointer">
           <input
             type="checkbox"
@@ -267,7 +310,18 @@ export default function PergerakanForm({
         </label>
       )}
 
-      {needsRoom && tarikhPergi && tarikhKembali && (
+      {needsRoom && !tempahBilik && (
+        <p className="text-sm text-brand-800 bg-brand-50 border border-brand-200 rounded-md px-3 py-2">
+          Anda menyertai aktiviti di <strong>{lokasi}</strong> tanpa menempah slot. Pastikan
+          penganjur telah membuat tempahan di halaman{" "}
+          <Link href="/bilik" className="font-medium underline">
+            Tempahan Bilik
+          </Link>
+          .
+        </p>
+      )}
+
+      {willBookRoom && tarikhPergi && tarikhKembali && (
         <div
           className={`rounded-md border text-sm px-3 py-2 space-y-1 ${
             checkingRoom

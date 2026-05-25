@@ -5,7 +5,7 @@ import { and, desc, eq, gte, lte, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { withDbTimeout } from "@/lib/db-timeout";
-import { pergerakan, users, sektors, auditLog, opr } from "@/lib/schema";
+import { pergerakan, users, sektors, auditLog, opr, roomBookings } from "@/lib/schema";
 import { requireUser, requireAdmin } from "@/lib/rbac";
 import { parseLocalInput, toLocalInput, TZ } from "@/lib/dates";
 import { formatInTimeZone } from "date-fns-tz";
@@ -25,6 +25,8 @@ const submitSchema = z
     tarikhPergi: z.string().min(1, "Tarikh pergi diperlukan"),
     tarikhKembali: z.string().min(1, "Tarikh kembali diperlukan"),
     sepenuhHari: z.boolean().optional(),
+    /** Lalai true: tempah slot AM/PM. false = sertai aktiviti sedia ada, hanya rekod pergerakan. */
+    tempahBilik: z.boolean().optional(),
   })
   .refine(
     (v) => {
@@ -63,12 +65,14 @@ export async function submitPergerakan(input: unknown): Promise<SubmitResult> {
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak sah" };
   }
-  const { jenis, urusan, lokasi, tarikhPergi, tarikhKembali, sepenuhHari } = parsed.data;
+  const { jenis, urusan, lokasi, tarikhPergi, tarikhKembali, sepenuhHari, tempahBilik } =
+    parsed.data;
   const pergi = parseLocalInput(tarikhPergi);
   const kembali = parseLocalInput(tarikhKembali);
   if (!pergi || !kembali) return { ok: false, error: "Format tarikh tidak sah" };
 
   const roomCode = jenis === "Pergerakan" ? resolveBookableRoomCode(lokasi) : null;
+  const shouldBookRoom = roomCode != null && tempahBilik !== false;
 
   try {
     const result = await db.transaction(async (tx) => {
@@ -87,7 +91,7 @@ export async function submitPergerakan(input: unknown): Promise<SubmitResult> {
         .returning({ id: pergerakan.id });
 
       let roomSlotsBooked = 0;
-      if (roomCode) {
+      if (shouldBookRoom && roomCode) {
         const sync = await syncRoomBookingsFromPergerakan(tx, {
           pergerakanId: row.id,
           roomCode,
@@ -107,7 +111,7 @@ export async function submitPergerakan(input: unknown): Promise<SubmitResult> {
       await tx.insert(auditLog).values({
         action: "SUBMIT_PERGERAKAN",
         userId: Number(user.id),
-        detail: { id: row.id, jenis, urusan, lokasi, roomSlotsBooked },
+        detail: { id: row.id, jenis, urusan, lokasi, roomSlotsBooked, tempahBilik: shouldBookRoom },
       });
 
       return { id: row.id, roomSlotsBooked };
@@ -139,6 +143,7 @@ export async function checkPergerakanRoomAvailability(input: {
   tarikhPergi: string;
   tarikhKembali: string;
   sepenuhHari?: boolean;
+  tempahBilik?: boolean;
   excludePergerakanId?: number;
 }): Promise<RoomAvailabilityCheck> {
   await requireUser();
@@ -155,6 +160,16 @@ export async function checkPergerakanRoomAvailability(input: {
   if (input.jenis !== "Pergerakan") return empty;
   const roomCode = resolveBookableRoomCode(input.lokasi);
   if (!roomCode) return empty;
+
+  if (input.tempahBilik === false) {
+    return {
+      ...empty,
+      applies: true,
+      roomName: roomCode === "DEWAN_BESTARI" ? "Dewan Bestari" : "Bilik Budiman",
+      canBook: true,
+      summary: null,
+    };
+  }
 
   const pergi = parseLocalInput(input.tarikhPergi);
   const kembali = parseLocalInput(input.tarikhKembali);
@@ -185,12 +200,20 @@ export type PergerakanEditData = {
   tarikhPergi: string;
   tarikhKembali: string;
   sepenuhHari: boolean;
+  /** true jika rekod ini ada tempahan bilik/dewan aktif (penganjur). */
+  tempahBilik: boolean;
 };
 
 export async function getPergerakanForEdit(id: number): Promise<PergerakanEditData | null> {
   const user = await requireUser();
   const row = await loadPergerakanForUser(id, user);
   if (!row) return null;
+
+  const activeBooking = await db.query.roomBookings.findFirst({
+    where: and(eq(roomBookings.pergerakanId, id), eq(roomBookings.status, "BOOKED")),
+    columns: { id: true },
+  });
+
   return {
     id: row.id,
     jenis: row.jenis,
@@ -199,6 +222,7 @@ export async function getPergerakanForEdit(id: number): Promise<PergerakanEditDa
     tarikhPergi: toLocalInput(new Date(row.tarikhPergi)),
     tarikhKembali: toLocalInput(new Date(row.tarikhKembali)),
     sepenuhHari: inferSepenuhHari(new Date(row.tarikhPergi), new Date(row.tarikhKembali)),
+    tempahBilik: !!activeBooking,
   };
 }
 
@@ -211,12 +235,14 @@ export async function updatePergerakan(id: number, input: unknown): Promise<Upda
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak sah" };
   }
-  const { jenis, urusan, lokasi, tarikhPergi, tarikhKembali, sepenuhHari } = parsed.data;
+  const { jenis, urusan, lokasi, tarikhPergi, tarikhKembali, sepenuhHari, tempahBilik } =
+    parsed.data;
   const pergi = parseLocalInput(tarikhPergi);
   const kembali = parseLocalInput(tarikhKembali);
   if (!pergi || !kembali) return { ok: false, error: "Format tarikh tidak sah" };
 
   const roomCode = jenis === "Pergerakan" ? resolveBookableRoomCode(lokasi) : null;
+  const shouldBookRoom = roomCode != null && tempahBilik !== false;
 
   try {
     const result = await db.transaction(async (tx) => {
@@ -235,7 +261,7 @@ export async function updatePergerakan(id: number, input: unknown): Promise<Upda
       await cancelRoomBookingsForPergerakan(tx, [id], Number(user.id));
 
       let roomSlotsBooked = 0;
-      if (roomCode) {
+      if (shouldBookRoom && roomCode) {
         const sync = await syncRoomBookingsFromPergerakan(tx, {
           pergerakanId: id,
           roomCode,
@@ -253,7 +279,7 @@ export async function updatePergerakan(id: number, input: unknown): Promise<Upda
       await tx.insert(auditLog).values({
         action: "UPDATE_PERGERAKAN",
         userId: Number(user.id),
-        detail: { id, jenis, urusan, lokasi, roomSlotsBooked },
+        detail: { id, jenis, urusan, lokasi, roomSlotsBooked, tempahBilik: shouldBookRoom },
       });
 
       return { id, roomSlotsBooked };
