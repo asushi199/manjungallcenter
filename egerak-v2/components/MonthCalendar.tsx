@@ -76,7 +76,7 @@ export default function MonthCalendar({
   }, [gridStart, gridEnd]);
 
   const buckets = useMemo(() => buildDayBuckets(items, gridDays), [items, gridDays]);
-  const [drawer, setDrawer] = useState<{ day: string; mode: "holiday" | "overflow" } | null>(null);
+  const [drawerDay, setDrawerDay] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | undefined>(highlightDate);
   const router = useRouter();
   const urlParams = useSearchParams();
@@ -87,7 +87,7 @@ export default function MonthCalendar({
   }, [highlightDate]);
 
   useEffect(() => {
-    setDrawer(null);
+    setDrawerDay(null);
   }, [month]);
 
   function pushDashboardParams(patch: (next: URLSearchParams) => void) {
@@ -115,54 +115,20 @@ export default function MonthCalendar({
     applyMonth(newMonth);
   }
 
-  function scrollToSenarai() {
-    requestAnimationFrame(() => {
-      document.getElementById("senarai-pergerakan")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
-  }
-
-  /** Klik sel: sync URL `date` (sama seperti penapis) + senarai kad di bawah — tiada laci. */
-  function selectDay(dayKey: string) {
+  /** Klik hari: laci sebelah sahaja — data dari buckets (tiada reload pelayan). */
+  function openDayDrawer(dayKey: string) {
     setSelectedDay(dayKey);
-    setDrawer(null);
-    const monthFromDay = dayKey.slice(0, 7);
-    pushDashboardParams((next) => {
-      next.set("date", dayKey);
-      if (monthFromDay !== month) next.set("month", monthFromDay);
-    });
-    scrollToSenarai();
+    setDrawerDay(dayKey);
   }
 
   function onDayClick(dayKey: string) {
-    selectDay(dayKey);
+    openDayDrawer(dayKey);
   }
 
-  function openHolidayDrawer(dayKey: string, e: React.MouseEvent) {
+  function openDayDrawerFromEvent(dayKey: string, e: React.MouseEvent) {
     e.stopPropagation();
     e.preventDefault();
-    setSelectedDay(dayKey);
-    const monthFromDay = dayKey.slice(0, 7);
-    pushDashboardParams((next) => {
-      next.set("date", dayKey);
-      if (monthFromDay !== month) next.set("month", monthFromDay);
-    });
-    setDrawer({ day: dayKey, mode: "holiday" });
-  }
-
-  function openOverflowDrawer(dayKey: string, e: React.MouseEvent) {
-    e.stopPropagation();
-    e.preventDefault();
-    setSelectedDay(dayKey);
-    const monthFromDay = dayKey.slice(0, 7);
-    pushDashboardParams((next) => {
-      next.set("date", dayKey);
-      if (monthFromDay !== month) next.set("month", monthFromDay);
-    });
-    scrollToSenarai();
-    setDrawer({ day: dayKey, mode: "overflow" });
+    openDayDrawer(dayKey);
   }
 
   const monthTitle = format(firstOfMonth, "MMMM yyyy");
@@ -263,7 +229,7 @@ export default function MonthCalendar({
                   type="button"
                   className="text-left w-full text-[9px] leading-tight font-semibold text-rose-800 bg-rose-50 hover:bg-rose-100 rounded px-0.5 py-px truncate mt-0.5"
                   title={`${publicHolidayName} — klik untuk butiran`}
-                  onClick={(e) => openHolidayDrawer(key, e)}
+                  onClick={(e) => openDayDrawerFromEvent(key, e)}
                 >
                   {publicHolidayName}
                 </button>
@@ -273,7 +239,7 @@ export default function MonthCalendar({
                   type="button"
                   className="text-left w-full text-[9px] leading-tight font-semibold text-yellow-900 bg-yellow-100 hover:bg-yellow-200 border border-yellow-300/80 rounded px-0.5 py-px truncate mt-0.5"
                   title={`${schoolHolidayName} — klik untuk butiran`}
-                  onClick={(e) => openHolidayDrawer(key, e)}
+                  onClick={(e) => openDayDrawerFromEvent(key, e)}
                 >
                   {schoolHolidayName}
                 </button>
@@ -302,9 +268,9 @@ export default function MonthCalendar({
                     type="button"
                     className="text-[10px] font-semibold pl-1 text-left w-full hover:underline"
                     style={{ color: "#b81049" }}
-                    onClick={(e) => openOverflowDrawer(key, e)}
+                    onClick={(e) => openDayDrawerFromEvent(key, e)}
                   >
-                    +{more} lagi · senarai
+                    +{more} lagi
                   </button>
                 )}
               </div>
@@ -313,24 +279,23 @@ export default function MonthCalendar({
         })}
       </div>
 
-      {drawer && (
+      {drawerDay && (
         <DayDrawer
-          day={drawer.day}
-          mode={drawer.mode}
-          items={buckets.get(drawer.day) ?? []}
+          day={drawerDay}
+          items={buckets.get(drawerDay) ?? []}
           publicHoliday={
-            publicHolidayDetails?.[drawer.day] ??
-            (publicHolidays?.[drawer.day]
-              ? { kind: "umum", name: publicHolidays[drawer.day] }
+            publicHolidayDetails?.[drawerDay] ??
+            (publicHolidays?.[drawerDay]
+              ? { kind: "umum", name: publicHolidays[drawerDay] }
               : undefined)
           }
           schoolHoliday={
-            schoolHolidayDetails?.[drawer.day] ??
-            (schoolHolidays?.[drawer.day]
-              ? { kind: "sekolah", name: schoolHolidays[drawer.day] }
+            schoolHolidayDetails?.[drawerDay] ??
+            (schoolHolidays?.[drawerDay]
+              ? { kind: "sekolah", name: schoolHolidays[drawerDay] }
               : undefined)
           }
-          onClose={() => setDrawer(null)}
+          onClose={() => setDrawerDay(null)}
         />
       )}
     </div>
@@ -339,25 +304,22 @@ export default function MonthCalendar({
 
 function DayDrawer({
   day,
-  mode,
   items,
   publicHoliday,
   schoolHoliday,
   onClose,
 }: {
   day: string;
-  mode: "holiday" | "overflow";
   items: CalendarItem[];
   publicHoliday?: HolidayDetail;
   schoolHoliday?: HolidayDetail;
   onClose: () => void;
 }) {
-  const showPergerakanList = mode === "overflow";
   const hasPergerakan = items.length > 0;
   const hasAnyHoliday = !!publicHoliday || !!schoolHoliday;
 
-  let subtitle = "Butiran";
-  if (mode === "overflow") subtitle = hasAnyHoliday ? "Cuti & senarai penuh" : "Senarai penuh";
+  let subtitle = "Pergerakan";
+  if (hasAnyHoliday && hasPergerakan) subtitle = "Cuti & pergerakan";
   else if (publicHoliday && schoolHoliday) subtitle = "Cuti umum & sekolah";
   else if (publicHoliday) subtitle = "Cuti umum";
   else if (schoolHoliday) subtitle = "Cuti sekolah";
@@ -394,14 +356,7 @@ function DayDrawer({
           />
         )}
 
-        {mode === "holiday" && hasPergerakan && (
-          <p className="mx-4 mt-4 mb-2 text-sm text-slate-600 rounded-md bg-slate-50 border border-slate-200 px-3 py-2">
-            {items.length} pergerakan pada hari ini — tutup laci dan lihat{" "}
-            <strong>senarai kad di bawah</strong> kalendar.
-          </p>
-        )}
-
-        {showPergerakanList && hasPergerakan ? (
+        {hasPergerakan ? (
           <>
             <p className="px-4 pt-4 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
               Pergerakan berdaftar ({items.length})
@@ -442,11 +397,13 @@ function DayDrawer({
               })}
             </ul>
           </>
-        ) : showPergerakanList ? (
-          <p className="p-6 text-sm text-slate-500">Tiada rekod pergerakan pada tarikh ini.</p>
-        ) : !hasAnyHoliday ? (
-          <p className="p-6 text-sm text-slate-500">Tiada butiran cuti pada tarikh ini.</p>
-        ) : null}
+        ) : (
+          <p className="p-6 text-sm text-slate-500">
+            {hasAnyHoliday
+              ? "Tiada pergerakan didaftarkan pada tarikh ini."
+              : "Tiada rekod pergerakan pada tarikh ini."}
+          </p>
+        )}
       </aside>
     </div>
   );

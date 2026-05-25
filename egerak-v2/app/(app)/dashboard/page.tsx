@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { formatInTimeZone } from "date-fns-tz";
 import Link from "next/link";
-import DashboardScrollSync from "@/components/DashboardScrollSync";
 import { TZ } from "@/lib/dates";
 import { requireUser } from "@/lib/rbac";
 import DashboardTodayStats from "./DashboardTodayStats";
@@ -37,12 +36,10 @@ export default async function DashboardPage({
   /** Lalai: papar cuti sekolah; set sekolah=0 untuk sembunyi */
   const showSchoolHolidays = sp.sekolah !== "0";
 
-  const mainKey = `${month}|${date}|${sektorIds.join(",")}|${includeCuti ? "1" : "0"}|${showSchoolHolidays ? "1" : "0"}`;
+  const mainKey = `${month}|${sektorIds.join(",")}|${includeCuti ? "1" : "0"}|${showSchoolHolidays ? "1" : "0"}`;
 
   return (
-    <>
-      <DashboardScrollSync date={date} />
-      <div className="mx-auto max-w-7xl p-4 grid gap-4 lg:grid-cols-[280px_1fr]">
+    <div className="mx-auto max-w-7xl p-4 grid gap-4 lg:grid-cols-[280px_1fr]">
         <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
           <div className="card p-4">
             <h2 className="text-sm font-semibold text-brand-700 mb-1">Selamat Datang</h2>
@@ -69,7 +66,6 @@ export default async function DashboardPage({
             showSchoolHolidays={showSchoolHolidays}
           />
         </Suspense>
-      </div>
-    </>
+    </div>
   );
 }

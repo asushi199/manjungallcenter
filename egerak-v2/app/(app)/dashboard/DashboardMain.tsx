@@ -2,7 +2,6 @@ import Link from "next/link";
 import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
 import DashboardFilters from "./DashboardFilters";
 import MonthCalendar, { type CalendarItem } from "@/components/MonthCalendar";
-import PergerakanCard, { type PergerakanCardData } from "@/components/PergerakanCard";
 import SektorLegend from "@/components/SektorLegend";
 import {
   listPergerakanForDashboard,
@@ -11,7 +10,6 @@ import {
 import { TZ } from "@/lib/dates";
 import { getCalendarHolidays, type CalendarHolidays } from "@/lib/holidays";
 import { serializeCalendarHolidays } from "@/lib/holidays/serialize";
-import { pergerakanOverlapsRange } from "@/lib/pergerakan-filter";
 
 export type DashboardMainProps = {
   date: string;
@@ -58,15 +56,12 @@ export default async function DashboardMain({
     `${month}-${String(lastDay).padStart(2, "0")}T23:59:59`,
     TZ,
   );
-  const dayStart = fromZonedTime(`${date}T00:00:00`, TZ);
-  const dayEnd = fromZonedTime(`${date}T23:59:59`, TZ);
 
   const filter = {
     sektorIds: sektorIds.length ? sektorIds : undefined,
     includeCuti,
   };
 
-  // Allsettled: kalau satu gagal, halaman masih boleh render.
   const [holidaysRes, pergerakanRes] = await Promise.allSettled([
     getCalendarHolidays(month, { showSchoolHolidays }),
     fetchPergerakanWithRetry({
@@ -89,23 +84,6 @@ export default async function DashboardMain({
     console.error("[dashboard] pergerakan fetch failed:", pergerakanRes.reason);
   }
 
-  const dayItems = monthItems.filter((it) =>
-    pergerakanOverlapsRange(it.tarikhPergi, it.tarikhKembali, dayStart, dayEnd),
-  );
-
-  const toCard = (it: DashboardPergerakanRow): PergerakanCardData => ({
-    id: it.id,
-    nama: it.nama,
-    jawatan: it.jawatan,
-    sektorCode: it.sektorCode,
-    sektorName: it.sektorName,
-    jenis: it.jenis,
-    urusan: it.urusan,
-    lokasi: it.lokasi,
-    tarikhPergi: it.tarikhPergi.toISOString(),
-    tarikhKembali: it.tarikhKembali.toISOString(),
-  });
-
   const calItems: CalendarItem[] = monthItems.map((it) => ({
     id: it.id,
     nama: it.nama,
@@ -119,7 +97,6 @@ export default async function DashboardMain({
     tarikhKembali: it.tarikhKembali.toISOString(),
   }));
 
-  const dayLabel = formatInTimeZone(dayStart, TZ, "EEEE, dd MMMM yyyy");
   const holidayProps = serializeCalendarHolidays(holidays);
   const retryHref = `/dashboard?_r=${Date.now()}`;
 
@@ -153,7 +130,7 @@ export default async function DashboardMain({
           <h1 className="text-lg font-semibold">Kalendar Pergerakan</h1>
           <p className="text-sm text-slate-500">
             {formatInTimeZone(monthStart, TZ, "MMMM yyyy")} · {monthItems.length} rekod · warna
-            mengikut sektor · klik hari untuk senarai di bawah · cuti / +N lagi untuk laci
+            mengikut sektor · <strong>klik hari</strong> untuk butiran (laci — tanpa muat semula)
           </p>
         </header>
         <MonthCalendar
@@ -178,38 +155,6 @@ export default async function DashboardMain({
             </p>
           )}
         </div>
-      </div>
-
-      <div className="space-y-3" id="senarai-pergerakan">
-        <header className="card px-4 py-3 bg-slate-50 border-b-0 scroll-mt-4">
-          <h2 className="text-lg font-semibold text-brand-800">
-            Senarai Pergerakan — {dayLabel}
-          </h2>
-          <p className="text-sm text-slate-500">
-            {dayItems.length} rekod
-            {includeCuti ? "" : " (cuti tidak dipaparkan)"}
-            {sektorIds.length > 0 ? " · sektor ditapis" : " · semua sektor"}
-          </p>
-        </header>
-
-        {dayItems.length === 0 ? (
-          <div className="card p-8 text-center text-slate-500 text-sm">
-            {pergerakanFailed
-              ? "Rekod pergerakan tidak dimuatkan."
-              : "Tiada pergerakan pada tarikh ini."}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {dayItems.map((it, i) => (
-              <PergerakanCard
-                key={it.id}
-                variant="dashboard"
-                index={i + 1}
-                item={toCard(it)}
-              />
-            ))}
-          </div>
-        )}
       </div>
     </section>
   );
