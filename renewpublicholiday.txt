@@ -1,7 +1,0 @@
-cd egerak-v2
-npm run holidays:generate
-git add lib/holidays/public-holidays-data.ts
-git commit -m "chore: refresh Perak public holidays for 20XX"
-git push
-
-学校假期（KPM 发新文告时）手动编辑 lib/holidays/school-holidays-data.ts，然后 commit 即可。
