@@ -10,6 +10,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
+    "db:reset-beta": "tsx scripts/reset-beta-data.ts",
     "db:create-user": "tsx scripts/create-user.ts",
     "db:import": "tsx scripts/import-from-sheet.ts",
     "db:check-url": "tsx scripts/check-db-url.ts",

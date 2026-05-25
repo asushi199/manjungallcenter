@@ -124,13 +124,36 @@ Supabase free tier sudah ada daily backup automatik (7 hari).
 Untuk sandaran luar (disyorkan bulanan):
 
 1. **Dashboard Supabase → Database → Backups → Download**.
-2. Atau jalankan `pg_dump` dari mesin tempatan:
+2. Atau jalankan `pg_dump` dari mesin tempatan (**guna Direct connection port 5432**, bukan pooler 6543):
 
-   ```bash
-   pg_dump "postgres://...DATABASE_URL..." > egerak_backup_YYYY-MM-DD.sql
+   ```powershell
+   pg_dump "postgresql://postgres.xxxxx:PASSWORD@db.xxxxx.supabase.co:5432/postgres" -f egerak_backup_YYYY-MM-DD.sql
    ```
 
-Simpan ke Drive PPD (folder USTP).
+Simpan ke Drive PPD (folder USTP). **Sandaran ≠ padam data** — buat backup sebelum reset beta jika mungkin.
+
+### Kosongkan data ujian beta (platform bersih)
+
+**Padam di UI (Pergerakan Saya / Admin Padam)** hanya *soft delete* (`aktif=false`) — rekod masih dalam DB.
+
+Untuk **padam kekal** semua pergerakan, OPR, tempahan bilik, import & `audit_log`:
+
+```bash
+cd egerak-v2
+npm run db:reset-beta -- --confirm
+```
+
+- **Kekal:** `sektors`, `rooms`, semua `users` (akaun sedia ada).
+- **Tidak dipadam:** fail gambar di Google Drive (bersihkan folder Drive secara manual jika perlu).
+
+Jika mahu buang akaun ujian dan kekal satu admin sahaja:
+
+```bash
+npm run db:reset-beta -- --confirm --purge-users
+npm run db:seed
+```
+
+Pastikan `DATABASE_URL` dalam `.env.local` menunjuk ke DB yang betul (prod vs dev).
 
 ---
 
