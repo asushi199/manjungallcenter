@@ -85,7 +85,11 @@ export async function generateOprWithGemini(input: OprPromptInput): Promise<Gemi
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
       contents: [{ parts: [{ text: buildUserPrompt(input) }] }],
-      generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
+      generationConfig: {
+        maxOutputTokens: 2048,
+        // Gemini 3.5: jangan set temperature/top_p; LOW = lebih pantas untuk OPR JSON ringkas
+        thinkingConfig: { thinkingLevel: "LOW" },
+      },
     }),
   });
 
