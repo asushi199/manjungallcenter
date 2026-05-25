@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
+import DashboardFilters from "./DashboardFilters";
 import MonthCalendar, { type CalendarItem } from "@/components/MonthCalendar";
 import PergerakanCard, { type PergerakanCardData } from "@/components/PergerakanCard";
 import SektorLegend from "@/components/SektorLegend";
@@ -141,11 +142,18 @@ export default async function DashboardMain({
       )}
 
       <div className="space-y-3">
+        <DashboardFilters
+          date={date}
+          month={month}
+          sektorIds={sektorIds}
+          includeCuti={includeCuti}
+          showSchoolHolidays={showSchoolHolidays}
+        />
         <header>
           <h1 className="text-lg font-semibold">Kalendar Pergerakan</h1>
           <p className="text-sm text-slate-500">
             {formatInTimeZone(monthStart, TZ, "MMMM yyyy")} · {monthItems.length} rekod · warna
-            mengikut sektor · klik hari untuk butiran (laci)
+            mengikut sektor · klik hari untuk senarai di bawah · cuti / +N lagi untuk laci
           </p>
         </header>
         <MonthCalendar

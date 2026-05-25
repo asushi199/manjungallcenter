@@ -76,8 +76,7 @@ export default function MonthCalendar({
   }, [gridStart, gridEnd]);
 
   const buckets = useMemo(() => buildDayBuckets(items, gridDays), [items, gridDays]);
-  const [openDay, setOpenDay] = useState<string | null>(null);
-  /** Sorotan hari — setempat (klik sel), tanpa reload pelayan */
+  const [drawer, setDrawer] = useState<{ day: string; mode: "holiday" | "overflow" } | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | undefined>(highlightDate);
   const router = useRouter();
   const urlParams = useSearchParams();
@@ -86,6 +85,10 @@ export default function MonthCalendar({
   useEffect(() => {
     setSelectedDay(highlightDate);
   }, [highlightDate]);
+
+  useEffect(() => {
+    setDrawer(null);
+  }, [month]);
 
   function pushDashboardParams(patch: (next: URLSearchParams) => void) {
     const next = new URLSearchParams(urlParams?.toString());
@@ -112,16 +115,54 @@ export default function MonthCalendar({
     applyMonth(newMonth);
   }
 
-  /** Klik hari: laci sebelah (data bulan ini sudah dimuat) — tiada panggilan DB. */
-  function onDayClick(dayKey: string) {
-    setSelectedDay(dayKey);
-    setOpenDay(dayKey);
+  function scrollToSenarai() {
+    requestAnimationFrame(() => {
+      document.getElementById("senarai-pergerakan")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
   }
 
-  function openDayDrawer(dayKey: string, e: React.MouseEvent) {
+  /** Klik sel: sync URL `date` (sama seperti penapis) + senarai kad di bawah — tiada laci. */
+  function selectDay(dayKey: string) {
+    setSelectedDay(dayKey);
+    setDrawer(null);
+    const monthFromDay = dayKey.slice(0, 7);
+    pushDashboardParams((next) => {
+      next.set("date", dayKey);
+      if (monthFromDay !== month) next.set("month", monthFromDay);
+    });
+    scrollToSenarai();
+  }
+
+  function onDayClick(dayKey: string) {
+    selectDay(dayKey);
+  }
+
+  function openHolidayDrawer(dayKey: string, e: React.MouseEvent) {
     e.stopPropagation();
     e.preventDefault();
-    onDayClick(dayKey);
+    setSelectedDay(dayKey);
+    const monthFromDay = dayKey.slice(0, 7);
+    pushDashboardParams((next) => {
+      next.set("date", dayKey);
+      if (monthFromDay !== month) next.set("month", monthFromDay);
+    });
+    setDrawer({ day: dayKey, mode: "holiday" });
+  }
+
+  function openOverflowDrawer(dayKey: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    setSelectedDay(dayKey);
+    const monthFromDay = dayKey.slice(0, 7);
+    pushDashboardParams((next) => {
+      next.set("date", dayKey);
+      if (monthFromDay !== month) next.set("month", monthFromDay);
+    });
+    scrollToSenarai();
+    setDrawer({ day: dayKey, mode: "overflow" });
   }
 
   const monthTitle = format(firstOfMonth, "MMMM yyyy");
@@ -222,7 +263,7 @@ export default function MonthCalendar({
                   type="button"
                   className="text-left w-full text-[9px] leading-tight font-semibold text-rose-800 bg-rose-50 hover:bg-rose-100 rounded px-0.5 py-px truncate mt-0.5"
                   title={`${publicHolidayName} — klik untuk butiran`}
-                  onClick={(e) => openDayDrawer(key, e)}
+                  onClick={(e) => openHolidayDrawer(key, e)}
                 >
                   {publicHolidayName}
                 </button>
@@ -232,7 +273,7 @@ export default function MonthCalendar({
                   type="button"
                   className="text-left w-full text-[9px] leading-tight font-semibold text-yellow-900 bg-yellow-100 hover:bg-yellow-200 border border-yellow-300/80 rounded px-0.5 py-px truncate mt-0.5"
                   title={`${schoolHolidayName} — klik untuk butiran`}
-                  onClick={(e) => openDayDrawer(key, e)}
+                  onClick={(e) => openHolidayDrawer(key, e)}
                 >
                   {schoolHolidayName}
                 </button>
@@ -261,7 +302,7 @@ export default function MonthCalendar({
                     type="button"
                     className="text-[10px] font-semibold pl-1 text-left w-full hover:underline"
                     style={{ color: "#b81049" }}
-                    onClick={(e) => openDayDrawer(key, e)}
+                    onClick={(e) => openOverflowDrawer(key, e)}
                   >
                     +{more} lagi · senarai
                   </button>
@@ -272,23 +313,24 @@ export default function MonthCalendar({
         })}
       </div>
 
-      {openDay && (
+      {drawer && (
         <DayDrawer
-          day={openDay}
-          items={buckets.get(openDay) ?? []}
+          day={drawer.day}
+          mode={drawer.mode}
+          items={buckets.get(drawer.day) ?? []}
           publicHoliday={
-            publicHolidayDetails?.[openDay] ??
-            (publicHolidays?.[openDay]
-              ? { kind: "umum", name: publicHolidays[openDay] }
+            publicHolidayDetails?.[drawer.day] ??
+            (publicHolidays?.[drawer.day]
+              ? { kind: "umum", name: publicHolidays[drawer.day] }
               : undefined)
           }
           schoolHoliday={
-            schoolHolidayDetails?.[openDay] ??
-            (schoolHolidays?.[openDay]
-              ? { kind: "sekolah", name: schoolHolidays[openDay] }
+            schoolHolidayDetails?.[drawer.day] ??
+            (schoolHolidays?.[drawer.day]
+              ? { kind: "sekolah", name: schoolHolidays[drawer.day] }
               : undefined)
           }
-          onClose={() => setOpenDay(null)}
+          onClose={() => setDrawer(null)}
         />
       )}
     </div>
@@ -297,22 +339,25 @@ export default function MonthCalendar({
 
 function DayDrawer({
   day,
+  mode,
   items,
   publicHoliday,
   schoolHoliday,
   onClose,
 }: {
   day: string;
+  mode: "holiday" | "overflow";
   items: CalendarItem[];
   publicHoliday?: HolidayDetail;
   schoolHoliday?: HolidayDetail;
   onClose: () => void;
 }) {
+  const showPergerakanList = mode === "overflow";
   const hasPergerakan = items.length > 0;
   const hasAnyHoliday = !!publicHoliday || !!schoolHoliday;
 
-  let subtitle = "Pergerakan";
-  if (hasAnyHoliday && hasPergerakan) subtitle = "Cuti & pergerakan";
+  let subtitle = "Butiran";
+  if (mode === "overflow") subtitle = hasAnyHoliday ? "Cuti & senarai penuh" : "Senarai penuh";
   else if (publicHoliday && schoolHoliday) subtitle = "Cuti umum & sekolah";
   else if (publicHoliday) subtitle = "Cuti umum";
   else if (schoolHoliday) subtitle = "Cuti sekolah";
@@ -349,50 +394,59 @@ function DayDrawer({
           />
         )}
 
-        {hasPergerakan ? (
+        {mode === "holiday" && hasPergerakan && (
+          <p className="mx-4 mt-4 mb-2 text-sm text-slate-600 rounded-md bg-slate-50 border border-slate-200 px-3 py-2">
+            {items.length} pergerakan pada hari ini — tutup laci dan lihat{" "}
+            <strong>senarai kad di bawah</strong> kalendar.
+          </p>
+        )}
+
+        {showPergerakanList && hasPergerakan ? (
           <>
             <p className="px-4 pt-4 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
               Pergerakan berdaftar ({items.length})
             </p>
             <ul className="divide-y border-t">
-            {items.map((it) => {
-              const st = sektorStyle(it.sektorCode, it.jenis);
-              return (
-                <li key={it.id} className="px-4 py-3 border-l-4" style={{ borderLeftColor: st.border }}>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: st.chip }}
-                    />
-                    <span className="font-medium">{it.nama}</span>
-                    {it.jenis === "Bercuti" && (
-                      <span className="badge bg-emerald-100 text-emerald-700">Bercuti</span>
-                    )}
-                  </div>
-                  <div className="text-xs text-slate-500">{it.jawatan}</div>
-                  <div className="text-xs text-slate-500">
-                    {it.sektorName ?? "(Sektor tidak ditetapkan)"}
-                  </div>
-                  <p className="mt-1 text-sm">{it.urusan}</p>
-                  <div className="mt-1 text-xs text-slate-600">
-                    <div>Lokasi: {it.lokasi || "-"}</div>
-                    <div>
-                      {format(new Date(it.tarikhPergi), "dd-MM-yyyy HH:mm")} sehingga{" "}
-                      {format(new Date(it.tarikhKembali), "dd-MM-yyyy HH:mm")}
+              {items.map((it) => {
+                const st = sektorStyle(it.sektorCode, it.jenis);
+                return (
+                  <li
+                    key={it.id}
+                    className="px-4 py-3 border-l-4"
+                    style={{ borderLeftColor: st.border }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: st.chip }}
+                      />
+                      <span className="font-medium">{it.nama}</span>
+                      {it.jenis === "Bercuti" && (
+                        <span className="badge bg-emerald-100 text-emerald-700">Bercuti</span>
+                      )}
                     </div>
-                  </div>
-                </li>
-              );
-            })}
+                    <div className="text-xs text-slate-500">{it.jawatan}</div>
+                    <div className="text-xs text-slate-500">
+                      {it.sektorName ?? "(Sektor tidak ditetapkan)"}
+                    </div>
+                    <p className="mt-1 text-sm">{it.urusan}</p>
+                    <div className="mt-1 text-xs text-slate-600">
+                      <div>Lokasi: {it.lokasi || "-"}</div>
+                      <div>
+                        {format(new Date(it.tarikhPergi), "dd-MM-yyyy HH:mm")} sehingga{" "}
+                        {format(new Date(it.tarikhKembali), "dd-MM-yyyy HH:mm")}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </>
-        ) : (
-          <p className="p-6 text-sm text-slate-500">
-            {hasAnyHoliday
-              ? "Tiada pergerakan didaftarkan pada tarikh ini."
-              : "Tiada rekod pergerakan pada tarikh ini."}
-          </p>
-        )}
+        ) : showPergerakanList ? (
+          <p className="p-6 text-sm text-slate-500">Tiada rekod pergerakan pada tarikh ini.</p>
+        ) : !hasAnyHoliday ? (
+          <p className="p-6 text-sm text-slate-500">Tiada butiran cuti pada tarikh ini.</p>
+        ) : null}
       </aside>
     </div>
   );

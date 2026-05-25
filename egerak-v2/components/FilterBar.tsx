@@ -7,6 +7,7 @@ import { replaceWithSearchParams } from "@/lib/navigate";
 
 export type SektorOption = { id: number; code: string; name: string };
 
+/** Tapisan kalendar Utama — sektor & cuti (tarikh/bulan via klik kalendar). */
 export default function FilterBar({
   sektors,
   current,
@@ -26,16 +27,14 @@ export default function FilterBar({
 
   function update(
     patch: Partial<{
-      date: string;
-      month: string;
       sektorIds: number[];
       includeCuti: boolean;
       showSchoolHolidays: boolean;
     }>,
   ) {
     const next = new URLSearchParams(params?.toString());
-    const date = patch.date ?? current.date;
-    const month = patch.month ?? current.month;
+    const date = current.date;
+    const month = current.month;
     const sektorIds = patch.sektorIds ?? current.sektorIds;
     const includeCuti = patch.includeCuti ?? current.includeCuti;
     const showSchoolHolidays = patch.showSchoolHolidays ?? current.showSchoolHolidays;
@@ -53,78 +52,22 @@ export default function FilterBar({
     });
   }
 
-  function onDateChange(date: string) {
-    const month = date.slice(0, 7);
-    update({ date, month });
-  }
-
-  function shiftMonth(delta: number) {
-    const [y, m] = current.month.split("-").map(Number);
-    const d = new Date(y, m - 1 + delta, 1);
-    update({ month: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` });
-  }
-
   return (
-    <div className="card p-4 space-y-3">
+    <div className="card p-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
       {isPending && (
-        <p className="text-xs font-medium text-brand-700" role="status">
+        <p className="text-xs font-medium text-brand-700 w-full sm:w-auto sm:ml-auto" role="status">
           Memuatkan…
         </p>
       )}
-      <div>
-        <label className="label" htmlFor="filter-date">
-          Tarikh (senarai kad)
-        </label>
-        <input
-          id="filter-date"
-          type="date"
-          className="input"
-          value={current.date}
-          onChange={(e) => onDateChange(e.target.value)}
+      <div className="flex-1 min-w-[12rem] sm:min-w-[200px]">
+        <SektorFilterDropdown
+          sektors={sektors}
+          selectedIds={current.sektorIds}
+          onChange={(sektorIds) => update({ sektorIds })}
           disabled={isPending}
         />
       </div>
-
-      <div>
-        <label className="label" htmlFor="filter-month">
-          Bulan (kalendar)
-        </label>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => shiftMonth(-1)}
-            disabled={isPending}
-          >
-            {"\u2039"}
-          </button>
-          <input
-            id="filter-month"
-            type="month"
-            className="input flex-1"
-            value={current.month}
-            onChange={(e) => update({ month: e.target.value })}
-            disabled={isPending}
-          />
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => shiftMonth(1)}
-            disabled={isPending}
-          >
-            {"\u203A"}
-          </button>
-        </div>
-      </div>
-
-      <SektorFilterDropdown
-        sektors={sektors}
-        selectedIds={current.sektorIds}
-        onChange={(sektorIds) => update({ sektorIds })}
-        disabled={isPending}
-      />
-
-      <label className="flex items-center gap-2 text-sm text-slate-700">
+      <label className="flex items-center gap-2 text-sm text-slate-700 shrink-0">
         <input
           type="checkbox"
           checked={current.includeCuti}
@@ -133,8 +76,7 @@ export default function FilterBar({
         />
         Tunjukkan rekod cuti
       </label>
-
-      <label className="flex items-center gap-2 text-sm text-slate-700">
+      <label className="flex items-center gap-2 text-sm text-slate-700 shrink-0">
         <input
           type="checkbox"
           checked={current.showSchoolHolidays}

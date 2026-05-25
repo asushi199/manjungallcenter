@@ -5,13 +5,8 @@ import DashboardScrollSync from "@/components/DashboardScrollSync";
 import { TZ } from "@/lib/dates";
 import { requireUser } from "@/lib/rbac";
 import DashboardTodayStats from "./DashboardTodayStats";
-import DashboardFilters from "./DashboardFilters";
 import DashboardMain from "./DashboardMain";
-import {
-  TodayStatsSkeleton,
-  FiltersSkeleton,
-  MainSectionSkeleton,
-} from "./DashboardSkeletons";
+import { TodayStatsSkeleton, MainSectionSkeleton } from "./DashboardSkeletons";
 
 export const dynamic = "force-dynamic";
 
@@ -58,16 +53,6 @@ export default async function DashboardPage({
 
           <Suspense fallback={<TodayStatsSkeleton />}>
             <DashboardTodayStats />
-          </Suspense>
-
-          <Suspense fallback={<FiltersSkeleton />}>
-            <DashboardFilters
-              date={date}
-              month={month}
-              sektorIds={sektorIds}
-              includeCuti={includeCuti}
-              showSchoolHolidays={showSchoolHolidays}
-            />
           </Suspense>
 
           <Link className="btn-primary w-full justify-center" href="/new">
