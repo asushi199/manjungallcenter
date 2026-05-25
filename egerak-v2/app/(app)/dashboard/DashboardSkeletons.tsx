@@ -13,10 +13,8 @@ export function TodayStatsSkeleton() {
 
 export function MainSectionSkeleton() {
   return (
-    <div className="space-y-6 animate-pulse" aria-hidden>
-      <div className="card h-14 bg-slate-100" />
-      <div className="h-6 w-48 bg-slate-200 rounded" />
-      <div className="card h-[420px] bg-slate-100" />
+    <div className="space-y-3 animate-pulse" aria-hidden>
+      <div className="card h-[460px] bg-slate-100" />
     </div>
   );
 }

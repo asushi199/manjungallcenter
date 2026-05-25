@@ -119,24 +119,28 @@ export default async function DashboardMain({
       )}
 
       <div className="space-y-3">
-        <DashboardFilters
-          date={date}
-          month={month}
-          sektorIds={sektorIds}
-          includeCuti={includeCuti}
-          showSchoolHolidays={showSchoolHolidays}
-        />
-        <header>
-          <h1 className="text-lg font-semibold">Kalendar Pergerakan</h1>
-          <p className="text-sm text-slate-500">
-            {formatInTimeZone(monthStart, TZ, "MMMM yyyy")} · {monthItems.length} rekod · warna
-            mengikut sektor · <strong>klik hari</strong> untuk butiran (laci — tanpa muat semula)
-          </p>
-        </header>
         <MonthCalendar
           month={month}
           items={calItems}
           highlightDate={date}
+          header={
+            <>
+              <h1 className="text-lg font-semibold text-slate-900">Kalendar Pergerakan</h1>
+              <p className="text-sm text-slate-500 mt-0.5">
+                {formatInTimeZone(monthStart, TZ, "MMMM yyyy")} · {monthItems.length} rekod · warna
+                mengikut sektor · <strong>klik hari</strong> untuk butiran (laci)
+              </p>
+            </>
+          }
+          toolbar={
+            <DashboardFilters
+              date={date}
+              month={month}
+              sektorIds={sektorIds}
+              includeCuti={includeCuti}
+              showSchoolHolidays={showSchoolHolidays}
+            />
+          }
           publicHolidays={holidayProps.publicLabels}
           publicHolidayDetails={holidayProps.publicDetails}
           schoolHolidays={showSchoolHolidays ? holidayProps.schoolLabels : undefined}

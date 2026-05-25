@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -44,6 +45,8 @@ export default function MonthCalendar({
   month,
   items,
   highlightDate,
+  header,
+  toolbar,
   publicHolidays,
   publicHolidayDetails,
   schoolHolidays,
@@ -51,6 +54,10 @@ export default function MonthCalendar({
 }: {
   month: string;
   items: CalendarItem[];
+  /** Tajuk & petunjuk dalam kad kalendar */
+  header?: ReactNode;
+  /** Tapisan sektor / cuti — baris dalam kad, atas navigasi bulan */
+  toolbar?: ReactNode;
   /** Tarikh dipilih di penapis (garis biru pada sel) */
   highlightDate?: string;
   /** Cuti umum — Record (serializable dari RSC) */
@@ -140,9 +147,13 @@ export default function MonthCalendar({
     >
       {isPending && (
         <p className="absolute top-2 right-2 z-10 text-xs font-medium text-brand-700 bg-white/90 px-2 py-1 rounded shadow-sm">
-          Memuatkan…
+          Memuatkan bulan…
         </p>
       )}
+      {header ? <div className="border-b bg-white px-3 py-2.5">{header}</div> : null}
+      {toolbar ? (
+        <div className="border-b bg-slate-50/90">{toolbar}</div>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-slate-50 px-3 py-2">
         <p className="text-sm font-semibold text-slate-800">{monthTitle}</p>
         <div className="flex items-center gap-1.5">

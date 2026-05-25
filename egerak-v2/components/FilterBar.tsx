@@ -53,9 +53,9 @@ export default function FilterBar({
   }
 
   return (
-    <div className="card p-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+    <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-end px-3 py-2.5">
       {isPending && (
-        <p className="text-xs font-medium text-brand-700 w-full sm:w-auto sm:ml-auto" role="status">
+        <p className="text-xs font-medium text-brand-700 w-full sm:w-auto sm:ml-auto order-last sm:order-none" role="status">
           Memuatkan…
         </p>
       )}
