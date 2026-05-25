@@ -151,12 +151,13 @@ export default function MonthCalendar({
         </p>
       )}
       {header ? <div className="border-b bg-white px-3 py-2.5">{header}</div> : null}
-      {toolbar ? (
-        <div className="border-b bg-slate-50/90">{toolbar}</div>
-      ) : null}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-slate-50 px-3 py-2">
-        <p className="text-sm font-semibold text-slate-800">{monthTitle}</p>
-        <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-2 border-b bg-slate-50 px-2 py-2 sm:px-3">
+        {toolbar ? (
+          <div className="flex flex-wrap items-center min-w-0 flex-1 basis-full lg:basis-auto lg:min-w-[14rem]">
+            {toolbar}
+          </div>
+        ) : null}
+        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
           <button
             type="button"
             className="btn-secondary px-2 py-1.5 text-sm"
@@ -168,11 +169,11 @@ export default function MonthCalendar({
           </button>
           <input
             type="month"
-            className="input py-1.5 text-sm w-[9.5rem]"
+            className="input py-1.5 text-sm w-[8.75rem] sm:w-[9.5rem]"
             value={month}
             disabled={isPending}
             onChange={(e) => e.target.value && applyMonth(e.target.value)}
-            aria-label="Pilih bulan"
+            aria-label={`Pilih bulan — ${monthTitle}`}
           />
           <button
             type="button"

@@ -24,12 +24,15 @@ export default function SektorFilterDropdown({
   onChange,
   disabled,
   label = "Saring sektor",
+  compact = false,
 }: {
   sektors: SektorOption[];
   selectedIds: number[];
   onChange: (ids: number[]) => void;
   disabled?: boolean;
   label?: string;
+  /** Satu baris dengan navigasi bulan — label ringkas, tanpa chip di bawah */
+  compact?: boolean;
 }) {
   const listId = useId();
   const ref = useRef<HTMLDivElement>(null);
@@ -61,8 +64,8 @@ export default function SektorFilterDropdown({
   const summary = triggerLabel(sektors, selectedIds);
 
   return (
-    <div ref={ref} className="relative">
-      <label className="label" htmlFor={listId}>
+    <div ref={ref} className={cn("relative", compact && "min-w-0")}>
+      <label className={cn("label", compact && "sr-only")} htmlFor={listId}>
         {label}
       </label>
       <button
@@ -72,8 +75,10 @@ export default function SektorFilterDropdown({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="listbox"
+        title={label}
         className={cn(
           "input flex w-full items-center justify-between gap-2 text-left",
+          compact && "py-1.5 text-xs min-h-0",
           disabled && "opacity-60 cursor-not-allowed",
         )}
       >
@@ -83,7 +88,7 @@ export default function SektorFilterDropdown({
         </span>
       </button>
 
-      {selectedIds.length > 0 && (
+      {selectedIds.length > 0 && !compact && (
         <div className="mt-1.5 flex flex-wrap gap-1">
           {selectedIds.map((id) => {
             const s = sektors.find((x) => x.id === id);

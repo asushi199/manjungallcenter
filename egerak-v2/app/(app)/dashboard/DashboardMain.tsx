@@ -134,6 +134,7 @@ export default async function DashboardMain({
           }
           toolbar={
             <DashboardFilters
+              inline
               date={date}
               month={month}
               sektorIds={sektorIds}
