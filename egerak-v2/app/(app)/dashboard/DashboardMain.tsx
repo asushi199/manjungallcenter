@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
-import DashboardFilters from "./DashboardFilters";
 import MonthCalendar, { type CalendarItem } from "@/components/MonthCalendar";
+import { listAllSektors } from "@/lib/actions/users";
 import SektorLegend from "@/components/SektorLegend";
 import {
   listPergerakanForDashboard,
@@ -62,14 +62,23 @@ export default async function DashboardMain({
     includeCuti,
   };
 
-  const [holidaysRes, pergerakanRes] = await Promise.allSettled([
+  const [holidaysRes, pergerakanRes, sektorsRes] = await Promise.allSettled([
     getCalendarHolidays(month, { showSchoolHolidays }),
     fetchPergerakanWithRetry({
       start: monthStart,
       end: monthEnd,
       ...filter,
     }),
+    listAllSektors(),
   ]);
+
+  const filterSektors =
+    sektorsRes.status === "fulfilled"
+      ? sektorsRes.value.map((s) => ({ id: s.id, code: s.code, name: s.name }))
+      : [];
+  if (sektorsRes.status === "rejected") {
+    console.error("[dashboard] listAllSektors gagal:", sektorsRes.reason);
+  }
 
   const holidays =
     holidaysRes.status === "fulfilled" ? holidaysRes.value : EMPTY_HOLIDAYS;
@@ -132,16 +141,13 @@ export default async function DashboardMain({
               </p>
             </>
           }
-          toolbar={
-            <DashboardFilters
-              inline
-              date={date}
-              month={month}
-              sektorIds={sektorIds}
-              includeCuti={includeCuti}
-              showSchoolHolidays={showSchoolHolidays}
-            />
-          }
+          calendarFilter={{
+            sektors: filterSektors,
+            date,
+            sektorIds,
+            includeCuti,
+            showSchoolHolidays,
+          }}
           publicHolidays={holidayProps.publicLabels}
           publicHolidayDetails={holidayProps.publicDetails}
           schoolHolidays={showSchoolHolidays ? holidayProps.schoolLabels : undefined}

@@ -13,6 +13,7 @@ import {
   startOfMonth,
   startOfWeek,
 } from "date-fns";
+import FilterBar, { type SektorOption } from "@/components/FilterBar";
 import { cn } from "@/lib/cn";
 import { buildDayBuckets } from "@/lib/calendar-buckets";
 import type { HolidayDetail } from "@/lib/holidays/types";
@@ -41,12 +42,21 @@ function ymdKey(d: Date) {
   return format(d, "yyyy-MM-dd");
 }
 
+export type CalendarFilterConfig = {
+  sektors: SektorOption[];
+  date: string;
+  sektorIds: number[];
+  includeCuti: boolean;
+  showSchoolHolidays: boolean;
+};
+
 export default function MonthCalendar({
   month,
   items,
   highlightDate,
   header,
   toolbar,
+  calendarFilter,
   publicHolidays,
   publicHolidayDetails,
   schoolHolidays,
@@ -56,8 +66,10 @@ export default function MonthCalendar({
   items: CalendarItem[];
   /** Tajuk & petunjuk dalam kad kalendar */
   header?: ReactNode;
-  /** Tapisan sektor / cuti — baris dalam kad, atas navigasi bulan */
+  /** @deprecated Guna calendarFilter (susun atur dua baris) */
   toolbar?: ReactNode;
+  /** Baris 1: cuti pegawai / cuti sekolah · Baris 2: sektor + navigasi bulan */
+  calendarFilter?: CalendarFilterConfig;
   /** Tarikh dipilih di penapis (garis biru pada sel) */
   highlightDate?: string;
   /** Cuti umum — Record (serializable dari RSC) */
@@ -151,41 +163,87 @@ export default function MonthCalendar({
         </p>
       )}
       {header ? <div className="border-b bg-white px-3 py-2.5">{header}</div> : null}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-2 border-b bg-slate-50 px-2 py-2 sm:px-3">
-        {toolbar ? (
-          <div className="flex flex-wrap items-center min-w-0 flex-1 basis-full lg:basis-auto lg:min-w-[14rem]">
-            {toolbar}
-          </div>
-        ) : null}
-        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-          <button
-            type="button"
-            className="btn-secondary px-2 py-1.5 text-sm"
-            onClick={() => shiftMonth(-1)}
-            disabled={isPending}
-            aria-label="Bulan sebelumnya"
-          >
-            ‹
-          </button>
-          <input
-            type="month"
-            className="input py-1.5 text-sm w-[8.75rem] sm:w-[9.5rem]"
-            value={month}
-            disabled={isPending}
-            onChange={(e) => e.target.value && applyMonth(e.target.value)}
-            aria-label={`Pilih bulan — ${monthTitle}`}
+      {calendarFilter ? (
+        <div className="border-b bg-slate-50 px-3 py-2.5">
+          <FilterBar
+            stacked
+            sektors={calendarFilter.sektors}
+            current={{
+              date: calendarFilter.date,
+              month,
+              sektorIds: calendarFilter.sektorIds,
+              includeCuti: calendarFilter.includeCuti,
+              showSchoolHolidays: calendarFilter.showSchoolHolidays,
+            }}
+            monthControls={
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  className="btn-secondary px-2 py-1.5 text-sm"
+                  onClick={() => shiftMonth(-1)}
+                  disabled={isPending}
+                  aria-label="Bulan sebelumnya"
+                >
+                  ‹
+                </button>
+                <input
+                  type="month"
+                  className="input py-1.5 text-sm w-[8.75rem] sm:w-[9.5rem]"
+                  value={month}
+                  disabled={isPending}
+                  onChange={(e) => e.target.value && applyMonth(e.target.value)}
+                  aria-label={`Pilih bulan — ${monthTitle}`}
+                />
+                <button
+                  type="button"
+                  className="btn-secondary px-2 py-1.5 text-sm"
+                  onClick={() => shiftMonth(1)}
+                  disabled={isPending}
+                  aria-label="Bulan seterusnya"
+                >
+                  ›
+                </button>
+              </div>
+            }
           />
-          <button
-            type="button"
-            className="btn-secondary px-2 py-1.5 text-sm"
-            onClick={() => shiftMonth(1)}
-            disabled={isPending}
-            aria-label="Bulan seterusnya"
-          >
-            ›
-          </button>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-2 border-b bg-slate-50 px-2 py-2 sm:px-3">
+          {toolbar ? (
+            <div className="flex flex-wrap items-center min-w-0 flex-1 basis-full lg:basis-auto lg:min-w-[14rem]">
+              {toolbar}
+            </div>
+          ) : null}
+          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+            <button
+              type="button"
+              className="btn-secondary px-2 py-1.5 text-sm"
+              onClick={() => shiftMonth(-1)}
+              disabled={isPending}
+              aria-label="Bulan sebelumnya"
+            >
+              ‹
+            </button>
+            <input
+              type="month"
+              className="input py-1.5 text-sm w-[8.75rem] sm:w-[9.5rem]"
+              value={month}
+              disabled={isPending}
+              onChange={(e) => e.target.value && applyMonth(e.target.value)}
+              aria-label={`Pilih bulan — ${monthTitle}`}
+            />
+            <button
+              type="button"
+              className="btn-secondary px-2 py-1.5 text-sm"
+              onClick={() => shiftMonth(1)}
+              disabled={isPending}
+              aria-label="Bulan seterusnya"
+            >
+              ›
+            </button>
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-7 text-center text-xs font-semibold text-slate-500 bg-slate-50 border-b">
         {DAY_LABELS.map((d) => (
           <div key={d} className="py-2">

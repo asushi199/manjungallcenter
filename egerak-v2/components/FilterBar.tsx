@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import SektorFilterDropdown from "@/components/SektorFilterDropdown";
@@ -12,6 +13,8 @@ export default function FilterBar({
   sektors,
   current,
   inline = false,
+  stacked = false,
+  monthControls,
 }: {
   sektors: SektorOption[];
   current: {
@@ -21,8 +24,11 @@ export default function FilterBar({
     includeCuti: boolean;
     showSchoolHolidays: boolean;
   };
-  /** Satu baris dengan ‹ bulan › — cuti kiri, sektor di sebelah pilih bulan */
+  /** Satu baris dengan ‹ bulan › (legacy) */
   inline?: boolean;
+  /** Baris 1: cuti · Baris 2: sektor + monthControls */
+  stacked?: boolean;
+  monthControls?: ReactNode;
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -55,13 +61,63 @@ export default function FilterBar({
     });
   }
 
+  const cutiPegawaiLabel = (
+    <label className="flex items-center gap-2 text-sm text-slate-700 shrink-0 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={current.includeCuti}
+        onChange={(e) => update({ includeCuti: e.target.checked })}
+        disabled={isPending}
+      />
+      <span className="whitespace-nowrap">Cuti pegawai</span>
+    </label>
+  );
+
+  const cutiSekolahLabel = (
+    <label className="flex items-center gap-2 text-sm text-slate-700 shrink-0 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={current.showSchoolHolidays}
+        onChange={(e) => update({ showSchoolHolidays: e.target.checked })}
+        disabled={isPending}
+      />
+      <span className="whitespace-nowrap">Cuti sekolah</span>
+    </label>
+  );
+
+  if (stacked) {
+    return (
+      <div className="w-full space-y-2.5 min-w-0">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {cutiPegawaiLabel}
+          {cutiSekolahLabel}
+          {isPending && (
+            <span className="text-xs font-medium text-brand-700 ml-auto" role="status">
+              Memuatkan…
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap items-end gap-2 gap-y-2">
+          <div className="flex-1 min-w-[10rem] sm:min-w-[12rem] max-w-md">
+            <SektorFilterDropdown
+              sektors={sektors}
+              selectedIds={current.sektorIds}
+              onChange={(sektorIds) => update({ sektorIds })}
+              disabled={isPending}
+              label="Saring sektor"
+              compact
+            />
+          </div>
+          {monthControls ? <div className="shrink-0 ml-auto">{monthControls}</div> : null}
+        </div>
+      </div>
+    );
+  }
+
   if (inline) {
     return (
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 min-w-0">
-        <label
-          className="flex items-center gap-1.5 text-xs text-slate-700 shrink-0 cursor-pointer"
-          title="Tunjukkan rekod cuti"
-        >
+        <label className="flex items-center gap-1.5 text-xs text-slate-700 shrink-0 cursor-pointer">
           <input
             type="checkbox"
             className="shrink-0"
@@ -69,12 +125,9 @@ export default function FilterBar({
             onChange={(e) => update({ includeCuti: e.target.checked })}
             disabled={isPending}
           />
-          <span className="whitespace-nowrap">Cuti</span>
+          <span className="whitespace-nowrap">Cuti pegawai</span>
         </label>
-        <label
-          className="flex items-center gap-1.5 text-xs text-slate-700 shrink-0 cursor-pointer"
-          title="Tunjuk cuti sekolah (KPM)"
-        >
+        <label className="flex items-center gap-1.5 text-xs text-slate-700 shrink-0 cursor-pointer">
           <input
             type="checkbox"
             className="shrink-0"
@@ -82,8 +135,7 @@ export default function FilterBar({
             onChange={(e) => update({ showSchoolHolidays: e.target.checked })}
             disabled={isPending}
           />
-          <span className="whitespace-nowrap hidden sm:inline">Cuti sekolah</span>
-          <span className="whitespace-nowrap sm:hidden">Sekolah</span>
+          <span className="whitespace-nowrap">Cuti sekolah</span>
         </label>
         <div className="w-[8.5rem] sm:w-[10.5rem] min-w-0 shrink">
           <SektorFilterDropdown
@@ -122,24 +174,8 @@ export default function FilterBar({
           disabled={isPending}
         />
       </div>
-      <label className="flex items-center gap-2 text-sm text-slate-700 shrink-0">
-        <input
-          type="checkbox"
-          checked={current.includeCuti}
-          onChange={(e) => update({ includeCuti: e.target.checked })}
-          disabled={isPending}
-        />
-        Tunjukkan rekod cuti
-      </label>
-      <label className="flex items-center gap-2 text-sm text-slate-700 shrink-0">
-        <input
-          type="checkbox"
-          checked={current.showSchoolHolidays}
-          onChange={(e) => update({ showSchoolHolidays: e.target.checked })}
-          disabled={isPending}
-        />
-        Tunjuk cuti sekolah (KPM)
-      </label>
+      {cutiPegawaiLabel}
+      {cutiSekolahLabel}
     </div>
   );
 }

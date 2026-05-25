@@ -8,6 +8,7 @@ export default async function DashboardFilters({
   includeCuti,
   showSchoolHolidays,
   inline = false,
+  stacked = false,
 }: {
   date: string;
   month: string;
@@ -15,6 +16,7 @@ export default async function DashboardFilters({
   includeCuti: boolean;
   showSchoolHolidays: boolean;
   inline?: boolean;
+  stacked?: boolean;
 }) {
   let sektors: Awaited<ReturnType<typeof listAllSektors>> = [];
   try {
@@ -26,6 +28,7 @@ export default async function DashboardFilters({
   return (
     <FilterBar
       inline={inline}
+      stacked={stacked}
       sektors={sektors.map((s) => ({ id: s.id, code: s.code, name: s.name }))}
       current={{ date, month, sektorIds, includeCuti, showSchoolHolidays }}
     />
