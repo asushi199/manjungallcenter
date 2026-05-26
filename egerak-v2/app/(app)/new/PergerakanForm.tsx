@@ -320,20 +320,6 @@ export default function PergerakanForm({
         )}
       </div>
 
-      <div>
-        <label className="label" htmlFor="urusan">
-          Urusan / Aktiviti
-        </label>
-        <textarea
-          id="urusan"
-          className="input min-h-[96px]"
-          required
-          value={urusan}
-          onChange={(e) => setUrusan(e.target.value)}
-          placeholder="Contoh: Mesyuarat Pengurusan Kewangan PPD Manjung"
-        />
-      </div>
-
       {needsRoom && (
         <fieldset className="rounded-md border border-slate-200 bg-slate-50/80 px-3 py-3 space-y-2">
           <legend className="text-sm font-semibold text-slate-800 px-1">
@@ -444,6 +430,20 @@ export default function PergerakanForm({
           ) : null}
         </div>
       )}
+
+      <div>
+        <label className="label" htmlFor="urusan">
+          Urusan / Aktiviti
+        </label>
+        <textarea
+          id="urusan"
+          className="input min-h-[96px]"
+          required
+          value={urusan}
+          onChange={(e) => setUrusan(e.target.value)}
+          placeholder="Contoh: Mesyuarat Pengurusan Kewangan PPD Manjung"
+        />
+      </div>
 
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">
