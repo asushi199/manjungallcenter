@@ -74,10 +74,11 @@ export default async function AnalisisPergerakanPage({
   return (
     <div className="mx-auto max-w-6xl p-4 space-y-4">
       <div>
-        <h1 className="text-xl font-semibold">Analisis Pergerakan / Program</h1>
+        <h1 className="text-xl font-semibold">Analisis Pergerakan & Program</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Statistik pergerakan biasa sahaja (cuti / Bercuti tidak dikira). Program
-          dengan lokasi & urusan yang hampir sama pada hari sama dikira sekali.
+          Klik setiap bahagian untuk buka carta. <strong>Pergerakan</strong> = satu rekod satu kiraan.
+          <strong> Program</strong> = satu <strong>OPR siap</strong> satu program, dikreditkan kepada
+          sektor yang menghantar laporan tersebut.
         </p>
         {isKetua && lockedSektorLabel && (
           <p className="mt-2 text-sm text-brand-800 bg-brand-50 border border-brand-200 rounded-md px-3 py-2">
@@ -109,7 +110,8 @@ export default async function AnalisisPergerakanPage({
       <AnalisisPergerakanClient
         sektors={filterSektors}
         sektorFilterLocked={isKetua}
-        aggregates={data.aggregates}
+        pergerakanAggregates={data.pergerakanAggregates}
+        programAggregates={data.programAggregates}
         current={{
           range: data.period.range,
           month: data.period.month,

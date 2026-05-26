@@ -10,6 +10,13 @@ export type PergerakanRowForAnalisis = {
   sektorId: number | null;
   sektorCode: string | null;
   sektorName: string | null;
+
+  /** OPR status untuk pergerakan ini (jika wujud). */
+  oprStatus: "TIADA" | "DRAFT" | "SIAP" | null;
+  /** Sektor atribusi OPR: sektor override (jika ada) atau sektor pergerakan. */
+  oprSektorId: number | null;
+  oprSektorCode: string | null;
+  oprSektorName: string | null;
 };
 
 export type ClusteredProgram = {
@@ -25,6 +32,14 @@ export type ClusteredProgram = {
   sektorName: string | null;
   recordIds: number[];
   recordCount: number;
+
+  /** Bilangan pergerakan dalam kluster yang ada OPR SIAP. */
+  siapRecordCount: number;
+  /**
+   * Senarai sektor yang "mengira" program ini (sekurang-kurangnya 1 OPR SIAP dalam kluster).
+   * Dipakai untuk kira jumlah program per sektor.
+   */
+  qualifyingSectors: { sektorId: number | null; code: string; name: string }[];
 };
 
 function bucketKey(row: PergerakanRowForAnalisis): string {
@@ -78,6 +93,22 @@ export function clusterPrograms(rows: PergerakanRowForAnalisis[]): ClusteredProg
         lead.urusan,
       );
       const tarikhYmd = formatInTimeZone(lead.tarikhPergi, TZ, "yyyy-MM-dd");
+      const siapRows = group.filter((r) => r.oprStatus === "SIAP");
+      const siapRecordCount = siapRows.length;
+
+      const sektorMap = new Map<string, { sektorId: number | null; code: string; name: string }>();
+      for (const r of siapRows) {
+        const sektorId = r.oprSektorId ?? null;
+        const key = sektorId != null ? String(sektorId) : "__none__";
+        if (sektorMap.has(key)) continue;
+        sektorMap.set(key, {
+          sektorId,
+          code: r.oprSektorCode ?? "—",
+          name: r.oprSektorName ?? "Tidak ditetapkan",
+        });
+      }
+      const qualifyingSectors = [...sektorMap.values()];
+
       programs.push({
         leadId: lead.id,
         canonicalUrusan,
@@ -89,6 +120,8 @@ export function clusterPrograms(rows: PergerakanRowForAnalisis[]): ClusteredProg
         sektorName: lead.sektorName,
         recordIds: group.map((r) => r.id),
         recordCount: group.length,
+        siapRecordCount,
+        qualifyingSectors,
       });
     }
   }
@@ -129,8 +162,9 @@ export function aggregatePrograms(
     filtered = programs.filter((p) => p.month.startsWith(opts.year));
   }
 
-  const totalPrograms = filtered.length;
-  const totalRecords = filtered.reduce((s, p) => s + p.recordCount, 0);
+  const qualifying = filtered.filter((p) => p.siapRecordCount > 0);
+  const totalPrograms = qualifying.length;
+  const totalRecords = qualifying.reduce((s, p) => s + p.siapRecordCount, 0);
 
   const monthCounts = new Map<number, number>();
   /** Carta garisan: tahun penuh (bukan ditapis bulan — bulan hanya untuk KPI/bar). */
@@ -138,7 +172,8 @@ export function aggregatePrograms(
     ? programs
     : programs.filter((p) => p.month.startsWith(opts.year));
 
-  for (const p of chartSource) {
+  const chartQualifying = chartSource.filter((p) => p.siapRecordCount > 0);
+  for (const p of chartQualifying) {
     const m = Number(p.month.slice(5, 7));
     if (m >= 1 && m <= 12) {
       monthCounts.set(m, (monthCounts.get(m) ?? 0) + 1);
@@ -160,18 +195,12 @@ export function aggregatePrograms(
     { sektorId: number | null; code: string; name: string; count: number }
   >();
 
-  for (const p of filtered) {
-    const key = p.sektorId != null ? String(p.sektorId) : "__none__";
-    const hit = sektorMap.get(key);
-    if (hit) {
-      hit.count += 1;
-    } else {
-      sektorMap.set(key, {
-        sektorId: p.sektorId,
-        code: p.sektorCode ?? "—",
-        name: p.sektorName ?? "Tidak ditetapkan",
-        count: 1,
-      });
+  for (const p of qualifying) {
+    for (const s of p.qualifyingSectors) {
+      const key = s.sektorId != null ? String(s.sektorId) : "__none__";
+      const hit = sektorMap.get(key);
+      if (hit) hit.count += 1;
+      else sektorMap.set(key, { sektorId: s.sektorId, code: s.code, name: s.name, count: 1 });
     }
   }
 

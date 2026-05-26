@@ -6,19 +6,22 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { opr, oprPhotos, pergerakan, users, sektors, auditLog } from "@/lib/schema";
 import { requireUser } from "@/lib/rbac";
+import { isFullAdmin, isKetuaOrTimbalan, isPenyelia } from "@/lib/roles";
 import { generateOprWithGemini, type OprPromptInput } from "@/lib/gemini";
 import { formatDateTime } from "@/lib/dates";
 import { OPR_MAX_PHOTOS } from "@/lib/opr-photos";
 import { oprPhotoDisplayUrl } from "@/lib/opr-photo-url";
 import { getStorageSetupHint, isStorageConfigured, uploadOprPhoto } from "@/lib/storage";
 
-async function assertPergerakanAccess(pergerakanId: number, userId: number, isAdmin: boolean) {
+async function assertPergerakanAccess(pergerakanId: number, userId: number, peranan: string) {
   const row = await db.query.pergerakan.findFirst({
     where: eq(pergerakan.id, pergerakanId),
     with: { user: true, sektor: true },
   });
   if (!row) return null;
-  if (!isAdmin && row.userId !== userId) return null;
+  const canViewAllOpr =
+    isFullAdmin(peranan) || isPenyelia(peranan) || isKetuaOrTimbalan(peranan);
+  if (!canViewAllOpr && row.userId !== userId) return null;
   return row;
 }
 
@@ -27,7 +30,7 @@ export async function getOrCreateOpr(pergerakanId: number) {
   const row = await assertPergerakanAccess(
     pergerakanId,
     Number(session.id),
-    session.peranan === "Admin",
+    session.peranan,
   );
   if (!row) throw new Error("Tiada kebenaran atau rekod tidak dijumpai");
 
@@ -71,7 +74,7 @@ export async function saveOpr(input: unknown) {
   const row = await assertPergerakanAccess(
     pergerakanId,
     Number(session.id),
-    session.peranan === "Admin",
+    session.peranan,
   );
   if (!row) return { ok: false as const, error: "Tiada kebenaran" };
 
@@ -116,7 +119,7 @@ export async function markOprTiada(pergerakanId: number): Promise<{ ok: boolean;
   const row = await assertPergerakanAccess(
     pergerakanId,
     Number(session.id),
-    session.peranan === "Admin",
+    session.peranan,
   );
   if (!row) return { ok: false, error: "Tiada kebenaran atau rekod tidak dijumpai" };
   if (row.jenis !== "Pergerakan") {
@@ -156,7 +159,7 @@ export async function reopenOprFromTiada(
   const row = await assertPergerakanAccess(
     pergerakanId,
     Number(session.id),
-    session.peranan === "Admin",
+    session.peranan,
   );
   if (!row) return { ok: false, error: "Tiada kebenaran atau rekod tidak dijumpai" };
 
@@ -344,7 +347,7 @@ export async function deleteOprPhotoAction(photoId: number, pergerakanId: number
   const row = await assertPergerakanAccess(
     pergerakanId,
     Number(session.id),
-    session.peranan === "Admin",
+    session.peranan,
   );
   if (!row) return { ok: false as const, error: "Tiada kebenaran" };
 
