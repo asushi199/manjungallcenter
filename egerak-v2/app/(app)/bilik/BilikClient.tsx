@@ -147,8 +147,22 @@ export default function BilikClient({
 
   return (
     <div className="space-y-6">
-      <div className="card p-4">
-        <h2 className="font-semibold mb-3">Tempahan Baharu</h2>
+      <details className="card group">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-4 [&::-webkit-details-marker]:hidden">
+          <div className="min-w-0">
+            <h2 className="font-semibold">Tempahan Baharu</h2>
+            <p className="text-xs text-slate-500 mt-0.5 font-normal">
+              Kebanyakan tempahan melalui borang pergerakan — buka jika tetamu luar / manual
+            </p>
+          </div>
+          <span
+            className="shrink-0 text-slate-400 text-sm transition-transform group-open:rotate-180"
+            aria-hidden
+          >
+            ▼
+          </span>
+        </summary>
+        <div className="border-t px-4 pb-4 pt-3">
         <form onSubmit={onBook} className="grid sm:grid-cols-2 gap-3">
           <div>
             <label className="label">Bilik / Dewan</label>
@@ -209,7 +223,8 @@ export default function BilikClient({
           </div>
         </form>
         {msg && <p className="text-sm mt-2 text-brand-700">{msg}</p>}
-      </div>
+        </div>
+      </details>
 
       <div className="card p-3 space-y-3 sm:p-4 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:space-y-0">
         <p className="text-sm font-medium text-slate-700 text-center sm:order-2 sm:flex-1 sm:px-2 leading-snug">

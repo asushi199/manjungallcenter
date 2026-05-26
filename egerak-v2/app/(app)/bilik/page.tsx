@@ -33,12 +33,22 @@ export default async function BilikPage({
 
   return (
     <div className="mx-auto max-w-6xl p-4 space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">Tempahan Bilik & Dewan</h1>
-        <p className="text-sm text-slate-500">
-          Bilik Budiman dan Dewan Bestari — slot <strong>Pagi (AM)</strong> dan{" "}
-          <strong>Petang (PM)</strong> boleh ditempah berasingan pada hari sama.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-semibold">Tempahan Bilik & Dewan</h1>
+          <p className="text-sm text-slate-500">
+            Bilik Budiman dan Dewan Bestari — slot <strong>Pagi (AM)</strong> dan{" "}
+            <strong>Petang (PM)</strong> boleh ditempah berasingan pada hari sama.
+          </p>
+        </div>
+        {isAdmin && (
+          <a
+            href={`/bilik/cetak?month=${weekStart.slice(0, 7)}`}
+            className="btn-secondary text-sm shrink-0"
+          >
+            Cetak jadual bulan
+          </a>
+        )}
       </div>
       <BilikClient
         rooms={roomList}

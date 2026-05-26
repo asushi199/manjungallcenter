@@ -394,20 +394,43 @@ function DayDrawer({
   else if (publicHoliday) subtitle = "Cuti umum";
   else if (schoolHoliday) subtitle = "Cuti sekolah";
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-40">
-      <div className="absolute inset-0 bg-slate-900/40" onClick={onClose} />
-      <aside className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-xl overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between z-10">
-          <div>
+    <div className="fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label="Butiran hari">
+      <div className="absolute inset-0 bg-slate-900/40" onClick={onClose} aria-hidden />
+      <aside className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-xl flex flex-col min-h-0">
+        <div className="shrink-0 border-b bg-white px-4 py-3 flex items-center justify-between gap-2">
+          <div className="min-w-0">
             <div className="text-xs uppercase tracking-wide text-slate-500">{subtitle}</div>
-            <div className="font-semibold">{format(new Date(day), "EEEE, dd MMM yyyy")}</div>
+            <div className="font-semibold leading-snug">
+              {format(new Date(day), "EEEE, dd MMM yyyy")}
+            </div>
           </div>
-          <button type="button" className="btn-secondary" onClick={onClose}>
+          <button
+            type="button"
+            className="btn-secondary shrink-0 hidden sm:inline-flex"
+            onClick={onClose}
+          >
             Tutup
+          </button>
+          <button
+            type="button"
+            className="btn-secondary shrink-0 sm:hidden min-h-10 min-w-10 px-2.5"
+            onClick={onClose}
+            aria-label="Tutup"
+          >
+            ✕
           </button>
         </div>
 
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
         {publicHoliday && (
           <HolidayDrawerCard
             detail={publicHoliday}
@@ -474,6 +497,13 @@ function DayDrawer({
               : "Tiada rekod pergerakan pada tarikh ini."}
           </p>
         )}
+        </div>
+
+        <div className="sm:hidden shrink-0 border-t bg-white px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_12px_rgba(15,23,42,0.08)]">
+          <button type="button" className="btn-primary w-full min-h-11 text-base" onClick={onClose}>
+            Tutup
+          </button>
+        </div>
       </aside>
     </div>
   );

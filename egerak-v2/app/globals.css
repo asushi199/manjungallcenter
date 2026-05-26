@@ -38,8 +38,16 @@
 
 @media print {
   @page {
-    size: A4 portrait;
     margin: 8mm;
+  }
+
+  @page bilik-sheet {
+    size: A4 landscape;
+    margin: 5mm;
+  }
+
+  .bilik-print {
+    page: bilik-sheet;
   }
 
   html,
@@ -147,11 +155,168 @@
     margin-left: auto;
     margin-right: auto;
   }
+
+  #egerak-app-shell,
+  #egerak-app-shell > main,
+  .bilik-print-route {
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .bilik-print-route,
+  .bilik-print {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .bilik-print {
+    font-size: 6.5pt;
+    line-height: 1.15;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  .bilik-print-header {
+    padding-bottom: 1.5mm;
+    margin-bottom: 2mm;
+    border-bottom: 0.4pt solid #333;
+    page-break-after: avoid;
+    break-after: avoid-page;
+  }
+
+  .bilik-print-logo {
+    width: 18mm !important;
+    height: auto !important;
+    max-height: 20mm !important;
+    margin-bottom: 0.5mm;
+  }
+
+  .bilik-print-title {
+    font-size: 10pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 1.1;
+  }
+
+  .bilik-print-subtitle {
+    font-size: 8pt;
+    font-weight: 600;
+    margin-top: 0.5mm;
+  }
+
+  .bilik-print-hint {
+    font-size: 6pt;
+    color: #475569;
+    margin-top: 0.5mm;
+  }
+
+  .bilik-print-table {
+    table-layout: fixed !important;
+    width: 100% !important;
+    font-size: 6pt;
+    line-height: 1.1;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  .bilik-print-table thead {
+    display: table-header-group;
+  }
+
+  .bilik-print-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid-page;
+  }
+
+  .bilik-print-th,
+  .bilik-print-td {
+    border: 0.35pt solid #333;
+    padding: 0.4mm 0.8mm;
+    vertical-align: top;
+    text-align: left;
+  }
+
+  .bilik-print-th {
+    background: #e2e8f0 !important;
+    font-weight: 700;
+    font-size: 6pt;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .bilik-print-th-date,
+  .bilik-print-td-date {
+    width: 9% !important;
+    max-width: 9%;
+  }
+
+  .bilik-print-th-room {
+    text-align: center;
+    width: auto !important;
+  }
+
+  .bilik-print-th-slot {
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .bilik-print-td:not(.bilik-print-td-date) {
+    overflow: hidden;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .bilik-print-row-weekend .bilik-print-td-date {
+    background: #f1f5f9 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .bilik-print-cell-text {
+    display: block;
+    overflow: hidden;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .bilik-print-cell-title {
+    display: block;
+    font-weight: 600;
+  }
+
+  .bilik-print-cell-name {
+    display: block;
+    font-weight: 400;
+    color: #334155;
+    font-size: 5.5pt;
+  }
+
+  .bilik-print-empty {
+    color: #94a3b8;
+  }
+
+  .bilik-print-footer {
+    margin-top: 2mm;
+    padding-top: 1mm;
+    border-top: 0.3pt solid #cbd5e1;
+    font-size: 6pt;
+    color: #64748b;
+    text-align: center;
+    page-break-before: avoid;
+    break-before: avoid-page;
+  }
 }
 
 /* Halaman pratonton cetak: sembunyikan navigasi & footer laman */
 body.opr-print-page #egerak-app-shell > footer,
-body.opr-print-page .app-site-footer {
+body.opr-print-page .app-site-footer,
+body.bilik-print-page #egerak-app-shell > header,
+body.bilik-print-page #egerak-app-shell > footer,
+body.bilik-print-page .app-site-footer {
   display: none;
 }
 
@@ -194,4 +359,77 @@ body.opr-print-page .app-site-footer {
 
 .opr-print-photo {
   @apply max-w-full max-h-full w-auto h-auto object-contain;
+}
+
+/* Pratonton skrin — jadual tempahan bilik */
+body.bilik-print-page #egerak-app-shell > main {
+  @apply p-0;
+}
+
+.bilik-print-logo {
+  @apply w-24 h-auto max-h-24 object-contain mx-auto block;
+}
+
+.bilik-print {
+  @apply p-4 max-w-6xl;
+}
+
+.bilik-print-title {
+  @apply text-base font-bold uppercase text-slate-900;
+}
+
+.bilik-print-subtitle {
+  @apply text-sm font-semibold text-slate-800;
+}
+
+.bilik-print-hint {
+  @apply text-xs text-slate-500;
+}
+
+.bilik-print-table {
+  @apply text-[11px] w-full;
+  table-layout: fixed;
+}
+
+.bilik-print-th,
+.bilik-print-td {
+  @apply border border-slate-300 px-1.5 py-0.5 align-top text-left;
+}
+
+.bilik-print-th {
+  @apply bg-slate-100 font-semibold;
+}
+
+.bilik-print-th-room {
+  @apply text-center;
+}
+
+.bilik-print-th-slot {
+  @apply text-center text-slate-600;
+}
+
+.bilik-print-td:not(.bilik-print-td-date) {
+  overflow: hidden;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.bilik-print-cell-text {
+  @apply block;
+}
+
+.bilik-print-cell-title {
+  @apply block font-semibold;
+}
+
+.bilik-print-cell-name {
+  @apply block text-slate-600 text-[10px];
+}
+
+.bilik-print-row-weekend .bilik-print-td-date {
+  @apply bg-slate-50;
+}
+
+.bilik-print-footer {
+  @apply text-xs text-slate-500 text-center mt-3 pt-2 border-t border-slate-200;
 }
