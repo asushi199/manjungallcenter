@@ -5,9 +5,19 @@ import {
   canViewLaporanOpr,
   isFullAdmin,
   isKetuaOrTimbalan,
+  isPenyelia,
 } from "./roles";
 
 export type AppNavLink = { href: string; label: string };
+
+export type RoleNavLabels = {
+  /** Label dropdown header (desktop). */
+  header: string;
+  /** Label ringkas jika ruang sempit (contoh: KU). */
+  headerShort?: string;
+  /** Tajuk seksyen menu mudah alih. */
+  mobileSection: string;
+};
 
 export const MAIN_NAV_LINKS: AppNavLink[] = [
   { href: "/dashboard", label: "Utama" },
@@ -48,28 +58,69 @@ export const FULL_ADMIN_NAV_LINKS: AppNavLink[] = [
 /** @deprecated Guna FULL_ADMIN_NAV_LINKS */
 export const ADMIN_NAV_LINKS = FULL_ADMIN_NAV_LINKS;
 
-export function mainNavLinksForPeranan(peranan: string | undefined | null): AppNavLink[] {
-  const links = [...MAIN_NAV_LINKS];
-  if (canViewAnalisisPergerakan(peranan) && !isFullAdmin(peranan)) {
-    links.push(ANALISIS_PROGRAM_LINK);
+const PENYELIA_ROLE_NAV_LINKS: AppNavLink[] = [ANALISIS_PROGRAM_LINK, LAPORAN_OPR_LINK];
+
+/** Utama sahaja — sama untuk semua peranan. */
+export function mainNavLinksForPeranan(_peranan?: string | null): AppNavLink[] {
+  return [...MAIN_NAV_LINKS];
+}
+
+/** Menu ikut peranan (Ketua / Timbalan / Penyelia), berasingan daripada Utama. */
+export function roleNavLinksForPeranan(peranan: string | undefined | null): AppNavLink[] {
+  if (!peranan || isFullAdmin(peranan)) return [];
+
+  if (isPenyelia(peranan)) {
+    return [...PENYELIA_ROLE_NAV_LINKS];
   }
-  if (canViewLaporanOpr(peranan) && !isFullAdmin(peranan)) {
-    links.push(LAPORAN_OPR_LINK);
-  }
+
   if (isKetuaOrTimbalan(peranan)) {
+    const links: AppNavLink[] = [];
+    if (canViewAnalisisPergerakan(peranan)) links.push(ANALISIS_PROGRAM_LINK);
+    if (canViewLaporanOpr(peranan)) links.push(LAPORAN_OPR_LINK);
     if (canImportRancangan(peranan)) links.push(IMPORT_RANCANGAN_LINK);
     if (canSectorDeletePergerakan(peranan)) links.push(PADAM_PERGERAKAN_LINK);
+    return links;
   }
-  return links;
+
+  return [];
+}
+
+export function roleNavLabelsForPeranan(peranan: string | undefined | null): RoleNavLabels | null {
+  if (!roleNavLinksForPeranan(peranan).length) return null;
+
+  switch (peranan) {
+    case "Ketua_Unit":
+      return {
+        header: "Ketua Unit",
+        headerShort: "KU",
+        mobileSection: "Ketua Unit",
+      };
+    case "Timbalan_PPD":
+      return {
+        header: "Timbalan",
+        mobileSection: "Timbalan PPD",
+      };
+    case "Penyelia":
+      return {
+        header: "PPD",
+        mobileSection: "Penyelia PPD",
+      };
+    default:
+      return null;
+  }
 }
 
 export function adminNavLinksForPeranan(peranan: string | undefined | null): AppNavLink[] {
   return isFullAdmin(peranan) ? [...FULL_ADMIN_NAV_LINKS] : [];
 }
 
-/** Semua pautan navigasi untuk cetakan / menu gabungan. */
+/** Semua pautan (cetak / menu gabungan). */
 export function navLinksForPeranan(peranan: string | undefined | null): AppNavLink[] {
-  return [...mainNavLinksForPeranan(peranan), ...adminNavLinksForPeranan(peranan)];
+  return [
+    ...mainNavLinksForPeranan(peranan),
+    ...roleNavLinksForPeranan(peranan),
+    ...adminNavLinksForPeranan(peranan),
+  ];
 }
 
 /** @deprecated Guna navLinksForPeranan(peranan) */

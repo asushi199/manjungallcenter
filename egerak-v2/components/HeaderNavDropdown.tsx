@@ -13,10 +13,13 @@ function isActive(path: string | null, href: string) {
 
 export default function HeaderNavDropdown({
   label,
+  labelShort,
   links,
   className,
 }: {
   label: string;
+  /** Papar pada skrin sempit jika disediakan (contoh: KU vs Ketua Unit). */
+  labelShort?: string;
   links: NavLink[];
   className?: string;
 }) {
@@ -53,7 +56,16 @@ export default function HeaderNavDropdown({
           active ? "bg-white text-brand-700" : "text-white/90 hover:bg-white/10",
         )}
       >
-        <span className="truncate">{label}</span>
+        <span className="truncate">
+          {labelShort ? (
+            <>
+              <span className="lg:hidden">{labelShort}</span>
+              <span className="hidden lg:inline">{label}</span>
+            </>
+          ) : (
+            label
+          )}
+        </span>
         <span className="text-[10px] opacity-80 shrink-0" aria-hidden>
           ▾
         </span>
