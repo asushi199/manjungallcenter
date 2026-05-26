@@ -10,8 +10,6 @@ import {
   checkPergerakanRoomAvailability,
   type RoomAvailabilityCheck,
   type PergerakanEditData,
-  listLokasiSuggestionsForDay,
-  type LokasiSuggestion,
   listUrusanTemplatesForDay,
   type UrusanTemplate,
 } from "@/lib/actions/pergerakan";
@@ -33,7 +31,6 @@ const emptyAvailability: RoomAvailabilityCheck = {
 
 type Props = {
   lokasiPresets: string[];
-  recentLokasi?: string[];
   mode?: "create" | "edit";
   editId?: number;
   initial?: PergerakanEditData;
@@ -41,7 +38,6 @@ type Props = {
 
 export default function PergerakanForm({
   lokasiPresets,
-  recentLokasi = [],
   mode = "create",
   editId,
   initial,
@@ -58,9 +54,6 @@ export default function PergerakanForm({
   const [showBilikLink, setShowBilikLink] = useState(false);
   const [availability, setAvailability] = useState<RoomAvailabilityCheck>(emptyAvailability);
   const [checkingRoom, setCheckingRoom] = useState(false);
-  const [lokasiSuggestDay, setLokasiSuggestDay] = useState<string | null>(null);
-  const [lokasiSuggest, setLokasiSuggest] = useState<LokasiSuggestion[]>([]);
-  const [lokasiSuggestPending, setLokasiSuggestPending] = useState(false);
   const [urusanSuggestDay, setUrusanSuggestDay] = useState<string | null>(null);
   const [urusanSuggest, setUrusanSuggest] = useState<UrusanTemplate[]>([]);
   const [urusanSuggestPending, setUrusanSuggestPending] = useState(false);
@@ -108,35 +101,6 @@ export default function PergerakanForm({
 
     return () => clearTimeout(timer);
   }, [tarikhPergi, urusanSuggestDay]);
-
-  useEffect(() => {
-    if (!tarikhPergi) {
-      setLokasiSuggestDay(null);
-      setLokasiSuggest([]);
-      setLokasiSuggestPending(false);
-      return;
-    }
-    const d = parseLocalInput(tarikhPergi);
-    if (!d) return;
-    const ymd = formatInTimeZone(d, TZ, "yyyy-MM-dd");
-    if (ymd === lokasiSuggestDay) return;
-
-    setLokasiSuggestPending(true);
-    const timer = setTimeout(() => {
-      listLokasiSuggestionsForDay(ymd, 8)
-        .then((r) => {
-          setLokasiSuggestDay(ymd);
-          setLokasiSuggest(r);
-        })
-        .catch(() => {
-          setLokasiSuggestDay(ymd);
-          setLokasiSuggest([]);
-        })
-        .finally(() => setLokasiSuggestPending(false));
-    }, 350);
-
-    return () => clearTimeout(timer);
-  }, [tarikhPergi, lokasiSuggestDay]);
 
   useEffect(() => {
     if (!willBookRoom || !tarikhPergi || !tarikhKembali) {
@@ -354,47 +318,6 @@ export default function PergerakanForm({
             onChange={(e) => setLokasiLain(e.target.value)}
           />
         )}
-        {lokasiSuggestPending ? (
-          <p className="text-xs text-slate-500 mt-2">Mencari lokasi digunakan pada tarikh ini…</p>
-        ) : lokasiSuggest.length > 0 ? (
-          <div className="mt-2">
-            <div className="text-xs font-medium text-slate-600 mb-1">
-              Lokasi digunakan pada tarikh ini
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {lokasiSuggest.map((s) => (
-                <button
-                  key={s.label}
-                  type="button"
-                  className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
-                  onClick={() => applyLokasi(s.label)}
-                  title={`${s.count} rekod`}
-                >
-                  {s.label}
-                  <span className="text-slate-500"> · {s.count}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-        {recentLokasi.length > 0 ? (
-          <div className="mt-2">
-            <div className="text-xs font-medium text-slate-600 mb-1">Lokasi terbaru anda</div>
-            <div className="flex flex-wrap gap-2">
-              {recentLokasi.slice(0, 10).map((loc) => (
-                <button
-                  key={loc}
-                  type="button"
-                  className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
-                  onClick={() => applyLokasi(loc)}
-                  title={loc}
-                >
-                  {loc}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
       </div>
 
       <div>
