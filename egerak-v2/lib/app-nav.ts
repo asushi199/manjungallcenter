@@ -102,8 +102,8 @@ export function roleNavLabelsForPeranan(peranan: string | undefined | null): Rol
       };
     case "Penyelia":
       return {
-        header: "PPD",
-        mobileSection: "Penyelia PPD",
+        header: "Penyelia",
+        mobileSection: "Penyelia",
       };
     default:
       return null;
