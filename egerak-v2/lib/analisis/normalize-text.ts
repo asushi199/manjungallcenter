@@ -42,6 +42,28 @@ export function textSimilarity(a: string, b: string): number {
 const SIMILARITY_THRESHOLD = 0.88;
 const SUBSTRING_LEN_DIFF_MAX = 3;
 
+// Perkataan umum / hiasan yang kerap muncul dalam "urusan program"
+// tapi biasanya tidak menentukan "program yang sama".
+const URUSAN_STOPWORDS = new Set([
+  // Contoh dari permintaan user
+  "bengkel",
+  "kerja",
+  "penataran",
+  "kurikulum",
+  "pembelajaran",
+  "bersepadu",
+  "persekolahan",
+  "mata",
+  "pelajaran",
+
+  // Umum dalam konteks program/urusan
+  "program",
+  "aktiviti",
+  "mesyuarat",
+  "latihan",
+  "penyelarasan",
+]);
+
 /** Sama program jika urusan hampir sama (1–2 aksara berbeza, dll.). */
 export function urusanMatches(a: string, b: string): boolean {
   const na = normalizeText(a);
@@ -49,6 +71,29 @@ export function urusanMatches(a: string, b: string): boolean {
   if (!na || !nb) return na === nb;
   if (na === nb) return true;
 
+  // 1) Token-based matching (lebih stabil bila ayat panjang berbeza gaya penulisan)
+  const coreA = na
+    .split(" ")
+    .filter(Boolean)
+    .filter((t) => !URUSAN_STOPWORDS.has(t));
+  const coreB = nb
+    .split(" ")
+    .filter(Boolean)
+    .filter((t) => !URUSAN_STOPWORDS.has(t));
+
+  if (coreA.length > 0 && coreB.length > 0) {
+    const setA = new Set(coreA);
+    const setB = new Set(coreB);
+    const inter = [...setA].reduce((s, t) => s + (setB.has(t) ? 1 : 0), 0);
+    const union = new Set([...setA, ...setB]).size;
+
+    // "Setara" jika token penting bertindih sekurang-kurangnya 50%
+    // (dan tidak cuma 1 token kebetulan).
+    const jaccard = union > 0 ? inter / union : 0;
+    if (jaccard >= 0.5 && inter >= 2) return true;
+  }
+
+  // 2) Fallback: similarity string (contoh kes urusan pendek / dekat ejaan)
   if (textSimilarity(a, b) >= SIMILARITY_THRESHOLD) return true;
 
   const short = na.length <= nb.length ? na : nb;

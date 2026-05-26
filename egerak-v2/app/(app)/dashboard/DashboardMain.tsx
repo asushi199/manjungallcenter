@@ -157,12 +157,12 @@ export default async function DashboardMain({
         <div className="text-xs text-slate-500 space-y-1">
           <p>
             <span className="inline-block w-2 h-2 rounded-sm bg-rose-100 border border-rose-300 align-middle mr-1" />
-            Merah jambu = cuti umum Perak (data pra-jana — npm run holidays:generate untuk kemas kini)
+            Merah jambu = cuti umum Perak
           </p>
           {showSchoolHolidays && (
             <p>
               <span className="inline-block w-2 h-2 rounded-sm bg-yellow-100 border border-yellow-400 align-middle mr-1" />
-              Kuning = cuti sekolah KPM (data tahunan — semak KPM)
+              Kuning = cuti sekolah KPM
             </p>
           )}
         </div>

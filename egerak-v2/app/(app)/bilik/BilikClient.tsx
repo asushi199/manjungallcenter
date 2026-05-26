@@ -149,12 +149,7 @@ export default function BilikClient({
     <div className="space-y-6">
       <details className="card group">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-4 [&::-webkit-details-marker]:hidden">
-          <div className="min-w-0">
-            <h2 className="font-semibold">Tempahan Baharu</h2>
-            <p className="text-xs text-slate-500 mt-0.5 font-normal">
-              Kebanyakan tempahan melalui borang pergerakan — buka jika tetamu luar / manual
-            </p>
-          </div>
+          <h2 className="font-semibold">Tempahan Baharu</h2>
           <span
             className="shrink-0 text-slate-400 text-sm transition-transform group-open:rotate-180"
             aria-hidden

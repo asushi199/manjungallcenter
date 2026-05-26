@@ -20,7 +20,7 @@ export default async function LoginPage({
       </p>
       <LoginForm callbackUrl={sp.from ?? "/dashboard"} initialError={sp.error} />
       <p className="text-xs text-slate-500 mt-6">
-        Lupa kata laluan? Hubungi Pentadbir Sistem (USTP).
+        Lupa kata laluan? Hubungi Pentadbir Sistem.
       </p>
     </div>
   );
