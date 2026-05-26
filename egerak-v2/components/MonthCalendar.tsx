@@ -310,6 +310,15 @@ export default function MonthCalendar({
                   myRegTiming === "today" &&
                   "bg-emerald-50/70 ring-2 ring-inset ring-emerald-600/70 shadow-[inset_0_-3px_0_0_rgb(5_150_105)]",
               )}
+              aria-label={
+                myRegTiming === "past"
+                  ? "Anda sudah mendaftar, hari telah berlalu"
+                  : myRegTiming === "future"
+                    ? "Anda sudah mendaftar, hari akan datang"
+                    : myRegTiming === "today"
+                      ? "Anda sudah mendaftar hari ini"
+                      : undefined
+              }
               title={
                 myRegTiming === "past"
                   ? "Anda sudah mendaftar (hari telah berlalu)"
@@ -320,10 +329,10 @@ export default function MonthCalendar({
                       : undefined
               }
             >
-              <div className="flex items-center justify-between px-0.5">
+              <div className="flex items-center justify-between gap-0.5 px-0.5 min-w-0">
                 <span
                   className={cn(
-                    "text-xs font-semibold",
+                    "text-xs font-semibold shrink-0",
                     today &&
                       "inline-flex w-6 h-6 items-center justify-center rounded-full bg-brand-600 text-white",
                   )}
@@ -333,17 +342,14 @@ export default function MonthCalendar({
                 {myRegTiming && (
                   <span
                     className={cn(
-                      "text-[9px] font-semibold rounded px-1 py-px shrink-0",
-                      myRegTiming === "past" && "text-slate-600 bg-slate-200",
-                      myRegTiming === "future" && "text-emerald-800 bg-emerald-100",
-                      myRegTiming === "today" && "text-emerald-900 bg-emerald-200",
+                      "shrink-0 flex items-center justify-center rounded-full w-3.5 h-3.5 text-[8px] leading-none font-bold",
+                      myRegTiming === "past" && "bg-slate-400 text-white",
+                      myRegTiming === "future" && "bg-emerald-500 text-white",
+                      myRegTiming === "today" && "bg-emerald-600 text-white ring-1 ring-white/80",
                     )}
+                    aria-hidden
                   >
-                    {myRegTiming === "past"
-                      ? "✓"
-                      : myRegTiming === "today"
-                        ? "hari ini"
-                        : "anda"}
+                    {myRegTiming === "past" ? "✓" : "•"}
                   </span>
                 )}
                 {dayItems.length > 0 && (

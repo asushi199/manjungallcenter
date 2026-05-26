@@ -166,11 +166,11 @@ export default async function DashboardMain({
         <div className="text-xs text-slate-500 space-y-1">
           <p>
             <span className="inline-block w-5 h-3 rounded-sm bg-emerald-50 ring-2 ring-inset ring-emerald-500/60 shadow-[inset_0_-2px_0_0_rgb(16_185_129)] align-middle mr-1" />
-            Hijau = anda sudah daftar — hari akan datang
+            Hijau + titik = anda sudah daftar — hari akan datang (✓ = telah berlalu)
           </p>
           <p>
             <span className="inline-block w-5 h-3 rounded-sm bg-slate-50 ring-2 ring-inset ring-slate-400/75 shadow-[inset_0_-2px_0_0_rgb(100_116_139)] align-middle mr-1" />
-            Kelabu = anda sudah daftar — hari telah berlalu
+            Kelabu + ✓ = anda sudah daftar — hari telah berlalu
           </p>
           <p>
             <span className="inline-block w-2 h-2 rounded-sm bg-rose-100 border border-rose-300 align-middle mr-1" />
