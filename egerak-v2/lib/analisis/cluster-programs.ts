@@ -34,7 +34,11 @@ function bucketKey(row: PergerakanRowForAnalisis): string {
 }
 
 /**
- * Gabung rekod: hari + lokasi sama, urusan hampir sama → satu program.
+ * Gabung rekod → satu program hanya jika:
+ * - hari sama (tarikh pergi, yyyy-MM-dd),
+ * - lokasi sama (teks lokasi dinormalisasi, bukan fuzzy),
+ * - urusan hampir sama (urusanMatches).
+ * Urusan sama + lokasi berbeza pada hari sama = program berasingan.
  */
 export function clusterPrograms(rows: PergerakanRowForAnalisis[]): ClusteredProgram[] {
   const buckets = new Map<string, PergerakanRowForAnalisis[]>();

@@ -7,9 +7,10 @@ import { db } from "@/lib/db";
 import { withDbTimeout } from "@/lib/db-timeout";
 import { pergerakan, users, sektors, auditLog, opr, roomBookings } from "@/lib/schema";
 import { requireUser, requireAdmin } from "@/lib/rbac";
-import { parseLocalInput, toLocalInput, TZ } from "@/lib/dates";
+import { parseLocalInput, toLocalInput, TZ, ymd, formatDateTime } from "@/lib/dates";
 import { formatInTimeZone } from "date-fns-tz";
-import { urusanMatches } from "@/lib/analisis/normalize-text";
+import { buildDayUrusanCadangan } from "@/lib/analisis/day-activity-templates";
+import { addDays, parseISO } from "date-fns";
 import {
   resolveBookableRoomCode,
   syncRoomBookingsFromPergerakan,
@@ -607,13 +608,10 @@ export type UrusanTemplate = {
 
 /**
  * Cadangan urusan (aktiviti) pada tarikh tertentu.
- * Pulang template minimum untuk auto-isi borang: urusan + lokasi + masa.
+ * Aktiviti PPD pada hari itu: satu baris setiap urusan (hampir sama), lokasi ikut rekod pertama.
  * Tidak pulang nama pegawai.
  */
-export async function listUrusanTemplatesForDay(
-  ymdDate: string,
-  limit = 8,
-): Promise<UrusanTemplate[]> {
+export async function listUrusanTemplatesForDay(ymdDate: string): Promise<UrusanTemplate[]> {
   await requireUser();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ymdDate)) return [];
 
@@ -637,56 +635,142 @@ export async function listUrusanTemplatesForDay(
         ),
       )
       .orderBy(desc(pergerakan.tarikhPergi))
-      .limit(200),
+      .limit(500),
   );
 
-  const groups: Array<{
-    repUrusan: string;
-    bestUrusan: string;
-    lokasi: string;
-    tarikhPergi: Date;
-    tarikhKembali: Date;
-    count: number;
-  }> = [];
+  const templates = buildDayUrusanCadangan(
+    rows.map((r) => ({
+      urusan: String(r.urusan || ""),
+      lokasi: String(r.lokasi || ""),
+      tarikhPergi: new Date(r.tarikhPergi),
+      tarikhKembali: new Date(r.tarikhKembali),
+    })),
+  );
 
+  return templates.map((g) => ({
+    urusan: g.urusan,
+    lokasi: g.lokasi,
+    tarikhPergi: toLocalInput(g.tarikhPergi),
+    tarikhKembali: toLocalInput(g.tarikhKembali),
+    count: g.count,
+  }));
+}
+
+export type MyDayPergerakan = {
+  id: number;
+  jenis: "Pergerakan" | "Bercuti";
+  urusan: string;
+  lokasi: string;
+  tarikhPergiLabel: string;
+  tarikhKembaliLabel: string;
+};
+
+/** Rekod pergerakan sendiri yang bertindih dengan hari dipilih (untuk peringatan). */
+export async function listMyPergerakanOnDay(
+  ymdDate: string,
+  excludeId?: number,
+): Promise<MyDayPergerakan[]> {
+  const user = await requireUser();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymdDate)) return [];
+
+  const start = new Date(`${ymdDate}T00:00:00+08:00`);
+  const end = new Date(`${ymdDate}T23:59:59+08:00`);
+
+  const conditions = [
+    eq(pergerakan.aktif, true),
+    eq(pergerakan.userId, Number(user.id)),
+    lte(pergerakan.tarikhPergi, end),
+    gte(pergerakan.tarikhKembali, start),
+  ];
+
+  const rows = await withDbTimeout(
+    db
+      .select({
+        id: pergerakan.id,
+        jenis: pergerakan.jenis,
+        urusan: pergerakan.urusan,
+        lokasi: pergerakan.lokasi,
+        tarikhPergi: pergerakan.tarikhPergi,
+        tarikhKembali: pergerakan.tarikhKembali,
+      })
+      .from(pergerakan)
+      .where(and(...conditions))
+      .orderBy(pergerakan.tarikhPergi),
+  );
+
+  return rows
+    .filter((r) => excludeId == null || r.id !== excludeId)
+    .map((r) => ({
+      id: r.id,
+      jenis: r.jenis as "Pergerakan" | "Bercuti",
+      urusan: r.urusan,
+      lokasi: r.lokasi,
+      tarikhPergiLabel: formatDateTime(new Date(r.tarikhPergi)),
+      tarikhKembaliLabel: formatDateTime(new Date(r.tarikhKembali)),
+    }));
+}
+
+function expandPergerakanDayKeys(
+  pergi: Date,
+  kembali: Date,
+  rangeStartYmd: string,
+  rangeEndYmd: string,
+): string[] {
+  const startYmd = ymd(pergi) > rangeStartYmd ? ymd(pergi) : rangeStartYmd;
+  const endYmd = ymd(kembali) < rangeEndYmd ? ymd(kembali) : rangeEndYmd;
+  if (startYmd > endYmd) return [];
+
+  const keys: string[] = [];
+  let cur = parseISO(`${startYmd}T12:00:00`);
+  const end = parseISO(`${endYmd}T12:00:00`);
+  while (cur <= end) {
+    keys.push(ymd(cur));
+    cur = addDays(cur, 1);
+  }
+  return keys;
+}
+
+/** Hari dalam bulan yang pengguna sudah ada pergerakan/cuti aktif (untuk kalendar utama). */
+export async function listMyPergerakanDayKeysInMonth(month: string): Promise<string[]> {
+  const user = await requireUser();
+  if (!/^\d{4}-\d{2}$/.test(month)) return [];
+
+  const [y, m] = month.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const rangeStartYmd = `${month}-01`;
+  const rangeEndYmd = `${month}-${String(lastDay).padStart(2, "0")}`;
+  const start = new Date(`${rangeStartYmd}T00:00:00+08:00`);
+  const end = new Date(`${rangeEndYmd}T23:59:59+08:00`);
+
+  const rows = await withDbTimeout(
+    db
+      .select({
+        tarikhPergi: pergerakan.tarikhPergi,
+        tarikhKembali: pergerakan.tarikhKembali,
+      })
+      .from(pergerakan)
+      .where(
+        and(
+          eq(pergerakan.aktif, true),
+          eq(pergerakan.userId, Number(user.id)),
+          lte(pergerakan.tarikhPergi, end),
+          gte(pergerakan.tarikhKembali, start),
+        ),
+      ),
+  );
+
+  const set = new Set<string>();
   for (const r of rows) {
-    const urusan = String(r.urusan || "").trim();
-    const lokasi = String(r.lokasi || "").trim();
-    if (!urusan || !lokasi) continue;
-    const pergi = new Date(r.tarikhPergi);
-    const kembali = new Date(r.tarikhKembali);
-
-    let placed = false;
-    for (const g of groups) {
-      if (urusanMatches(urusan, g.repUrusan)) {
-        g.count += 1;
-        if (urusan.length > g.bestUrusan.length) g.bestUrusan = urusan;
-        placed = true;
-        break;
-      }
-    }
-    if (!placed) {
-      groups.push({
-        repUrusan: urusan,
-        bestUrusan: urusan,
-        lokasi,
-        tarikhPergi: pergi,
-        tarikhKembali: kembali,
-        count: 1,
-      });
+    for (const key of expandPergerakanDayKeys(
+      new Date(r.tarikhPergi),
+      new Date(r.tarikhKembali),
+      rangeStartYmd,
+      rangeEndYmd,
+    )) {
+      set.add(key);
     }
   }
-
-  return groups
-    .sort((a, b) => b.count - a.count || b.bestUrusan.length - a.bestUrusan.length)
-    .slice(0, limit)
-    .map((g) => ({
-      urusan: g.bestUrusan,
-      lokasi: g.lokasi,
-      tarikhPergi: toLocalInput(g.tarikhPergi),
-      tarikhKembali: toLocalInput(g.tarikhKembali),
-      count: g.count,
-    }));
+  return [...set].sort();
 }
 
 export async function countToday(): Promise<{ pergerakan: number; bercuti: number; total: number }> {

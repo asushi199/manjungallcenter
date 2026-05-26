@@ -11,7 +11,9 @@ import {
   type RoomAvailabilityCheck,
   type PergerakanEditData,
   listUrusanTemplatesForDay,
+  listMyPergerakanOnDay,
   type UrusanTemplate,
+  type MyDayPergerakan,
 } from "@/lib/actions/pergerakan";
 import { resolveLokasiFields } from "@/lib/pergerakan-presets";
 import { formatTarikhBm } from "@/lib/room-slots";
@@ -57,6 +59,8 @@ export default function PergerakanForm({
   const [urusanSuggestDay, setUrusanSuggestDay] = useState<string | null>(null);
   const [urusanSuggest, setUrusanSuggest] = useState<UrusanTemplate[]>([]);
   const [urusanSuggestPending, setUrusanSuggestPending] = useState(false);
+  const [myDayRegs, setMyDayRegs] = useState<MyDayPergerakan[]>([]);
+  const [myDayRegsPending, setMyDayRegsPending] = useState(false);
 
   const [jenis, setJenis] = useState<"Pergerakan" | "Bercuti">(initial?.jenis ?? "Pergerakan");
   const [lokasiSel, setLokasiSel] = useState(lokasiInit.lokasiSel);
@@ -78,6 +82,8 @@ export default function PergerakanForm({
       setUrusanSuggestDay(null);
       setUrusanSuggest([]);
       setUrusanSuggestPending(false);
+      setMyDayRegs([]);
+      setMyDayRegsPending(false);
       return;
     }
     const d = parseLocalInput(tarikhPergi);
@@ -86,21 +92,30 @@ export default function PergerakanForm({
     if (ymd === urusanSuggestDay) return;
 
     setUrusanSuggestPending(true);
+    setMyDayRegsPending(true);
     const timer = setTimeout(() => {
-      listUrusanTemplatesForDay(ymd, 8)
-        .then((r) => {
+      Promise.all([
+        listUrusanTemplatesForDay(ymd),
+        listMyPergerakanOnDay(ymd, isEdit ? editId : undefined),
+      ])
+        .then(([templates, mine]) => {
           setUrusanSuggestDay(ymd);
-          setUrusanSuggest(r);
+          setUrusanSuggest(templates);
+          setMyDayRegs(mine);
         })
         .catch(() => {
           setUrusanSuggestDay(ymd);
           setUrusanSuggest([]);
+          setMyDayRegs([]);
         })
-        .finally(() => setUrusanSuggestPending(false));
+        .finally(() => {
+          setUrusanSuggestPending(false);
+          setMyDayRegsPending(false);
+        });
     }, 350);
 
     return () => clearTimeout(timer);
-  }, [tarikhPergi, urusanSuggestDay]);
+  }, [tarikhPergi, urusanSuggestDay, isEdit, editId]);
 
   useEffect(() => {
     if (!willBookRoom || !tarikhPergi || !tarikhKembali) {
@@ -242,29 +257,79 @@ export default function PergerakanForm({
         />
       </div>
 
-      {urusanSuggestPending ? (
-        <p className="text-xs text-slate-500">Mencari urusan digunakan pada tarikh ini…</p>
-      ) : urusanSuggest.length > 0 ? (
-        <div>
-          <div className="text-xs font-medium text-slate-600 mb-1">
-            Urusan digunakan pada tarikh ini
-          </div>
-          <div className="flex flex-col gap-2">
-            {urusanSuggest.map((t) => (
-              <button
-                key={`${t.urusan}|${t.lokasi}|${t.tarikhPergi}`}
-                type="button"
-                className="rounded-md border border-slate-200 bg-white px-3 py-2 text-left hover:bg-slate-50"
-                onClick={() => applyTemplate(t)}
-                title={`${t.count} rekod`}
-              >
-                <div className="text-sm font-semibold text-slate-900">{t.urusan}</div>
-                <div className="text-xs text-slate-600 mt-0.5">
-                  {t.lokasi} · {t.count} rekod
-                </div>
-              </button>
+      {myDayRegsPending ? null : myDayRegs.length > 0 ? (
+        <div
+          className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm"
+          role="status"
+        >
+          <p className="font-medium text-amber-900">
+            Anda sudah ada {myDayRegs.length} rekod pada tarikh ini
+          </p>
+          <p className="text-xs text-amber-800 mt-1">
+            Peringatan sahaja — anda masih boleh daftar aktiviti lain pada hari yang sama
+            (contoh dua program berbeza).
+          </p>
+          <ul className="mt-2 space-y-1.5 text-xs text-amber-900">
+            {myDayRegs.map((r) => (
+              <li key={r.id} className="rounded bg-white/70 border border-amber-100 px-2 py-1.5">
+                <span className="font-medium">{r.urusan}</span>
+                {r.lokasi ? (
+                  <span className="text-amber-800"> · {r.lokasi}</span>
+                ) : null}
+                <span className="block text-[11px] text-amber-700 mt-0.5">
+                  {r.tarikhPergiLabel} – {r.tarikhKembaliLabel}
+                  {r.jenis === "Bercuti" ? " · Bercuti" : ""}
+                </span>
+              </li>
             ))}
-          </div>
+          </ul>
+          <Link
+            href="/my"
+            className="inline-block mt-2 text-xs font-medium text-amber-900 underline"
+          >
+            Lihat semua rekod saya →
+          </Link>
+        </div>
+      ) : null}
+
+      {urusanSuggestPending ? (
+        <p className="text-xs text-slate-500">Mencari aktiviti pada tarikh ini…</p>
+      ) : urusanSuggest.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Jika anda pergi ke aktiviti yang sama dengan rakan sekerja dan seseorang sudah
+            mendaftar, pilih urusan di bawah untuk auto-isi. Nama urusan yang sama hanya
+            dipaparkan sekali — semak dan ubah lokasi jika perlu.
+          </p>
+          <details className="rounded-md border border-slate-200 bg-slate-50/80 group">
+            <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-slate-800 flex items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+              <span>Cadangan urusan ({urusanSuggest.length})</span>
+              <span className="text-xs font-normal text-slate-500 group-open:hidden">
+                Klik untuk lihat
+              </span>
+              <span className="text-xs font-normal text-slate-500 hidden group-open:inline">
+                Tutup
+              </span>
+            </summary>
+            <div className="border-t border-slate-200 px-3 pb-3 pt-2">
+              <div className="flex flex-col gap-2 max-h-[min(50vh,320px)] overflow-y-auto">
+              {urusanSuggest.map((t) => (
+                <button
+                  key={`${t.urusan}|${t.lokasi}|${t.tarikhPergi}`}
+                  type="button"
+                  className="rounded-md border border-slate-200 bg-white px-3 py-2 text-left hover:bg-slate-50 shrink-0"
+                  onClick={() => applyTemplate(t)}
+                  title={`${t.count} rekod`}
+                >
+                  <div className="text-sm font-semibold text-slate-900">{t.urusan}</div>
+                  <div className="text-xs text-slate-600 mt-0.5">
+                    {t.lokasi} · {t.count} rekod
+                  </div>
+                </button>
+              ))}
+              </div>
+            </div>
+          </details>
         </div>
       ) : null}
 

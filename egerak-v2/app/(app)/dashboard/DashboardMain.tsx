@@ -5,6 +5,7 @@ import { listAllSektors } from "@/lib/actions/users";
 import SektorLegend from "@/components/SektorLegend";
 import {
   listPergerakanForDashboard,
+  listMyPergerakanDayKeysInMonth,
   type DashboardPergerakanRow,
 } from "@/lib/actions/pergerakan";
 import { TZ } from "@/lib/dates";
@@ -62,7 +63,7 @@ export default async function DashboardMain({
     includeCuti,
   };
 
-  const [holidaysRes, pergerakanRes, sektorsRes] = await Promise.allSettled([
+  const [holidaysRes, pergerakanRes, sektorsRes, myDaysRes] = await Promise.allSettled([
     getCalendarHolidays(month, { showSchoolHolidays }),
     fetchPergerakanWithRetry({
       start: monthStart,
@@ -70,6 +71,7 @@ export default async function DashboardMain({
       ...filter,
     }),
     listAllSektors(),
+    listMyPergerakanDayKeysInMonth(month),
   ]);
 
   const filterSektors =
@@ -84,6 +86,12 @@ export default async function DashboardMain({
     holidaysRes.status === "fulfilled" ? holidaysRes.value : EMPTY_HOLIDAYS;
   if (holidaysRes.status === "rejected") {
     console.error("[dashboard] holidays fetch failed:", holidaysRes.reason);
+  }
+
+  const myRegisteredDays =
+    myDaysRes.status === "fulfilled" ? myDaysRes.value : [];
+  if (myDaysRes.status === "rejected") {
+    console.error("[dashboard] my day keys failed:", myDaysRes.reason);
   }
 
   const monthItems: DashboardPergerakanRow[] =
@@ -152,9 +160,18 @@ export default async function DashboardMain({
           publicHolidayDetails={holidayProps.publicDetails}
           schoolHolidays={showSchoolHolidays ? holidayProps.schoolLabels : undefined}
           schoolHolidayDetails={showSchoolHolidays ? holidayProps.schoolDetails : undefined}
+          myRegisteredDays={myRegisteredDays}
         />
         <SektorLegend />
         <div className="text-xs text-slate-500 space-y-1">
+          <p>
+            <span className="inline-block w-5 h-3 rounded-sm bg-emerald-50 ring-2 ring-inset ring-emerald-500/60 shadow-[inset_0_-2px_0_0_rgb(16_185_129)] align-middle mr-1" />
+            Hijau = anda sudah daftar — hari akan datang
+          </p>
+          <p>
+            <span className="inline-block w-5 h-3 rounded-sm bg-slate-50 ring-2 ring-inset ring-slate-400/75 shadow-[inset_0_-2px_0_0_rgb(100_116_139)] align-middle mr-1" />
+            Kelabu = anda sudah daftar — hari telah berlalu
+          </p>
           <p>
             <span className="inline-block w-2 h-2 rounded-sm bg-rose-100 border border-rose-300 align-middle mr-1" />
             Merah jambu = cuti umum Perak

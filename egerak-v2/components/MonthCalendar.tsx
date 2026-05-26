@@ -19,6 +19,16 @@ import { buildDayBuckets } from "@/lib/calendar-buckets";
 import type { HolidayDetail } from "@/lib/holidays/types";
 import { sektorStyle } from "@/lib/sektor-colors";
 import { replaceWithSearchParams } from "@/lib/navigate";
+import { TZ } from "@/lib/dates";
+import { formatInTimeZone } from "date-fns-tz";
+
+type MyRegTiming = "past" | "today" | "future";
+
+function myRegTimingForDay(dayYmd: string, todayYmd: string): MyRegTiming | null {
+  if (dayYmd < todayYmd) return "past";
+  if (dayYmd === todayYmd) return "today";
+  return "future";
+}
 
 export type CalendarItem = {
   id: number;
@@ -61,6 +71,7 @@ export default function MonthCalendar({
   publicHolidayDetails,
   schoolHolidays,
   schoolHolidayDetails,
+  myRegisteredDays,
 }: {
   month: string;
   items: CalendarItem[];
@@ -72,6 +83,8 @@ export default function MonthCalendar({
   calendarFilter?: CalendarFilterConfig;
   /** Tarikh dipilih di penapis (garis biru pada sel) */
   highlightDate?: string;
+  /** Hari dalam bulan ini yang pengguna sudah ada pergerakan/cuti (garis hijau) */
+  myRegisteredDays?: string[];
   /** Cuti umum — Record (serializable dari RSC) */
   publicHolidays?: Record<string, string>;
   publicHolidayDetails?: Record<string, HolidayDetail>;
@@ -95,6 +108,11 @@ export default function MonthCalendar({
   }, [gridStart, gridEnd]);
 
   const buckets = useMemo(() => buildDayBuckets(items, gridDays), [items, gridDays]);
+  const myDaysSet = useMemo(() => new Set(myRegisteredDays ?? []), [myRegisteredDays]);
+  const todayYmd = useMemo(
+    () => formatInTimeZone(new Date(), TZ, "yyyy-MM-dd"),
+    [],
+  );
   const [drawerDay, setDrawerDay] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | undefined>(highlightDate);
   const router = useRouter();
@@ -257,6 +275,10 @@ export default function MonthCalendar({
           const inMonth = isSameMonth(d, firstOfMonth);
           const today = isToday(d);
           const selected = selectedDay === key;
+          const hasMyRegistration = myDaysSet.has(key);
+          const myRegTiming = hasMyRegistration
+            ? myRegTimingForDay(key, todayYmd)
+            : null;
           const dayItems = buckets.get(key) ?? [];
           const shown = dayItems.slice(0, MAX_IN_CELL);
           const more = dayItems.length - shown.length;
@@ -275,10 +297,28 @@ export default function MonthCalendar({
                 }
               }}
               className={cn(
-                "text-left min-h-[100px] border-b border-r p-1 align-top hover:bg-slate-50/80 transition cursor-pointer",
+                "relative text-left min-h-[100px] border-b border-r p-1 align-top hover:bg-slate-50/80 transition cursor-pointer",
                 !inMonth && "bg-slate-50/50 text-slate-400",
-                selected && "ring-2 ring-inset ring-brand-500 bg-brand-50/30",
+                selected && "ring-2 ring-inset ring-brand-500 bg-brand-50/30 z-[1]",
+                !selected &&
+                  myRegTiming === "past" &&
+                  "bg-slate-50/95 ring-2 ring-inset ring-slate-400/75 shadow-[inset_0_-3px_0_0_rgb(100_116_139)]",
+                !selected &&
+                  myRegTiming === "future" &&
+                  "bg-emerald-50/55 ring-2 ring-inset ring-emerald-500/60 shadow-[inset_0_-3px_0_0_rgb(16_185_129)]",
+                !selected &&
+                  myRegTiming === "today" &&
+                  "bg-emerald-50/70 ring-2 ring-inset ring-emerald-600/70 shadow-[inset_0_-3px_0_0_rgb(5_150_105)]",
               )}
+              title={
+                myRegTiming === "past"
+                  ? "Anda sudah mendaftar (hari telah berlalu)"
+                  : myRegTiming === "future"
+                    ? "Anda sudah mendaftar (akan datang)"
+                    : myRegTiming === "today"
+                      ? "Anda sudah mendaftar hari ini"
+                      : undefined
+              }
             >
               <div className="flex items-center justify-between px-0.5">
                 <span
@@ -290,6 +330,22 @@ export default function MonthCalendar({
                 >
                   {format(d, "d")}
                 </span>
+                {myRegTiming && (
+                  <span
+                    className={cn(
+                      "text-[9px] font-semibold rounded px-1 py-px shrink-0",
+                      myRegTiming === "past" && "text-slate-600 bg-slate-200",
+                      myRegTiming === "future" && "text-emerald-800 bg-emerald-100",
+                      myRegTiming === "today" && "text-emerald-900 bg-emerald-200",
+                    )}
+                  >
+                    {myRegTiming === "past"
+                      ? "✓"
+                      : myRegTiming === "today"
+                        ? "hari ini"
+                        : "anda"}
+                  </span>
+                )}
                 {dayItems.length > 0 && (
                   <span className="text-[10px] font-medium text-slate-600">{dayItems.length}</span>
                 )}

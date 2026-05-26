@@ -188,8 +188,10 @@ export default function AnalisisPergerakanClient({
           cuti)
         </p>
         <p className="text-xs text-slate-400 mt-3 max-w-xl mx-auto">
-          Program = lokasi & hari sama + urusan hampir sama digabung (contoh nama
-          berbeza 1–2 huruf).
+          Satu program = <strong>hari sama</strong> (tarikh pergi) +{" "}
+          <strong>lokasi sama</strong> + urusan hampir sama (gabung nama berbeza
+          sedikit). Urusan sama tetapi <strong>lokasi berbeza</strong> pada hari
+          yang sama dikira <strong>program berasingan</strong> (aktiviti serentak).
         </p>
       </div>
 
