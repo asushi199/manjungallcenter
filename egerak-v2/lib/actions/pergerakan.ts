@@ -505,6 +505,35 @@ export async function listMine(): Promise<PergerakanListItem[]> {
   }));
 }
 
+/**
+ * Lokasi terbaru untuk pengguna sendiri (untuk auto-isi borang).
+ * Ringan: ambil beberapa rekod terkini, dedupe di server.
+ */
+export async function listMyRecentLokasi(limit = 10): Promise<string[]> {
+  const user = await requireUser();
+  const rows = await withDbTimeout(
+    db
+      .select({ lokasi: pergerakan.lokasi })
+      .from(pergerakan)
+      .where(and(eq(pergerakan.userId, Number(user.id)), eq(pergerakan.aktif, true)))
+      .orderBy(desc(pergerakan.tarikhPergi))
+      .limit(Math.max(limit * 5, 30)),
+  );
+
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const r of rows) {
+    const loc = String(r.lokasi || "").trim();
+    if (!loc) continue;
+    const key = loc.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(loc);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
 export async function countToday(): Promise<{ pergerakan: number; bercuti: number; total: number }> {
   await requireUser();
   const ymd = formatInTimeZone(new Date(), TZ, "yyyy-MM-dd");

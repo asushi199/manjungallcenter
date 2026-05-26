@@ -27,6 +27,7 @@ const emptyAvailability: RoomAvailabilityCheck = {
 
 type Props = {
   lokasiPresets: string[];
+  recentLokasi?: string[];
   mode?: "create" | "edit";
   editId?: number;
   initial?: PergerakanEditData;
@@ -34,6 +35,7 @@ type Props = {
 
 export default function PergerakanForm({
   lokasiPresets,
+  recentLokasi = [],
   mode = "create",
   editId,
   initial,
@@ -101,6 +103,12 @@ export default function PergerakanForm({
 
   const hasRoomConflict = willBookRoom && availability.applies && !availability.canBook;
   const slotCount = availability.neededSlots.length;
+
+  function applyLokasi(loc: string) {
+    const resolved = resolveLokasiFields(loc, lokasiPresets);
+    setLokasiSel(resolved.lokasiSel);
+    setLokasiLain(resolved.lokasiLain);
+  }
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -234,6 +242,24 @@ export default function PergerakanForm({
             onChange={(e) => setLokasiLain(e.target.value)}
           />
         )}
+        {recentLokasi.length > 0 ? (
+          <div className="mt-2">
+            <div className="text-xs font-medium text-slate-600 mb-1">Lokasi terbaru anda</div>
+            <div className="flex flex-wrap gap-2">
+              {recentLokasi.slice(0, 10).map((loc) => (
+                <button
+                  key={loc}
+                  type="button"
+                  className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                  onClick={() => applyLokasi(loc)}
+                  title={loc}
+                >
+                  {loc}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {needsRoom && (
