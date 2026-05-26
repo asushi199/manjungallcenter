@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { format } from "date-fns";
 import { cn } from "@/lib/cn";
-import { oprStatusBadge } from "@/lib/opr-status";
+import { oprStatusBadge, type OprStatus } from "@/lib/opr-status";
 import { sektorStyle } from "@/lib/sektor-colors";
+import MinePergerakanCardActions from "@/components/MinePergerakanCardActions";
 
 export type PergerakanCardData = {
   id: number;
@@ -16,7 +16,7 @@ export type PergerakanCardData = {
   lokasi: string;
   tarikhPergi: string;
   tarikhKembali: string;
-  oprStatus?: "DRAFT" | "SIAP" | null;
+  oprStatus?: OprStatus | null;
 };
 
 function formatSektorShort(code: string | null) {
@@ -172,32 +172,12 @@ export default function PergerakanCard({
           </div>
         </div>
 
-        {variant === "mine" && item.jenis === "Pergerakan" && (
-          <div className="flex flex-wrap gap-2 pt-1 border-t border-white/60">
-            <Link
-              href={`/my/${item.id}/edit`}
-              className="btn-secondary text-xs py-1.5 px-3 min-h-0"
-            >
-              Edit
-            </Link>
-            <Link
-              href={`/my/${item.id}/opr`}
-              className="btn-primary text-xs py-1.5 px-3 min-h-0"
-            >
-              {item.oprStatus === "SIAP" ? "Lihat OPR" : "Isi OPR"}
-            </Link>
-          </div>
-        )}
-
-        {variant === "mine" && item.jenis === "Bercuti" && (
-          <div className="flex flex-wrap gap-2 pt-1 border-t border-white/60">
-            <Link
-              href={`/my/${item.id}/edit`}
-              className="btn-secondary text-xs py-1.5 px-3 min-h-0"
-            >
-              Edit
-            </Link>
-          </div>
+        {variant === "mine" && (
+          <MinePergerakanCardActions
+            pergerakanId={item.id}
+            jenis={item.jenis}
+            oprStatus={item.oprStatus}
+          />
         )}
       </div>
     </article>

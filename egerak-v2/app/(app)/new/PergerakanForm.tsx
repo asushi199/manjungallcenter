@@ -71,6 +71,8 @@ export default function PergerakanForm({
   const [sepenuhHari, setSepenuhHari] = useState(initial?.sepenuhHari ?? false);
   /** true = penganjur tempah slot; false = sertai aktiviti sedia ada */
   const [tempahBilik, setTempahBilik] = useState(initial?.tempahBilik ?? true);
+  /** Sertai aktiviti — laporan oleh penganjur lain */
+  const [tidakPerluOpr, setTidakPerluOpr] = useState(false);
 
   const isLainLain = lokasiSel === lokasiPresets[lokasiPresets.length - 1];
   const lokasi = isLainLain ? lokasiLain : lokasiSel;
@@ -167,8 +169,15 @@ export default function PergerakanForm({
     setTarikhKembali(t.tarikhKembali);
     if (/budiman|bestari/i.test(t.lokasi)) {
       setTempahBilik(false);
+      setTidakPerluOpr(true);
     }
   }
+
+  useEffect(() => {
+    if (isEdit) return;
+    if (needsRoom && !tempahBilik) setTidakPerluOpr(true);
+    else if (needsRoom && tempahBilik) setTidakPerluOpr(false);
+  }, [isEdit, needsRoom, tempahBilik]);
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -190,6 +199,10 @@ export default function PergerakanForm({
         tarikhKembali,
         sepenuhHari,
         tempahBilik: needsRoom ? tempahBilik : undefined,
+        tidakPerluOpr:
+          !isEdit && jenis === "Pergerakan" && needsRoom && !tempahBilik && tidakPerluOpr
+            ? true
+            : undefined,
       };
       const res = isEdit
         ? await updatePergerakan(editId, payload)
@@ -441,14 +454,33 @@ export default function PergerakanForm({
       )}
 
       {needsRoom && !tempahBilik && (
-        <p className="text-sm text-brand-800 bg-brand-50 border border-brand-200 rounded-md px-3 py-2">
-          Anda menyertai aktiviti di <strong>{lokasi}</strong> tanpa menempah slot. Pastikan
-          penganjur telah membuat tempahan di halaman{" "}
-          <Link href="/bilik" className="font-medium underline">
-            Tempahan Bilik
-          </Link>
-          .
-        </p>
+        <div className="space-y-2">
+          <p className="text-sm text-brand-800 bg-brand-50 border border-brand-200 rounded-md px-3 py-2">
+            Anda menyertai aktiviti di <strong>{lokasi}</strong> tanpa menempah slot. Pastikan
+            penganjur telah membuat tempahan di halaman{" "}
+            <Link href="/bilik" className="font-medium underline">
+              Tempahan Bilik
+            </Link>
+            .
+          </p>
+          {!isEdit && jenis === "Pergerakan" ? (
+            <label className="flex items-start gap-2 text-sm cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={tidakPerluOpr}
+                onChange={(e) => setTidakPerluOpr(e.target.checked)}
+              />
+              <span>
+                <strong>Tidak perlu OPR</strong>
+                <span className="block text-xs text-slate-600 mt-0.5">
+                  Tandakan jika laporan ditulis oleh penganjur atau rakan sektor yang sama. Anda
+                  boleh ubah kemudian di halaman OPR.
+                </span>
+              </span>
+            </label>
+          ) : null}
+        </div>
       )}
 
       {willBookRoom && tarikhPergi && tarikhKembali && (

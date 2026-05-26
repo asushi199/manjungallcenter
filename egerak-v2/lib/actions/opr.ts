@@ -59,7 +59,7 @@ const saveSchema = z.object({
   dapatan: z.string().optional(),
   rumusan: z.string().optional(),
   refleksi: z.string().optional(),
-  status: z.enum(["DRAFT", "SIAP"]).optional(),
+  status: z.enum(["TIADA", "DRAFT", "SIAP"]).optional(),
 });
 
 export async function saveOpr(input: unknown) {
@@ -93,15 +93,92 @@ export async function saveOpr(input: unknown) {
     })
     .where(eq(opr.id, existing.id));
 
+  const nextStatus = data.status ?? existing.status;
   await db.insert(auditLog).values({
-    action: data.status === "SIAP" ? "OPR_FINAL" : "OPR_SAVED",
+    action:
+      nextStatus === "SIAP"
+        ? "OPR_FINAL"
+        : nextStatus === "TIADA"
+          ? "OPR_TIADA"
+          : "OPR_SAVED",
+    userId: Number(session.id),
+    detail: { pergerakanId, oprId: existing.id, status: nextStatus },
+  });
+
+  revalidatePath(`/my/${pergerakanId}/opr`);
+  revalidatePath("/my");
+  return { ok: true as const };
+}
+
+/** Tandakan OPR tidak diperlukan (peserta / laporan oleh penganjur lain). */
+export async function markOprTiada(pergerakanId: number): Promise<{ ok: boolean; error?: string }> {
+  const session = await requireUser();
+  const row = await assertPergerakanAccess(
+    pergerakanId,
+    Number(session.id),
+    session.peranan === "Admin",
+  );
+  if (!row) return { ok: false, error: "Tiada kebenaran atau rekod tidak dijumpai" };
+  if (row.jenis !== "Pergerakan") {
+    return { ok: false, error: "Cuti tidak memerlukan OPR" };
+  }
+
+  let existing = await db.query.opr.findFirst({ where: eq(opr.pergerakanId, pergerakanId) });
+  if (!existing) {
+    const [created] = await db
+      .insert(opr)
+      .values({ pergerakanId, status: "TIADA" })
+      .returning();
+    existing = created;
+  } else {
+    await db
+      .update(opr)
+      .set({ status: "TIADA", updatedAt: new Date() })
+      .where(eq(opr.id, existing.id));
+  }
+
+  await db.insert(auditLog).values({
+    action: "OPR_TIADA",
     userId: Number(session.id),
     detail: { pergerakanId, oprId: existing.id },
   });
 
   revalidatePath(`/my/${pergerakanId}/opr`);
   revalidatePath("/my");
-  return { ok: true as const };
+  return { ok: true };
+}
+
+/** Buka semula OPR dari status TIADA (sedia untuk isi). */
+export async function reopenOprFromTiada(
+  pergerakanId: number,
+): Promise<{ ok: boolean; error?: string }> {
+  const session = await requireUser();
+  const row = await assertPergerakanAccess(
+    pergerakanId,
+    Number(session.id),
+    session.peranan === "Admin",
+  );
+  if (!row) return { ok: false, error: "Tiada kebenaran atau rekod tidak dijumpai" };
+
+  const existing = await db.query.opr.findFirst({ where: eq(opr.pergerakanId, pergerakanId) });
+  if (!existing || existing.status !== "TIADA") {
+    return { ok: false, error: "Rekod bukan status Tiada OPR" };
+  }
+
+  await db
+    .update(opr)
+    .set({ status: "DRAFT", updatedAt: new Date() })
+    .where(eq(opr.id, existing.id));
+
+  await db.insert(auditLog).values({
+    action: "OPR_REOPENED",
+    userId: Number(session.id),
+    detail: { pergerakanId, oprId: existing.id },
+  });
+
+  revalidatePath(`/my/${pergerakanId}/opr`);
+  revalidatePath("/my");
+  return { ok: true };
 }
 
 export async function generateOprDraft(

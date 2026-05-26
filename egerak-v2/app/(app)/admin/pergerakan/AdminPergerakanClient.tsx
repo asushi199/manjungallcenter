@@ -17,7 +17,7 @@ type Item = {
   sektorName: string | null;
   tarikhPergi: string;
   tarikhKembali: string;
-  oprStatus: "DRAFT" | "SIAP" | null;
+  oprStatus: "TIADA" | "DRAFT" | "SIAP" | null;
 };
 
 export default function AdminPergerakanClient({ items }: { items: Item[] }) {

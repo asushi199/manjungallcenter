@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { withDbTimeout } from "@/lib/db-timeout";
 import { pergerakan, users, sektors, auditLog, opr, roomBookings } from "@/lib/schema";
+import type { OprStatus } from "@/lib/opr-status";
 import { requireUser, requireSectorPergerakanAdmin } from "@/lib/rbac";
 import { isSektorIdInScope, resolveUserSektorScope } from "@/lib/sektor-admin-scope";
 import { canSectorDeletePergerakan, isFullAdmin } from "@/lib/roles";
@@ -31,6 +32,8 @@ const submitSchema = z
     sepenuhHari: z.boolean().optional(),
     /** Lalai true: tempah slot AM/PM. false = sertai aktiviti sedia ada, hanya rekod pergerakan. */
     tempahBilik: z.boolean().optional(),
+    /** Sertai aktiviti — laporan oleh penganjur lain; cipta OPR status TIADA. */
+    tidakPerluOpr: z.boolean().optional(),
   })
   .refine(
     (v) => {
@@ -69,8 +72,16 @@ export async function submitPergerakan(input: unknown): Promise<SubmitResult> {
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak sah" };
   }
-  const { jenis, urusan, lokasi, tarikhPergi, tarikhKembali, sepenuhHari, tempahBilik } =
-    parsed.data;
+  const {
+    jenis,
+    urusan,
+    lokasi,
+    tarikhPergi,
+    tarikhKembali,
+    sepenuhHari,
+    tempahBilik,
+    tidakPerluOpr,
+  } = parsed.data;
   const pergi = parseLocalInput(tarikhPergi);
   const kembali = parseLocalInput(tarikhKembali);
   if (!pergi || !kembali) return { ok: false, error: "Format tarikh tidak sah" };
@@ -112,10 +123,22 @@ export async function submitPergerakan(input: unknown): Promise<SubmitResult> {
         roomSlotsBooked = sync.count;
       }
 
+      if (jenis === "Pergerakan" && tidakPerluOpr === true) {
+        await tx.insert(opr).values({ pergerakanId: row.id, status: "TIADA" });
+      }
+
       await tx.insert(auditLog).values({
         action: "SUBMIT_PERGERAKAN",
         userId: Number(user.id),
-        detail: { id: row.id, jenis, urusan, lokasi, roomSlotsBooked, tempahBilik: shouldBookRoom },
+        detail: {
+          id: row.id,
+          jenis,
+          urusan,
+          lokasi,
+          roomSlotsBooked,
+          tempahBilik: shouldBookRoom,
+          tidakPerluOpr: tidakPerluOpr === true,
+        },
       });
 
       return { id: row.id, roomSlotsBooked };
@@ -366,7 +389,7 @@ export type PergerakanListItem = {
   lokasi: string;
   tarikhPergi: Date;
   tarikhKembali: Date;
-  oprStatus: "DRAFT" | "SIAP" | null;
+  oprStatus: OprStatus | null;
 };
 
 /** Medan untuk dashboard / kalendar — tanpa join OPR atau medan tidak perlu. */
@@ -490,7 +513,9 @@ export async function listPergerakanForSectorAdmin(): Promise<PergerakanListItem
     tarikhPergi: new Date(r.tarikhPergi),
     tarikhKembali: new Date(r.tarikhKembali),
     oprStatus:
-      r.oprStatus === "DRAFT" || r.oprStatus === "SIAP" ? r.oprStatus : null,
+      r.oprStatus === "DRAFT" || r.oprStatus === "SIAP" || r.oprStatus === "TIADA"
+        ? r.oprStatus
+        : null,
   }));
 }
 
@@ -528,7 +553,9 @@ export async function listMine(): Promise<PergerakanListItem[]> {
     tarikhPergi: new Date(r.tarikhPergi),
     tarikhKembali: new Date(r.tarikhKembali),
     oprStatus:
-      r.oprStatus === "DRAFT" || r.oprStatus === "SIAP" ? r.oprStatus : null,
+      r.oprStatus === "DRAFT" || r.oprStatus === "SIAP" || r.oprStatus === "TIADA"
+        ? r.oprStatus
+        : null,
   }));
 }
 

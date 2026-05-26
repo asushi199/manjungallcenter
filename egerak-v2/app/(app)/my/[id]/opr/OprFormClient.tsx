@@ -7,7 +7,9 @@ import {
   saveOpr,
   generateOprDraft,
   uploadOprPhotoAction,
+  reopenOprFromTiada,
 } from "@/lib/actions/opr";
+import Link from "next/link";
 import { compressImageForOpr } from "@/lib/client/compress-image";
 import { OPR_MAX_PHOTOS } from "@/lib/opr-photos";
 import { oprStatusBadge } from "@/lib/opr-status";
@@ -83,6 +85,20 @@ export default function OprFormClient({
     });
   }
 
+  function onReopen() {
+    setMsg(null);
+    startTransition(async () => {
+      const res = await reopenOprFromTiada(pergerakanId);
+      if (!res.ok) {
+        setMsg(res.error ?? "Gagal membuka semula OPR");
+        return;
+      }
+      setForm((f) => ({ ...f, status: "DRAFT" }));
+      setMsg("OPR dibuka semula sebagai draf. Anda boleh mengisi dan menyimpan laporan.");
+      router.refresh();
+    });
+  }
+
   function onGenerate() {
     setMsg(null);
     startTransition(async () => {
@@ -154,9 +170,37 @@ export default function OprFormClient({
 
   const statusBadge = oprStatusBadge(form.status);
   const isSiap = form.status === "SIAP";
+  const isTiada = form.status === "TIADA";
+  const canEdit = !isTiada;
 
   return (
     <div className="space-y-4">
+      {isTiada && (
+        <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 space-y-3">
+          <p>
+            <strong>OPR tidak diperlukan</strong> untuk rekod ini. Untuk menukar status, gunakan
+            butang pada kad di{" "}
+            <Link href="/my" className="text-brand-600 font-medium hover:underline">
+              Pergerakan Saya
+            </Link>
+            .
+          </p>
+          {statusBadge ? (
+            <span className={`badge ${statusBadge.className}`}>{statusBadge.label}</span>
+          ) : null}
+          <div>
+            <button
+              type="button"
+              className="btn-secondary text-sm"
+              disabled={pending}
+              onClick={onReopen}
+            >
+              Buka semula untuk isi OPR
+            </button>
+          </div>
+        </div>
+      )}
+
       {isSiap && (
         <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
           <strong>OPR telah ditandakan siap.</strong> Laporan dianggap muktamad untuk rekod ini. Anda
@@ -164,12 +208,14 @@ export default function OprFormClient({
           status kecuali anda ubah kandungan kemudian tekan semula &quot;Tandakan Siap&quot;.
         </div>
       )}
-      {statusBadge && !isSiap && form.status === "DRAFT" && (
+
+      {canEdit && statusBadge && !isSiap && form.status === "DRAFT" && (
         <p className="text-xs text-slate-500">
           Status semasa: <span className={`badge ${statusBadge.className}`}>{statusBadge.label}</span>
           — tekan <strong>Tandakan Siap</strong> apabila laporan siap disemak.
         </p>
       )}
+
       {msg && (
         <div
           className={`rounded-md border text-sm px-3 py-2 ${
@@ -183,113 +229,122 @@ export default function OprFormClient({
           {msg}
         </div>
       )}
-      <div className="card p-4 space-y-3">
-        <div>
-          <label className="label">Sektor (override jika perlu)</label>
-          <select
-            className="input"
-            value={form.sektorOverrideId ?? ""}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                sektorOverrideId: e.target.value ? Number(e.target.value) : null,
-              })
-            }
-          >
-            <option value="">Ikut profil pegawai</option>
-            {sektors.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="label">Maklumat tambahan / objektif ringkas</label>
-          <textarea
-            className="input min-h-[80px]"
-            value={form.maklumatTambahan}
-            onChange={(e) => setForm({ ...form, maklumatTambahan: e.target.value })}
-          />
-        </div>
-        <div>
-          <label className="label">Sasaran</label>
-          <input
-            className="input"
-            value={form.sasaran}
-            onChange={(e) => setForm({ ...form, sasaran: e.target.value })}
-            placeholder="Contoh: Guru Besar SK, Penolong Kanan"
-          />
-        </div>
-        <div>
-          <label className="label">Nota pegawai (mentah)</label>
-          <textarea
-            className="input min-h-[60px]"
-            value={form.notaPegawai}
-            onChange={(e) => setForm({ ...form, notaPegawai: e.target.value })}
-          />
-        </div>
-        <button type="button" className="btn-primary" disabled={pending} onClick={onGenerate}>
-          {pending ? "Menjana…" : "Jana Draf (AI)"}
-        </button>
-      </div>
 
-      <div className="card p-4 space-y-3">
-        <label className="label">Dapatan</label>
-        <textarea
-          className="input min-h-[120px]"
-          value={form.dapatan}
-          onChange={(e) => setForm({ ...form, dapatan: e.target.value })}
-        />
-        <label className="label">Rumusan</label>
-        <textarea
-          className="input min-h-[80px]"
-          value={form.rumusan}
-          onChange={(e) => setForm({ ...form, rumusan: e.target.value })}
-        />
-        <label className="label">Refleksi</label>
-        <textarea
-          className="input min-h-[100px]"
-          value={form.refleksi}
-          onChange={(e) => setForm({ ...form, refleksi: e.target.value })}
-        />
-      </div>
+      {canEdit ? (
+        <>
+          <div className="card p-4 space-y-3">
+            <div>
+              <label className="label">Sektor (override jika perlu)</label>
+              <select
+                className="input"
+                value={form.sektorOverrideId ?? ""}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    sektorOverrideId: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
+              >
+                <option value="">Ikut profil pegawai</option>
+                {sektors.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label">Maklumat tambahan / objektif ringkas</label>
+              <textarea
+                className="input min-h-[80px]"
+                value={form.maklumatTambahan}
+                onChange={(e) => setForm({ ...form, maklumatTambahan: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">Sasaran</label>
+              <input
+                className="input"
+                value={form.sasaran}
+                onChange={(e) => setForm({ ...form, sasaran: e.target.value })}
+                placeholder="Contoh: Guru Besar SK, Penolong Kanan"
+              />
+            </div>
+            <div>
+              <label className="label">Nota pegawai (mentah)</label>
+              <textarea
+                className="input min-h-[60px]"
+                value={form.notaPegawai}
+                onChange={(e) => setForm({ ...form, notaPegawai: e.target.value })}
+              />
+            </div>
+            <button type="button" className="btn-primary" disabled={pending} onClick={onGenerate}>
+              {pending ? "Menjana…" : "Jana Draf (AI)"}
+            </button>
+          </div>
 
-      <div className="card p-4">
-        <h2 className="font-semibold mb-2">Gambar aktiviti</h2>
-        <p className="text-xs text-slate-500 mb-2">
-          Maksimum {OPR_MAX_PHOTOS} gambar. <strong>Melintang (landskap) disyorkan</strong> untuk
-          cetakan OPR; gambar menegak juga boleh dimuat naik. Dimampatkan automatik. Dalam cetakan,
-          gambar disusun menegak di sebelah kanan.
-        </p>
-        <OprPhotoGallery
-          pergerakanId={pergerakanId}
-          photos={photos}
-          onPhotosChange={setPhotos}
-          onDeleteError={(error) => setMsg(error)}
-          storageEnabled={storageEnabled}
-          storageHint={storageHint}
-          atPhotoLimit={atPhotoLimit}
-          uploadingPhoto={uploadingPhoto}
-          pending={pending}
-          onUpload={onPhoto}
-        />
-      </div>
+          <div className="card p-4 space-y-3">
+            <label className="label">Dapatan</label>
+            <textarea
+              className="input min-h-[120px]"
+              value={form.dapatan}
+              onChange={(e) => setForm({ ...form, dapatan: e.target.value })}
+            />
+            <label className="label">Rumusan</label>
+            <textarea
+              className="input min-h-[80px]"
+              value={form.rumusan}
+              onChange={(e) => setForm({ ...form, rumusan: e.target.value })}
+            />
+            <label className="label">Refleksi</label>
+            <textarea
+              className="input min-h-[100px]"
+              value={form.refleksi}
+              onChange={(e) => setForm({ ...form, refleksi: e.target.value })}
+            />
+          </div>
 
-      <div className="flex flex-wrap gap-2 justify-end">
-        <button type="button" className="btn-secondary" disabled={pending} onClick={() => onSave(false)}>
-          Simpan Draf
-        </button>
-        <button
-          type="button"
-          className="btn-primary"
-          disabled={pending || isSiap}
-          onClick={() => onSave(true)}
-        >
-          {isSiap ? "Sudah Siap" : "Tandakan Siap"}
-        </button>
-      </div>
+          <div className="card p-4">
+            <h2 className="font-semibold mb-2">Gambar aktiviti</h2>
+            <p className="text-xs text-slate-500 mb-2">
+              Maksimum {OPR_MAX_PHOTOS} gambar. <strong>Melintang (landskap) disyorkan</strong> untuk
+              cetakan OPR; gambar menegak juga boleh dimuat naik. Dimampatkan automatik. Dalam cetakan,
+              gambar disusun menegak di sebelah kanan.
+            </p>
+            <OprPhotoGallery
+              pergerakanId={pergerakanId}
+              photos={photos}
+              onPhotosChange={setPhotos}
+              onDeleteError={(error) => setMsg(error)}
+              storageEnabled={storageEnabled}
+              storageHint={storageHint}
+              atPhotoLimit={atPhotoLimit}
+              uploadingPhoto={uploadingPhoto}
+              pending={pending}
+              onUpload={onPhoto}
+            />
+          </div>
 
+          <div className="flex flex-wrap gap-2 justify-end items-center">
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={pending}
+              onClick={() => onSave(false)}
+            >
+              Simpan Draf
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={pending || isSiap}
+              onClick={() => onSave(true)}
+            >
+              {isSiap ? "Sudah Siap" : "Tandakan Siap"}
+            </button>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
