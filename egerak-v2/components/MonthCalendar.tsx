@@ -81,7 +81,7 @@ export default function MonthCalendar({
   toolbar?: ReactNode;
   /** Baris 1: cuti pegawai / cuti sekolah · Baris 2: sektor + navigasi bulan */
   calendarFilter?: CalendarFilterConfig;
-  /** Tarikh dipilih di penapis (garis biru pada sel) */
+  /** Tarikh rujukan penapis (URL `date`, bukan sorotan sel) */
   highlightDate?: string;
   /** Hari dalam bulan ini yang pengguna sudah ada pergerakan/cuti (garis hijau) */
   myRegisteredDays?: string[];
@@ -114,14 +114,9 @@ export default function MonthCalendar({
     [],
   );
   const [drawerDay, setDrawerDay] = useState<string | null>(null);
-  const [selectedDay, setSelectedDay] = useState<string | undefined>(highlightDate);
   const router = useRouter();
   const urlParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    setSelectedDay(highlightDate);
-  }, [highlightDate]);
 
   useEffect(() => {
     setDrawerDay(null);
@@ -154,7 +149,6 @@ export default function MonthCalendar({
 
   /** Klik hari: laci sebelah sahaja — data dari buckets (tiada reload pelayan). */
   function openDayDrawer(dayKey: string) {
-    setSelectedDay(dayKey);
     setDrawerDay(dayKey);
   }
 
@@ -274,7 +268,6 @@ export default function MonthCalendar({
           const key = ymdKey(d);
           const inMonth = isSameMonth(d, firstOfMonth);
           const today = isToday(d);
-          const selected = selectedDay === key;
           const hasMyRegistration = myDaysSet.has(key);
           const myRegTiming = hasMyRegistration
             ? myRegTimingForDay(key, todayYmd)
@@ -299,15 +292,11 @@ export default function MonthCalendar({
               className={cn(
                 "relative text-left min-h-[100px] border-b border-r p-1 align-top hover:bg-slate-50/80 transition cursor-pointer",
                 !inMonth && "bg-slate-50/50 text-slate-400",
-                selected && "ring-2 ring-inset ring-brand-500 bg-brand-50/30 z-[1]",
-                !selected &&
-                  myRegTiming === "past" &&
+                myRegTiming === "past" &&
                   "bg-slate-50/95 ring-2 ring-inset ring-slate-400/75 shadow-[inset_0_-3px_0_0_rgb(100_116_139)]",
-                !selected &&
-                  myRegTiming === "future" &&
+                myRegTiming === "future" &&
                   "bg-emerald-50/55 ring-2 ring-inset ring-emerald-500/60 shadow-[inset_0_-3px_0_0_rgb(16_185_129)]",
-                !selected &&
-                  myRegTiming === "today" &&
+                myRegTiming === "today" &&
                   "bg-emerald-50/70 ring-2 ring-inset ring-emerald-600/70 shadow-[inset_0_-3px_0_0_rgb(5_150_105)]",
               )}
               aria-label={
@@ -339,19 +328,6 @@ export default function MonthCalendar({
                 >
                   {format(d, "d")}
                 </span>
-                {myRegTiming && (
-                  <span
-                    className={cn(
-                      "shrink-0 flex items-center justify-center rounded-full w-3.5 h-3.5 text-[8px] leading-none font-bold",
-                      myRegTiming === "past" && "bg-slate-400 text-white",
-                      myRegTiming === "future" && "bg-emerald-500 text-white",
-                      myRegTiming === "today" && "bg-emerald-600 text-white ring-1 ring-white/80",
-                    )}
-                    aria-hidden
-                  >
-                    {myRegTiming === "past" ? "✓" : "•"}
-                  </span>
-                )}
                 {dayItems.length > 0 && (
                   <span className="text-[10px] font-medium text-slate-600">{dayItems.length}</span>
                 )}
