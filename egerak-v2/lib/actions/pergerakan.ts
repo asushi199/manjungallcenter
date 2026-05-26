@@ -534,6 +534,68 @@ export async function listMyRecentLokasi(limit = 10): Promise<string[]> {
   return out;
 }
 
+export type LokasiSuggestion = { label: string; count: number };
+
+function lokasiKeyForSuggest(raw: string): string {
+  let s = String(raw || "").trim().toLowerCase();
+  if (!s) return "";
+  // buang simbol asas
+  s = s.replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ");
+  // samakan singkatan sekolah
+  s = s.replace(/\bsk\b/g, "sekolah kebangsaan");
+  s = s.replace(/\bsmk\b/g, "sekolah menengah kebangsaan");
+  s = s.replace(/\bsjkc\b/g, "sekolah jenis kebangsaan cina");
+  s = s.replace(/\bsjkt\b/g, "sekolah jenis kebangsaan tamil");
+  // buang kata yang kerap tidak membezakan lokasi (cukup ringan)
+  s = s.replace(/\b(sekolah|kebangsaan|jenis|cina|tamil|menengah)\b/g, " ");
+  s = s.replace(/\s+/g, " ").trim();
+  return s;
+}
+
+/**
+ * Cadangan lokasi pada tarikh tertentu (untuk elak variasi ejaan).
+ * Tidak pulang nama pegawai/urusan — hanya senarai lokasi + kiraan.
+ */
+export async function listLokasiSuggestionsForDay(
+  ymdDate: string,
+  limit = 8,
+): Promise<LokasiSuggestion[]> {
+  await requireUser();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymdDate)) return [];
+
+  const start = new Date(`${ymdDate}T00:00:00+08:00`);
+  const end = new Date(`${ymdDate}T23:59:59+08:00`);
+  const rows = await withDbTimeout(
+    db
+      .select({ lokasi: pergerakan.lokasi })
+      .from(pergerakan)
+      .where(and(eq(pergerakan.aktif, true), lte(pergerakan.tarikhPergi, end), gte(pergerakan.tarikhKembali, start)))
+      .orderBy(desc(pergerakan.tarikhPergi))
+      .limit(200),
+  );
+
+  const clusters = new Map<string, { best: string; count: number }>();
+  for (const r of rows) {
+    const loc = String(r.lokasi || "").trim();
+    if (!loc) continue;
+    const key = lokasiKeyForSuggest(loc);
+    if (!key) continue;
+    const hit = clusters.get(key);
+    if (hit) {
+      hit.count += 1;
+      // pilih label lebih lengkap untuk dipaparkan
+      if (loc.length > hit.best.length) hit.best = loc;
+    } else {
+      clusters.set(key, { best: loc, count: 1 });
+    }
+  }
+
+  return [...clusters.values()]
+    .sort((a, b) => b.count - a.count || b.best.length - a.best.length)
+    .slice(0, limit)
+    .map((c) => ({ label: c.best, count: c.count }));
+}
+
 export async function countToday(): Promise<{ pergerakan: number; bercuti: number; total: number }> {
   await requireUser();
   const ymd = formatInTimeZone(new Date(), TZ, "yyyy-MM-dd");

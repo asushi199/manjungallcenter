@@ -3,17 +3,21 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { formatInTimeZone } from "date-fns-tz";
 import {
   submitPergerakan,
   updatePergerakan,
   checkPergerakanRoomAvailability,
   type RoomAvailabilityCheck,
   type PergerakanEditData,
+  listLokasiSuggestionsForDay,
+  type LokasiSuggestion,
 } from "@/lib/actions/pergerakan";
 import { resolveLokasiFields } from "@/lib/pergerakan-presets";
 import { formatTarikhBm } from "@/lib/room-slots";
 import DateTimeField from "@/components/DateTimeField";
 import { DEFAULT_TIME_KEMBALI, DEFAULT_TIME_PERGI } from "@/lib/datetime-picker";
+import { parseLocalInput, TZ } from "@/lib/dates";
 
 const emptyAvailability: RoomAvailabilityCheck = {
   checking: false,
@@ -52,6 +56,9 @@ export default function PergerakanForm({
   const [showBilikLink, setShowBilikLink] = useState(false);
   const [availability, setAvailability] = useState<RoomAvailabilityCheck>(emptyAvailability);
   const [checkingRoom, setCheckingRoom] = useState(false);
+  const [lokasiSuggestDay, setLokasiSuggestDay] = useState<string | null>(null);
+  const [lokasiSuggest, setLokasiSuggest] = useState<LokasiSuggestion[]>([]);
+  const [lokasiSuggestPending, setLokasiSuggestPending] = useState(false);
 
   const [jenis, setJenis] = useState<"Pergerakan" | "Bercuti">(initial?.jenis ?? "Pergerakan");
   const [lokasiSel, setLokasiSel] = useState(lokasiInit.lokasiSel);
@@ -67,6 +74,35 @@ export default function PergerakanForm({
   const lokasi = isLainLain ? lokasiLain : lokasiSel;
   const needsRoom = /budiman|bestari/i.test(lokasi) && jenis === "Pergerakan";
   const willBookRoom = needsRoom && tempahBilik;
+
+  useEffect(() => {
+    if (!tarikhPergi) {
+      setLokasiSuggestDay(null);
+      setLokasiSuggest([]);
+      setLokasiSuggestPending(false);
+      return;
+    }
+    const d = parseLocalInput(tarikhPergi);
+    if (!d) return;
+    const ymd = formatInTimeZone(d, TZ, "yyyy-MM-dd");
+    if (ymd === lokasiSuggestDay) return;
+
+    setLokasiSuggestPending(true);
+    const timer = setTimeout(() => {
+      listLokasiSuggestionsForDay(ymd, 8)
+        .then((r) => {
+          setLokasiSuggestDay(ymd);
+          setLokasiSuggest(r);
+        })
+        .catch(() => {
+          setLokasiSuggestDay(ymd);
+          setLokasiSuggest([]);
+        })
+        .finally(() => setLokasiSuggestPending(false));
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [tarikhPergi, lokasiSuggestDay]);
 
   useEffect(() => {
     if (!willBookRoom || !tarikhPergi || !tarikhKembali) {
@@ -242,6 +278,29 @@ export default function PergerakanForm({
             onChange={(e) => setLokasiLain(e.target.value)}
           />
         )}
+        {lokasiSuggestPending ? (
+          <p className="text-xs text-slate-500 mt-2">Mencari lokasi digunakan pada tarikh ini…</p>
+        ) : lokasiSuggest.length > 0 ? (
+          <div className="mt-2">
+            <div className="text-xs font-medium text-slate-600 mb-1">
+              Lokasi digunakan pada tarikh ini
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {lokasiSuggest.map((s) => (
+                <button
+                  key={s.label}
+                  type="button"
+                  className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                  onClick={() => applyLokasi(s.label)}
+                  title={`${s.count} rekod`}
+                >
+                  {s.label}
+                  <span className="text-slate-500"> · {s.count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
         {recentLokasi.length > 0 ? (
           <div className="mt-2">
             <div className="text-xs font-medium text-slate-600 mb-1">Lokasi terbaru anda</div>
