@@ -12,6 +12,8 @@ import {
   type PergerakanEditData,
   listLokasiSuggestionsForDay,
   type LokasiSuggestion,
+  listUrusanTemplatesForDay,
+  type UrusanTemplate,
 } from "@/lib/actions/pergerakan";
 import { resolveLokasiFields } from "@/lib/pergerakan-presets";
 import { formatTarikhBm } from "@/lib/room-slots";
@@ -59,6 +61,9 @@ export default function PergerakanForm({
   const [lokasiSuggestDay, setLokasiSuggestDay] = useState<string | null>(null);
   const [lokasiSuggest, setLokasiSuggest] = useState<LokasiSuggestion[]>([]);
   const [lokasiSuggestPending, setLokasiSuggestPending] = useState(false);
+  const [urusanSuggestDay, setUrusanSuggestDay] = useState<string | null>(null);
+  const [urusanSuggest, setUrusanSuggest] = useState<UrusanTemplate[]>([]);
+  const [urusanSuggestPending, setUrusanSuggestPending] = useState(false);
 
   const [jenis, setJenis] = useState<"Pergerakan" | "Bercuti">(initial?.jenis ?? "Pergerakan");
   const [lokasiSel, setLokasiSel] = useState(lokasiInit.lokasiSel);
@@ -74,6 +79,35 @@ export default function PergerakanForm({
   const lokasi = isLainLain ? lokasiLain : lokasiSel;
   const needsRoom = /budiman|bestari/i.test(lokasi) && jenis === "Pergerakan";
   const willBookRoom = needsRoom && tempahBilik;
+
+  useEffect(() => {
+    if (!tarikhPergi) {
+      setUrusanSuggestDay(null);
+      setUrusanSuggest([]);
+      setUrusanSuggestPending(false);
+      return;
+    }
+    const d = parseLocalInput(tarikhPergi);
+    if (!d) return;
+    const ymd = formatInTimeZone(d, TZ, "yyyy-MM-dd");
+    if (ymd === urusanSuggestDay) return;
+
+    setUrusanSuggestPending(true);
+    const timer = setTimeout(() => {
+      listUrusanTemplatesForDay(ymd, 8)
+        .then((r) => {
+          setUrusanSuggestDay(ymd);
+          setUrusanSuggest(r);
+        })
+        .catch(() => {
+          setUrusanSuggestDay(ymd);
+          setUrusanSuggest([]);
+        })
+        .finally(() => setUrusanSuggestPending(false));
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [tarikhPergi, urusanSuggestDay]);
 
   useEffect(() => {
     if (!tarikhPergi) {
@@ -146,6 +180,17 @@ export default function PergerakanForm({
     setLokasiLain(resolved.lokasiLain);
   }
 
+  function applyTemplate(t: UrusanTemplate) {
+    setJenis("Pergerakan");
+    setUrusan(t.urusan);
+    applyLokasi(t.lokasi);
+    setTarikhPergi(t.tarikhPergi);
+    setTarikhKembali(t.tarikhKembali);
+    if (/budiman|bestari/i.test(t.lokasi)) {
+      setTempahBilik(false);
+    }
+  }
+
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -214,6 +259,51 @@ export default function PergerakanForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      <div className="grid sm:grid-cols-2 gap-3">
+        <DateTimeField
+          id="pergi"
+          label="Tarikh & Masa Pergi"
+          value={tarikhPergi}
+          onChange={setTarikhPergi}
+          defaultTime={DEFAULT_TIME_PERGI}
+          required
+        />
+        <DateTimeField
+          id="kembali"
+          label="Tarikh & Masa Kembali"
+          value={tarikhKembali}
+          onChange={setTarikhKembali}
+          defaultTime={DEFAULT_TIME_KEMBALI}
+          required
+        />
+      </div>
+
+      {urusanSuggestPending ? (
+        <p className="text-xs text-slate-500">Mencari urusan digunakan pada tarikh ini…</p>
+      ) : urusanSuggest.length > 0 ? (
+        <div>
+          <div className="text-xs font-medium text-slate-600 mb-1">
+            Urusan digunakan pada tarikh ini
+          </div>
+          <div className="flex flex-col gap-2">
+            {urusanSuggest.map((t) => (
+              <button
+                key={`${t.urusan}|${t.lokasi}|${t.tarikhPergi}`}
+                type="button"
+                className="rounded-md border border-slate-200 bg-white px-3 py-2 text-left hover:bg-slate-50"
+                onClick={() => applyTemplate(t)}
+                title={`${t.count} rekod`}
+              >
+                <div className="text-sm font-semibold text-slate-900">{t.urusan}</div>
+                <div className="text-xs text-slate-600 mt-0.5">
+                  {t.lokasi} · {t.count} rekod
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div>
         <div className="label">Jenis</div>
         <div className="flex gap-4">
@@ -238,20 +328,6 @@ export default function PergerakanForm({
             Bercuti
           </label>
         </div>
-      </div>
-
-      <div>
-        <label className="label" htmlFor="urusan">
-          Urusan / Aktiviti
-        </label>
-        <textarea
-          id="urusan"
-          className="input min-h-[96px]"
-          required
-          value={urusan}
-          onChange={(e) => setUrusan(e.target.value)}
-          placeholder="Contoh: Mesyuarat Pengurusan Kewangan PPD Manjung"
-        />
       </div>
 
       <div>
@@ -321,6 +397,20 @@ export default function PergerakanForm({
         ) : null}
       </div>
 
+      <div>
+        <label className="label" htmlFor="urusan">
+          Urusan / Aktiviti
+        </label>
+        <textarea
+          id="urusan"
+          className="input min-h-[96px]"
+          required
+          value={urusan}
+          onChange={(e) => setUrusan(e.target.value)}
+          placeholder="Contoh: Mesyuarat Pengurusan Kewangan PPD Manjung"
+        />
+      </div>
+
       {needsRoom && (
         <fieldset className="rounded-md border border-slate-200 bg-slate-50/80 px-3 py-3 space-y-2">
           <legend className="text-sm font-semibold text-slate-800 px-1">
@@ -360,25 +450,6 @@ export default function PergerakanForm({
           </label>
         </fieldset>
       )}
-
-      <div className="grid sm:grid-cols-2 gap-3">
-        <DateTimeField
-          id="pergi"
-          label="Tarikh & Masa Pergi"
-          value={tarikhPergi}
-          onChange={setTarikhPergi}
-          defaultTime={DEFAULT_TIME_PERGI}
-          required
-        />
-        <DateTimeField
-          id="kembali"
-          label="Tarikh & Masa Kembali"
-          value={tarikhKembali}
-          onChange={setTarikhKembali}
-          defaultTime={DEFAULT_TIME_KEMBALI}
-          required
-        />
-      </div>
 
       {willBookRoom && (
         <label className="flex items-start gap-2 text-sm cursor-pointer">

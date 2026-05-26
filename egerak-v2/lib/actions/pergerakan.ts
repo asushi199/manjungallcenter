@@ -9,6 +9,7 @@ import { pergerakan, users, sektors, auditLog, opr, roomBookings } from "@/lib/s
 import { requireUser, requireAdmin } from "@/lib/rbac";
 import { parseLocalInput, toLocalInput, TZ } from "@/lib/dates";
 import { formatInTimeZone } from "date-fns-tz";
+import { urusanMatches } from "@/lib/analisis/normalize-text";
 import {
   resolveBookableRoomCode,
   syncRoomBookingsFromPergerakan,
@@ -594,6 +595,98 @@ export async function listLokasiSuggestionsForDay(
     .sort((a, b) => b.count - a.count || b.best.length - a.best.length)
     .slice(0, limit)
     .map((c) => ({ label: c.best, count: c.count }));
+}
+
+export type UrusanTemplate = {
+  urusan: string;
+  lokasi: string;
+  tarikhPergi: string;
+  tarikhKembali: string;
+  count: number;
+};
+
+/**
+ * Cadangan urusan (aktiviti) pada tarikh tertentu.
+ * Pulang template minimum untuk auto-isi borang: urusan + lokasi + masa.
+ * Tidak pulang nama pegawai.
+ */
+export async function listUrusanTemplatesForDay(
+  ymdDate: string,
+  limit = 8,
+): Promise<UrusanTemplate[]> {
+  await requireUser();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymdDate)) return [];
+
+  const start = new Date(`${ymdDate}T00:00:00+08:00`);
+  const end = new Date(`${ymdDate}T23:59:59+08:00`);
+  const rows = await withDbTimeout(
+    db
+      .select({
+        urusan: pergerakan.urusan,
+        lokasi: pergerakan.lokasi,
+        tarikhPergi: pergerakan.tarikhPergi,
+        tarikhKembali: pergerakan.tarikhKembali,
+      })
+      .from(pergerakan)
+      .where(
+        and(
+          eq(pergerakan.aktif, true),
+          eq(pergerakan.jenis, "Pergerakan"),
+          lte(pergerakan.tarikhPergi, end),
+          gte(pergerakan.tarikhKembali, start),
+        ),
+      )
+      .orderBy(desc(pergerakan.tarikhPergi))
+      .limit(200),
+  );
+
+  const groups: Array<{
+    repUrusan: string;
+    bestUrusan: string;
+    lokasi: string;
+    tarikhPergi: Date;
+    tarikhKembali: Date;
+    count: number;
+  }> = [];
+
+  for (const r of rows) {
+    const urusan = String(r.urusan || "").trim();
+    const lokasi = String(r.lokasi || "").trim();
+    if (!urusan || !lokasi) continue;
+    const pergi = new Date(r.tarikhPergi);
+    const kembali = new Date(r.tarikhKembali);
+
+    let placed = false;
+    for (const g of groups) {
+      if (urusanMatches(urusan, g.repUrusan)) {
+        g.count += 1;
+        if (urusan.length > g.bestUrusan.length) g.bestUrusan = urusan;
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      groups.push({
+        repUrusan: urusan,
+        bestUrusan: urusan,
+        lokasi,
+        tarikhPergi: pergi,
+        tarikhKembali: kembali,
+        count: 1,
+      });
+    }
+  }
+
+  return groups
+    .sort((a, b) => b.count - a.count || b.bestUrusan.length - a.bestUrusan.length)
+    .slice(0, limit)
+    .map((g) => ({
+      urusan: g.bestUrusan,
+      lokasi: g.lokasi,
+      tarikhPergi: toLocalInput(g.tarikhPergi),
+      tarikhKembali: toLocalInput(g.tarikhKembali),
+      count: g.count,
+    }));
 }
 
 export async function countToday(): Promise<{ pergerakan: number; bercuti: number; total: number }> {
