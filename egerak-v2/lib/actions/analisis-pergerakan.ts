@@ -10,6 +10,7 @@ import {
 } from "@/lib/analisis/cluster-programs";
 import { resolveLaporanOprPeriod, type LaporanOprPeriod } from "@/lib/laporan-opr-period";
 import { requireAnalisisAccess } from "@/lib/rbac";
+import { applySektorScopeToFilter, resolveUserSektorScope } from "@/lib/sektor-admin-scope";
 import { pergerakan, sektors, users } from "@/lib/schema";
 
 export type AnalisisPergerakanResult = {
@@ -26,16 +27,36 @@ export async function getAnalisisPergerakanData(sp: {
   year?: string;
   sektor?: string;
 }): Promise<AnalisisPergerakanResult> {
-  await requireAnalisisAccess();
+  const user = await requireAnalisisAccess();
+  const scope = await resolveUserSektorScope(user);
 
   const period = resolveLaporanOprPeriod(sp);
   const chartYear = period.range === "month" ? period.month.slice(0, 4) : period.year;
   const filterMonth = period.range === "month" ? period.month : undefined;
 
-  const sektorIds = (sp.sektor ?? "")
+  const requestedSektorIds = (sp.sektor ?? "")
     .split(",")
     .map((s) => Number(s))
     .filter((n) => Number.isFinite(n) && n > 0);
+
+  const effectiveSektorIds = applySektorScopeToFilter(
+    requestedSektorIds.length ? requestedSektorIds : undefined,
+    scope,
+  );
+
+  if (scope.noAccess || effectiveSektorIds?.length === 0) {
+    const emptyPrograms: ReturnType<typeof clusterPrograms> = [];
+    return {
+      period,
+      aggregates: aggregatePrograms(emptyPrograms, {
+        year: chartYear,
+        filterMonth,
+        allPeriod: period.range === "all",
+      }),
+      chartYear,
+      filterMonth,
+    };
+  }
 
   const conditions = [eq(pergerakan.aktif, true), eq(pergerakan.jenis, "Pergerakan")];
 
@@ -44,8 +65,8 @@ export async function getAnalisisPergerakanData(sp: {
     conditions.push(gte(pergerakan.tarikhKembali, period.start));
   }
 
-  if (sektorIds.length) {
-    conditions.push(inArray(pergerakan.sektorId, sektorIds));
+  if (effectiveSektorIds?.length) {
+    conditions.push(inArray(pergerakan.sektorId, effectiveSektorIds));
   }
 
   const rows = await withDbTimeout(

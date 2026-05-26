@@ -6,7 +6,9 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { withDbTimeout } from "@/lib/db-timeout";
 import { pergerakan, users, sektors, auditLog, opr, roomBookings } from "@/lib/schema";
-import { requireUser, requireAdmin } from "@/lib/rbac";
+import { requireUser, requireSectorPergerakanAdmin } from "@/lib/rbac";
+import { isSektorIdInScope, resolveUserSektorScope } from "@/lib/sektor-admin-scope";
+import { canSectorDeletePergerakan, isFullAdmin } from "@/lib/roles";
 import { parseLocalInput, toLocalInput, TZ, ymd, formatDateTime } from "@/lib/dates";
 import { formatInTimeZone } from "date-fns-tz";
 import { buildDayUrusanCadangan } from "@/lib/analisis/day-activity-templates";
@@ -308,15 +310,25 @@ export async function updatePergerakan(id: number, input: unknown): Promise<Upda
 export async function deletePergerakanIds(ids: number[]): Promise<{ deleted: number }> {
   const user = await requireUser();
   if (!ids?.length) return { deleted: 0 };
-  const isAdmin = user.peranan === "Admin";
+
+  const scope = await resolveUserSektorScope(user);
+  const mayDeleteBySektor = canSectorDeletePergerakan(user.peranan);
 
   const targets = await db
-    .select({ id: pergerakan.id, userId: pergerakan.userId })
+    .select({
+      id: pergerakan.id,
+      userId: pergerakan.userId,
+      sektorId: pergerakan.sektorId,
+    })
     .from(pergerakan)
     .where(inArray(pergerakan.id, ids));
 
   const allowed = targets
-    .filter((t) => isAdmin || t.userId === Number(user.id))
+    .filter((t) => {
+      if (isFullAdmin(user.peranan)) return true;
+      if (mayDeleteBySektor && isSektorIdInScope(t.sektorId, scope)) return true;
+      return t.userId === Number(user.id);
+    })
     .map((t) => t.id);
 
   if (!allowed.length) return { deleted: 0 };
@@ -440,9 +452,17 @@ async function listPergerakanBetweenRaw(opts: {
   }));
 }
 
-/** Semua pergerakan aktif — pentadbir sahaja (untuk padam pukal). */
-export async function listAllPergerakanAdmin(): Promise<PergerakanListItem[]> {
-  await requireAdmin();
+/** Pergerakan aktif untuk padam pukal — Admin (semua) atau Ketua/Timbalan (ikut skop sektor). */
+export async function listPergerakanForSectorAdmin(): Promise<PergerakanListItem[]> {
+  const user = await requireSectorPergerakanAdmin();
+  const scope = await resolveUserSektorScope(user);
+  if (scope.noAccess) return [];
+
+  const conditions = [eq(pergerakan.aktif, true)];
+  if (!scope.allSectors) {
+    conditions.push(inArray(pergerakan.sektorId, scope.allowedIds));
+  }
+
   const rows = await db
     .select({
       id: pergerakan.id,
@@ -462,7 +482,7 @@ export async function listAllPergerakanAdmin(): Promise<PergerakanListItem[]> {
     .innerJoin(users, eq(users.id, pergerakan.userId))
     .leftJoin(sektors, eq(sektors.id, pergerakan.sektorId))
     .leftJoin(opr, eq(opr.pergerakanId, pergerakan.id))
-    .where(eq(pergerakan.aktif, true))
+    .where(and(...conditions))
     .orderBy(desc(pergerakan.tarikhPergi));
 
   return rows.map((r) => ({
@@ -472,6 +492,11 @@ export async function listAllPergerakanAdmin(): Promise<PergerakanListItem[]> {
     oprStatus:
       r.oprStatus === "DRAFT" || r.oprStatus === "SIAP" ? r.oprStatus : null,
   }));
+}
+
+/** @deprecated Guna listPergerakanForSectorAdmin */
+export async function listAllPergerakanAdmin(): Promise<PergerakanListItem[]> {
+  return listPergerakanForSectorAdmin();
 }
 
 export async function listMine(): Promise<PergerakanListItem[]> {

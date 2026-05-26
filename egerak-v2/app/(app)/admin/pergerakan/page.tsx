@@ -1,21 +1,66 @@
-import { listAllPergerakanAdmin } from "@/lib/actions/pergerakan";
-import { requireAdmin } from "@/lib/rbac";
+import { listPergerakanForSectorAdmin } from "@/lib/actions/pergerakan";
+import { getUserLaporanSektorScope } from "@/lib/actions/laporan-opr";
+import { listAllSektors } from "@/lib/actions/users";
+import { requireSectorPergerakanAdmin } from "@/lib/rbac";
+import { isFullAdmin } from "@/lib/roles";
 import AdminPergerakanClient from "./AdminPergerakanClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminPergerakanPage() {
-  await requireAdmin();
-  const items = await listAllPergerakanAdmin();
+  const user = await requireSectorPergerakanAdmin();
+  const isAdmin = isFullAdmin(user.peranan);
+  const isKetua = user.peranan === "Ketua_Unit";
+  const isTimbalan = user.peranan === "Timbalan_PPD";
+
+  const lockedSektorId =
+    user.sektorId != null && Number.isFinite(Number(user.sektorId))
+      ? Number(user.sektorId)
+      : null;
+
+  const timbalanScope = isTimbalan ? await getUserLaporanSektorScope(Number(user.id)) : [];
+  const allSektors = await listAllSektors();
+  const lockedSektorLabel =
+    isKetua && lockedSektorId
+      ? (allSektors.find((s) => s.id === lockedSektorId)?.name ?? null)
+      : null;
+  const timbalanScopeNames = timbalanScope
+    .map((id) => allSektors.find((s) => s.id === id)?.name)
+    .filter(Boolean) as string[];
+
+  const items = await listPergerakanForSectorAdmin();
 
   return (
     <div className="mx-auto max-w-6xl p-4 space-y-4">
       <div>
-        <h1 className="text-xl font-semibold">Padam Pergerakan (Admin)</h1>
+        <h1 className="text-xl font-semibold">
+          {isAdmin ? "Padam Pergerakan (Admin)" : "Padam Pergerakan (Sektor)"}
+        </h1>
         <p className="text-sm text-slate-500">
-          Senarai semua pergerakan aktif dalam sistem — untuk bersihkan data ujian atau rekod
-          silap.
+          {isAdmin
+            ? "Senarai semua pergerakan aktif dalam sistem — untuk bersihkan data ujian atau rekod silap."
+            : "Senarai pergerakan aktif dalam skop sektor anda sahaja."}
         </p>
+        {isKetua && lockedSektorLabel && (
+          <p className="mt-2 text-sm text-brand-800 bg-brand-50 border border-brand-200 rounded-md px-3 py-2">
+            Skop: <strong>{lockedSektorLabel}</strong>
+          </p>
+        )}
+        {isTimbalan && timbalanScopeNames.length > 0 && (
+          <p className="mt-2 text-sm text-teal-900 bg-teal-50 border border-teal-200 rounded-md px-3 py-2">
+            Skop Timbalan PPD: <strong>{timbalanScopeNames.join(" · ")}</strong>
+          </p>
+        )}
+        {isKetua && !lockedSektorId && (
+          <p className="mt-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+            Akaun Ketua Unit belum dikaitkan dengan sektor. Hubungi pentadbir.
+          </p>
+        )}
+        {isTimbalan && timbalanScope.length === 0 && (
+          <p className="mt-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+            Akaun Timbalan PPD belum ditetapkan sektor laporan. Hubungi pentadbir.
+          </p>
+        )}
       </div>
       <AdminPergerakanClient
         items={items.map((it) => ({

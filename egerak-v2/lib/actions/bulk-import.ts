@@ -4,7 +4,12 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { pergerakan, users, sektors, importBatches, auditLog } from "@/lib/schema";
-import { requireAdmin } from "@/lib/rbac";
+import { requireImportRancanganAccess } from "@/lib/rbac";
+import {
+  isSektorIdInScope,
+  resolveUserSektorScope,
+  type SektorScope,
+} from "@/lib/sektor-admin-scope";
 import {
   parseCsv,
   parseCsvDateRange,
@@ -45,6 +50,7 @@ async function processRow(
   row: CsvRow,
   line: number,
   sektorByCode: Map<string, { id: number }>,
+  scope: SektorScope,
 ): Promise<ImportRowResult> {
   if (shouldSkipRow(row)) {
     return { line, status: "SKIPPED", message: "Sudah diimport / dilangkau" };
@@ -90,6 +96,15 @@ async function processRow(
 
   const sektorCode = normalizeSektorCode(row.sektor ?? "");
   const sektor = sektorCode ? sektorByCode.get(sektorCode) : null;
+  const effectiveSektorId = sektor?.id ?? user.sektorId ?? null;
+
+  if (!scope.allSectors && !isSektorIdInScope(effectiveSektorId, scope)) {
+    return {
+      line,
+      status: "ERROR",
+      message: "Sektor rekod di luar skop anda (semak lajur sektor atau profil pegawai).",
+    };
+  }
 
   const jenis = mapJenis(row.jenis ?? "");
   const roomCode = jenis === "Pergerakan" ? resolveBookableRoomCode(lokasi) : null;
@@ -100,7 +115,7 @@ async function processRow(
         .insert(pergerakan)
         .values({
           userId: user.id,
-          sektorId: sektor?.id ?? user.sektorId,
+          sektorId: effectiveSektorId,
           jenis,
           urusan,
           lokasi,
@@ -147,7 +162,24 @@ export async function importRancanganCsv(
   csvText: string,
   filename?: string,
 ): Promise<BulkImportResult> {
-  const admin = await requireAdmin();
+  const admin = await requireImportRancanganAccess();
+  const scope = await resolveUserSektorScope(admin);
+  if (scope.noAccess) {
+    return {
+      ok: 0,
+      error: 0,
+      skipped: 0,
+      batchId: 0,
+      rows: [
+        {
+          line: 0,
+          status: "ERROR",
+          message: "Akaun anda belum dikaitkan dengan sektor. Hubungi pentadbir.",
+        },
+      ],
+      dateFormatWarnings: [],
+    };
+  }
   const rows = parseCsv(csvText);
   const sektorsList = await db.select().from(sektors);
   const sektorByCode = new Map(sektorsList.map((s) => [s.code, { id: s.id }]));
@@ -169,7 +201,7 @@ export async function importRancanganCsv(
       );
     }
     try {
-      const r = await processRow(row, line, sektorByCode);
+      const r = await processRow(row, line, sektorByCode, scope);
       results.push(r);
       if (r.status === "OK") ok++;
       else if (r.status === "ERROR") error++;

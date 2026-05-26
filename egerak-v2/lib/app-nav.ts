@@ -1,4 +1,11 @@
-import { canViewAnalisisPergerakan, canViewLaporanOpr, isFullAdmin } from "./roles";
+import {
+  canImportRancangan,
+  canSectorDeletePergerakan,
+  canViewAnalisisPergerakan,
+  canViewLaporanOpr,
+  isFullAdmin,
+  isKetuaOrTimbalan,
+} from "./roles";
 
 export type AppNavLink = { href: string; label: string };
 
@@ -19,13 +26,23 @@ export const ANALISIS_PROGRAM_LINK: AppNavLink = {
   label: "Analisis Program",
 };
 
+export const IMPORT_RANCANGAN_LINK: AppNavLink = {
+  href: "/admin/import",
+  label: "Import Rancangan",
+};
+
+export const PADAM_PERGERAKAN_LINK: AppNavLink = {
+  href: "/admin/pergerakan",
+  label: "Padam Pergerakan",
+};
+
 /** Menu pentadbir penuh (Admin sahaja). */
 export const FULL_ADMIN_NAV_LINKS: AppNavLink[] = [
   { href: "/admin/users", label: "Pengurusan Pengguna" },
   ANALISIS_PROGRAM_LINK,
   LAPORAN_OPR_LINK,
-  { href: "/admin/pergerakan", label: "Padam Pergerakan" },
-  { href: "/admin/import", label: "Import Rancangan" },
+  PADAM_PERGERAKAN_LINK,
+  IMPORT_RANCANGAN_LINK,
 ];
 
 /** @deprecated Guna FULL_ADMIN_NAV_LINKS */
@@ -38,6 +55,10 @@ export function mainNavLinksForPeranan(peranan: string | undefined | null): AppN
   }
   if (canViewLaporanOpr(peranan) && !isFullAdmin(peranan)) {
     links.push(LAPORAN_OPR_LINK);
+  }
+  if (isKetuaOrTimbalan(peranan)) {
+    if (canImportRancangan(peranan)) links.push(IMPORT_RANCANGAN_LINK);
+    if (canSectorDeletePergerakan(peranan)) links.push(PADAM_PERGERAKAN_LINK);
   }
   return links;
 }

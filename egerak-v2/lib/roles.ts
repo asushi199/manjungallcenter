@@ -20,9 +20,26 @@ export function isFullAdmin(peranan: string | undefined | null): boolean {
   return peranan === "Admin";
 }
 
+export function isPenyelia(peranan: string | undefined | null): boolean {
+  return peranan === "Penyelia";
+}
+
+export function isKetuaOrTimbalan(peranan: string | undefined | null): boolean {
+  return peranan === "Ketua_Unit" || peranan === "Timbalan_PPD";
+}
+
 /** Lihat Analisis Program (pergerakan, bukan cuti). */
 export function canViewAnalisisPergerakan(peranan: string | undefined | null): boolean {
-  return peranan === "Admin" || peranan === "Penyelia";
+  return (
+    isFullAdmin(peranan) ||
+    isPenyelia(peranan) ||
+    isKetuaOrTimbalan(peranan)
+  );
+}
+
+/** Lihat semua sektor dalam Analisis Program. */
+export function canViewAllAnalisisPergerakan(peranan: string | undefined | null): boolean {
+  return isFullAdmin(peranan) || isPenyelia(peranan);
 }
 
 /** Lihat halaman Laporan OPR. */
@@ -49,12 +66,13 @@ export function canManageUsers(peranan: string | undefined | null): boolean {
   return isFullAdmin(peranan);
 }
 
-export function canAdminDeletePergerakan(peranan: string | undefined | null): boolean {
-  return isFullAdmin(peranan);
+/** Padam pergerakan — pentadbir penuh atau Ketua/Timbalan (ikut skop sektor). */
+export function canSectorDeletePergerakan(peranan: string | undefined | null): boolean {
+  return isFullAdmin(peranan) || isKetuaOrTimbalan(peranan);
 }
 
 export function canImportRancangan(peranan: string | undefined | null): boolean {
-  return isFullAdmin(peranan);
+  return isFullAdmin(peranan) || isKetuaOrTimbalan(peranan);
 }
 
 export function canAdminRoomBookings(peranan: string | undefined | null): boolean {
@@ -90,4 +108,9 @@ export function perananBadgeClass(peranan: string): string {
     default:
       return "bg-slate-100 text-slate-700";
   }
+}
+
+/** @deprecated Guna canSectorDeletePergerakan */
+export function canAdminDeletePergerakan(peranan: string | undefined | null): boolean {
+  return canSectorDeletePergerakan(peranan);
 }

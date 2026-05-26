@@ -1,10 +1,13 @@
-import { requireAdmin } from "@/lib/rbac";
+import { requireImportRancanganAccess } from "@/lib/rbac";
+import { isFullAdmin } from "@/lib/roles";
 import ImportClient from "./ImportClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminImportPage() {
-  await requireAdmin();
+  const user = await requireImportRancanganAccess();
+  const isAdmin = isFullAdmin(user.peranan);
+
   return (
     <div className="mx-auto max-w-4xl p-4 space-y-4">
       <div>
@@ -14,6 +17,12 @@ export default async function AdminImportPage() {
           panduan dalam halaman import atau{" "}
           <code className="text-xs bg-slate-100 px-1 rounded">docs/BULK_IMPORT.md</code>.
         </p>
+        {!isAdmin && (
+          <p className="mt-2 text-sm text-sky-900 bg-sky-50 border border-sky-200 rounded-md px-3 py-2">
+            Import hanya untuk rekod dalam <strong>skop sektor anda</strong>. Baris di luar skop
+            akan ditandakan ralat.
+          </p>
+        )}
       </div>
       <ImportClient />
     </div>

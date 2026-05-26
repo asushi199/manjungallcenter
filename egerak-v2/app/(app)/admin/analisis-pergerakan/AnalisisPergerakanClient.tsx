@@ -32,6 +32,8 @@ const RANGE_OPTIONS: { value: LaporanOprRange; label: string }[] = [
 
 type Props = {
   sektors: SektorOption[];
+  /** Ketua Unit — penapis sektor dikunci. */
+  sektorFilterLocked?: boolean;
   aggregates: AnalisisAggregates;
   current: {
     range: LaporanOprRange;
@@ -45,6 +47,7 @@ type Props = {
 
 export default function AnalisisPergerakanClient({
   sektors,
+  sektorFilterLocked = false,
   aggregates,
   current,
 }: Props) {
@@ -150,19 +153,21 @@ export default function AnalisisPergerakanClient({
           </>
         )}
 
-        <div className="min-w-[12rem] flex-1">
-          <SektorFilterDropdown
-            sektors={sektors}
-            selectedIds={current.sektorIds}
-            disabled={isPending}
-            label="Sektor"
-            onChange={(sektorIds) => {
-              patch({
-                sektor: sektorIds.length ? sektorIds.join(",") : undefined,
-              });
-            }}
-          />
-        </div>
+        {!sektorFilterLocked && (
+          <div className="min-w-[12rem] flex-1">
+            <SektorFilterDropdown
+              sektors={sektors}
+              selectedIds={current.sektorIds}
+              disabled={isPending}
+              label="Sektor"
+              onChange={(sektorIds) => {
+                patch({
+                  sektor: sektorIds.length ? sektorIds.join(",") : undefined,
+                });
+              }}
+            />
+          </div>
+        )}
       </div>
 
       <p className="text-sm text-slate-600">
