@@ -98,7 +98,7 @@ export default function FilterBar({
           )}
         </div>
         <div className="flex flex-wrap items-end gap-2 gap-y-2">
-          <div className="flex-1 min-w-[10rem] sm:min-w-[12rem] max-w-md">
+          <div className="shrink-0">
             <SektorFilterDropdown
               sektors={sektors}
               selectedIds={current.sektorIds}
@@ -106,6 +106,7 @@ export default function FilterBar({
               disabled={isPending}
               label="Saring sektor"
               compact
+              triggerVariant="icon"
             />
           </div>
           {monthControls ? <div className="shrink-0 ml-auto">{monthControls}</div> : null}
