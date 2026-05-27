@@ -40,7 +40,19 @@ export default async function DashboardPage({
 
   return (
     <div className="mx-auto max-w-7xl p-4 grid gap-4 lg:grid-cols-[280px_1fr]">
-        <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+        <Suspense key={mainKey} fallback={<MainSectionSkeleton />}>
+          <div className="order-1 lg:order-2">
+            <DashboardMain
+              date={date}
+              month={month}
+              sektorIds={sektorIds}
+              includeCuti={includeCuti}
+              showSchoolHolidays={showSchoolHolidays}
+            />
+          </div>
+        </Suspense>
+
+        <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start order-2 lg:order-1">
           <div className="card p-4">
             <h2 className="text-sm font-semibold text-brand-700 mb-1">Selamat Datang</h2>
             <p className="font-medium">{user.nama}</p>
@@ -56,16 +68,6 @@ export default async function DashboardPage({
             + Isi Pergerakan Baharu
           </Link>
         </aside>
-
-        <Suspense key={mainKey} fallback={<MainSectionSkeleton />}>
-          <DashboardMain
-            date={date}
-            month={month}
-            sektorIds={sektorIds}
-            includeCuti={includeCuti}
-            showSchoolHolidays={showSchoolHolidays}
-          />
-        </Suspense>
     </div>
   );
 }
