@@ -14,7 +14,8 @@ import { TZ } from "@/lib/dates";
 import { getCalendarHolidays, type CalendarHolidays } from "@/lib/holidays";
 import { serializeCalendarHolidays } from "@/lib/holidays/serialize";
 import { getUserCalendarSettings } from "@/lib/actions/calendar-settings";
-import type { CalendarGridOrientation, CalendarWeekStartsOn } from "@/lib/actions/calendar-settings";
+import type { CalendarWeekStartsOn } from "@/lib/actions/calendar-settings";
+import { requireUser } from "@/lib/rbac";
 
 export type DashboardMainProps = {
   date: string;
@@ -54,6 +55,8 @@ export default async function DashboardMain({
   includeCuti: _includeCuti,
   showSchoolHolidays: _showSchoolHolidays,
 }: DashboardMainProps) {
+  const session = await requireUser();
+  const currentUserId = Number(session.id);
   const calendarSettings = await getUserCalendarSettings();
   const weekStartsOnValue = calendarSettings.weekStartsOn === "sun" ? 0 : 1;
   const [y, m] = month.split("-").map(Number);
@@ -109,6 +112,7 @@ export default async function DashboardMain({
 
   const calItems: CalendarItem[] = monthItems.map((it) => ({
     id: it.id,
+    userId: it.userId,
     nama: it.nama,
     jawatan: it.jawatan,
     sektorCode: it.sektorCode,
@@ -118,6 +122,7 @@ export default async function DashboardMain({
     lokasi: it.lokasi,
     tarikhPergi: it.tarikhPergi.toISOString(),
     tarikhKembali: it.tarikhKembali.toISOString(),
+    oprStatus: it.oprStatus,
   }));
 
   const holidayProps = serializeCalendarHolidays(holidays);
@@ -154,14 +159,11 @@ export default async function DashboardMain({
           month={month}
           items={calItems}
           highlightDate={date}
+          currentUserId={currentUserId}
           toolbarLeading={
-            <CalendarSettingsPanel
-              weekStartsOn={calendarSettings.weekStartsOn as CalendarWeekStartsOn}
-              gridOrientation={calendarSettings.gridOrientation as CalendarGridOrientation}
-            />
+            <CalendarSettingsPanel weekStartsOn={calendarSettings.weekStartsOn as CalendarWeekStartsOn} />
           }
           weekStartsOn={calendarSettings.weekStartsOn as CalendarWeekStartsOn}
-          gridOrientation={calendarSettings.gridOrientation as CalendarGridOrientation}
           sektors={filterSektors}
           sektorIds={sektorIds}
           publicHolidays={holidayProps.publicLabels}
@@ -177,30 +179,38 @@ export default async function DashboardMain({
           </summary>
           <div className="mt-2 space-y-3 text-xs text-slate-600">
             <div className="space-y-1">
-            <p>
-              <span className="inline-block w-4 h-4 rounded-full ring-2 ring-brand-700 align-middle mr-1" />
-              Hari ini = bulatan merah pada tarikh
-            </p>
-            <p>
-              <span className="inline-block w-2 h-2 rounded-full bg-brand-700 align-middle mr-1" />
-              Titik merah = hari ini anda ada aktiviti
-            </p>
-            <p>
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 align-middle mr-1" />
-              Titik hijau = anda ada aktiviti (akan datang)
-            </p>
-            <p>
-              <span className="inline-block w-2 h-2 rounded-full bg-slate-400 align-middle mr-1" />
-              Titik kelabu = anda ada aktiviti (telah berlalu)
-            </p>
-            <p>
-              <span className="inline-block w-2 h-2 rounded-full border-2 border-blue-500 align-middle mr-1" />
-              Titik biru (kosong) = ada pergerakan (mana-mana pegawai)
-            </p>
-            <p>
-              <span className="inline-block w-3 h-[2px] rounded bg-yellow-300/80 align-middle mr-1" />
-              Garis kuning = cuti (tiada pergerakan)
-            </p>
+              <p>
+                <span className="inline-block w-6 h-6 rounded-full bg-slate-500 text-white text-[10px] font-semibold align-middle mr-1" />
+                Bulatan kelabu gelap = hari dipilih
+              </p>
+              <p>
+                <span className="inline-block w-6 h-6 rounded-full ring-2 ring-brand-700 text-brand-700 text-[10px] font-semibold align-middle mr-1" />
+                Bulatan merah = hari ini
+              </p>
+              <p>
+                <span className="inline-block w-7 h-4 rounded-full bg-brand-700/20 align-middle mr-1" />
+                Latar merah lembut = hari ini anda ada aktiviti
+              </p>
+              <p>
+                <span className="inline-block w-7 h-4 rounded-full bg-lime-400/45 align-middle mr-1 border border-lime-500/35" />
+                Latar hijau lebih jelas = anda ada aktiviti (akan datang)
+              </p>
+              <p>
+                <span className="inline-block w-7 h-4 rounded-full bg-slate-400/20 align-middle mr-1" />
+                Latar kelabu lembut = anda ada aktiviti (telah berlalu)
+              </p>
+              <p>
+                <span className="inline-block w-7 h-4 rounded-full bg-cyan-400/55 align-middle mr-1 border border-cyan-500/40" />
+                Latar cyan lebih jelas = ada pergerakan (mana-mana pegawai)
+              </p>
+              <p>
+                <span className="inline-block w-4 h-[2px] rounded-full bg-rose-600 align-middle mr-1" />
+                Garis merah pekat = cuti umum (semua orang)
+              </p>
+              <p>
+                <span className="inline-block w-4 h-[2px] rounded-full bg-amber-300 align-middle mr-1" />
+                Garis kuning = cuti sekolah sahaja
+              </p>
             </div>
             <div className="pt-2 border-t border-slate-200/60">
               <SektorLegend />

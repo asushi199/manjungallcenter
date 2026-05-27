@@ -5,19 +5,14 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   saveUserCalendarSettings,
-  type CalendarGridOrientation,
   type CalendarWeekStartsOn,
 } from "@/lib/actions/calendar-settings";
 
 type Props = {
   weekStartsOn: CalendarWeekStartsOn;
-  gridOrientation: CalendarGridOrientation;
 };
 
-export default function CalendarSettingsPanel({
-  weekStartsOn,
-  gridOrientation,
-}: Props) {
+export default function CalendarSettingsPanel({ weekStartsOn }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
@@ -28,13 +23,14 @@ export default function CalendarSettingsPanel({
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
   const [nextWeekStartsOn, setNextWeekStartsOn] = useState<CalendarWeekStartsOn>(weekStartsOn);
-  const [nextGridOrientation, setNextGridOrientation] = useState<CalendarGridOrientation>(gridOrientation);
 
   useEffect(() => {
     if (!open) return;
     function onDoc(e: MouseEvent) {
       const t = e.target as Node;
-      const inside = (btnRef.current && btnRef.current.contains(t)) || (panelRef.current && panelRef.current.contains(t));
+      const inside =
+        (btnRef.current && btnRef.current.contains(t)) ||
+        (panelRef.current && panelRef.current.contains(t));
       if (!inside) setOpen(false);
     }
     function onKey(e: KeyboardEvent) {
@@ -70,21 +66,18 @@ export default function CalendarSettingsPanel({
   }, [open]);
 
   useEffect(() => {
-    // 如果从外部刷新导致值变化，更新表单初始值。
     setNextWeekStartsOn(weekStartsOn);
-    setNextGridOrientation(gridOrientation);
-  }, [weekStartsOn, gridOrientation]);
+  }, [weekStartsOn]);
 
   const changed = useMemo(() => {
-    return nextWeekStartsOn !== weekStartsOn || nextGridOrientation !== gridOrientation;
-  }, [nextWeekStartsOn, nextGridOrientation, weekStartsOn, gridOrientation]);
+    return nextWeekStartsOn !== weekStartsOn;
+  }, [nextWeekStartsOn, weekStartsOn]);
 
   function onSave() {
     if (!changed) return;
     startTransition(async () => {
       const res = await saveUserCalendarSettings({
         weekStartsOn: nextWeekStartsOn,
-        gridOrientation: nextGridOrientation,
       });
       if (!res.ok) {
         alert(res.error ?? "Gagal simpan tetapan");
@@ -119,7 +112,6 @@ export default function CalendarSettingsPanel({
           aria-hidden
           className="shrink-0"
         >
-          {/* Sliders icon — clearer than gear at 18px */}
           <path d="M4 21v-7" />
           <path d="M4 10V3" />
           <path d="M12 21v-9" />
@@ -147,41 +139,21 @@ export default function CalendarSettingsPanel({
               <p className="text-xs text-slate-500">Tukarkan pilihan dan tekan Simpan.</p>
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="label text-xs text-slate-700">Week start</label>
-                <select
-                  className="input"
-                  value={nextWeekStartsOn}
-                  disabled={pending}
-                  onChange={(e) => setNextWeekStartsOn(e.target.value as CalendarWeekStartsOn)}
-                >
-                  <option value="mon">Isnin (Mon)</option>
-                  <option value="sun">Ahad (Sun)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="label text-xs text-slate-700">Grid</label>
-                <select
-                  className="input"
-                  value={nextGridOrientation}
-                  disabled={pending}
-                  onChange={(e) => setNextGridOrientation(e.target.value as CalendarGridOrientation)}
-                >
-                  <option value="horizontal">Horizontal (Isn–Aha)</option>
-                  <option value="vertical">Vertikal (Isn–Aha)</option>
-                </select>
-              </div>
+            <div>
+              <label className="label text-xs text-slate-700">Minggu bermula</label>
+              <select
+                className="input"
+                value={nextWeekStartsOn}
+                disabled={pending}
+                onChange={(e) => setNextWeekStartsOn(e.target.value as CalendarWeekStartsOn)}
+              >
+                <option value="mon">Isnin (Mon)</option>
+                <option value="sun">Ahad (Sun)</option>
+              </select>
             </div>
 
             <div className="flex flex-wrap gap-2 justify-end">
-              <button
-                type="button"
-                className="btn-secondary"
-                disabled={pending}
-                onClick={() => setOpen(false)}
-              >
+              <button type="button" className="btn-secondary" disabled={pending} onClick={() => setOpen(false)}>
                 Batal
               </button>
               <button
@@ -199,4 +171,3 @@ export default function CalendarSettingsPanel({
     </>
   );
 }
-

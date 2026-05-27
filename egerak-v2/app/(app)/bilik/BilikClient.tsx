@@ -272,7 +272,13 @@ export default function BilikClient({
       )}
 
       <div className="card overflow-x-auto">
-        <table className="w-full text-xs md:min-w-[640px]">
+        <table className="w-full table-fixed text-xs md:min-w-[640px]">
+          <colgroup>
+            <col style={{ width: "4.5rem" }} />
+            {tableRooms.map((r) =>
+              SLOTS.map((s) => <col key={`col-${r.id}-${s}`} style={{ width: "8.5rem" }} />),
+            )}
+          </colgroup>
           <thead>
             <tr className="bg-slate-50">
               <th className="p-2 text-left">Tarikh</th>
@@ -309,7 +315,7 @@ export default function BilikClient({
                       <td
                         key={`${r.id}-${d}-full`}
                         colSpan={2}
-                        className="p-1 border-l align-top"
+                        className="p-1 border-l align-top overflow-hidden"
                       >
                         <div
                           className="rounded px-2 py-2 bg-red-200 text-red-950 text-[10px] leading-tight min-h-[2.5rem]"
@@ -331,7 +337,10 @@ export default function BilikClient({
                   return SLOTS.map((s) => {
                     const b = s === "AM" ? am : pm;
                     return (
-                      <td key={`${r.id}-${d}-${s}`} className="p-1 border-l align-top">
+                      <td
+                        key={`${r.id}-${d}-${s}`}
+                        className="p-1 border-l align-top overflow-hidden"
+                      >
                         {b ? (
                           <BookingCell booking={b} />
                         ) : (

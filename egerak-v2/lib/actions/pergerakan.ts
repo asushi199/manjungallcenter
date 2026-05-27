@@ -395,6 +395,7 @@ export type PergerakanListItem = {
 /** Medan untuk dashboard / kalendar — tanpa join OPR atau medan tidak perlu. */
 export type DashboardPergerakanRow = {
   id: number;
+  userId: number;
   nama: string;
   jawatan: string;
   sektorCode: string | null;
@@ -404,6 +405,7 @@ export type DashboardPergerakanRow = {
   lokasi: string;
   tarikhPergi: Date;
   tarikhKembali: Date;
+  oprStatus: OprStatus | null;
 };
 
 export async function listPergerakanBetween(opts: {
@@ -423,8 +425,60 @@ export async function listPergerakanForDashboard(opts: {
   sektorIds?: number[];
   includeCuti?: boolean;
 }): Promise<DashboardPergerakanRow[]> {
-  const rows = await listPergerakanBetweenRaw(opts);
-  return rows.map(({ userId: _u, ...rest }) => rest);
+  const rows = await listPergerakanForDashboardRaw(opts);
+  return rows.map((r) => ({
+    ...r,
+    tarikhPergi: new Date(r.tarikhPergi),
+    tarikhKembali: new Date(r.tarikhKembali),
+    oprStatus:
+      r.oprStatus === "DRAFT" || r.oprStatus === "SIAP" || r.oprStatus === "TIADA"
+        ? r.oprStatus
+        : null,
+  }));
+}
+
+async function listPergerakanForDashboardRaw(opts: {
+  start: Date;
+  end: Date;
+  sektorIds?: number[];
+  includeCuti?: boolean;
+}) {
+  await requireUser();
+  const conditions = [
+    eq(pergerakan.aktif, true),
+    lte(pergerakan.tarikhPergi, opts.end),
+    gte(pergerakan.tarikhKembali, opts.start),
+  ];
+  if (opts.sektorIds?.length) {
+    conditions.push(inArray(pergerakan.sektorId, opts.sektorIds));
+  }
+  if (!opts.includeCuti) {
+    conditions.push(eq(pergerakan.jenis, "Pergerakan"));
+  }
+
+  return withDbTimeout(
+    db
+      .select({
+        id: pergerakan.id,
+        userId: pergerakan.userId,
+        nama: users.nama,
+        jawatan: users.jawatan,
+        sektorCode: sektors.code,
+        sektorName: sektors.name,
+        jenis: pergerakan.jenis,
+        urusan: pergerakan.urusan,
+        lokasi: pergerakan.lokasi,
+        tarikhPergi: pergerakan.tarikhPergi,
+        tarikhKembali: pergerakan.tarikhKembali,
+        oprStatus: opr.status,
+      })
+      .from(pergerakan)
+      .innerJoin(users, eq(users.id, pergerakan.userId))
+      .leftJoin(sektors, eq(sektors.id, pergerakan.sektorId))
+      .leftJoin(opr, eq(opr.pergerakanId, pergerakan.id))
+      .where(and(...conditions))
+      .orderBy(pergerakan.tarikhPergi),
+  );
 }
 
 async function listPergerakanBetweenRaw(opts: {

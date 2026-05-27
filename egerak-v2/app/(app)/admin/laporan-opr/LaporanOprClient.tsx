@@ -465,118 +465,85 @@ export default function LaporanOprClient({
               <section key={g.sektorId ?? "_none"} className="space-y-2">
                 <button
                   type="button"
-                  className="w-full flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-left"
-                  style={{ backgroundColor: st.bg, borderColor: st.border }}
+                  className="w-full text-left rounded-md border overflow-hidden bg-white"
+                  style={{ borderColor: st.border }}
                   onClick={() => toggleGroup(key)}
                   aria-expanded={!isCollapsed}
                 >
-                  <div className="min-w-0">
-                    <h2 className="font-semibold text-sm truncate" style={{ color: st.text }}>
-                      {g.sektorName}
-                      {g.sektorCode ? (
-                        <span className="font-normal opacity-80"> · {g.sektorCode}</span>
-                      ) : null}
-                    </h2>
-                    <span className="text-xs font-medium" style={{ color: st.text }}>
-                      {g.items.length} laporan
+                  <div className="h-1.5" style={{ backgroundColor: st.border }} aria-hidden />
+                  <div className="flex items-center justify-between gap-2 px-3 py-2">
+                    <div className="min-w-0">
+                      <h2 className="font-semibold text-sm truncate text-slate-900">
+                        {g.sektorName}
+                        {g.sektorCode ? (
+                          <span className="font-normal text-slate-500"> · {g.sektorCode}</span>
+                        ) : null}
+                      </h2>
+                      <span className="text-xs font-medium text-slate-600">
+                        {g.items.length} laporan
+                      </span>
+                    </div>
+                    <span className="text-xs font-semibold text-slate-600" aria-hidden>
+                      {isCollapsed ? "Tunjuk ▾" : "Sembunyi ▴"}
                     </span>
                   </div>
-                  <span className="text-xs font-semibold" style={{ color: st.text }} aria-hidden>
-                    {isCollapsed ? "Tunjuk ▾" : "Sembunyi ▴"}
-                  </span>
                 </button>
 
                 {!isCollapsed && (
-                  <div className="card overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50 text-slate-600">
-                      <tr>
-                        <th className="px-3 py-2 text-left w-8">#</th>
-                        <SortableTh
-                          label="Pegawai"
-                          column="nama"
-                          activeColumn={sortKey}
-                          dir={sortDir}
-                          onSort={onSort}
-                        />
-                        <SortableTh
-                          label="Jawatan"
-                          column="jawatan"
-                          activeColumn={sortKey}
-                          dir={sortDir}
-                          onSort={onSort}
-                        />
-                        <SortableTh
-                          label="Urusan / Program"
-                          column="urusan"
-                          activeColumn={sortKey}
-                          dir={sortDir}
-                          onSort={onSort}
-                        />
-                        <SortableTh
-                          label="Lokasi"
-                          column="lokasi"
-                          activeColumn={sortKey}
-                          dir={sortDir}
-                          onSort={onSort}
-                        />
-                        <SortableTh
-                          label="Tarikh aktiviti"
-                          column="tarikh"
-                          activeColumn={sortKey}
-                          dir={sortDir}
-                          onSort={onSort}
-                        />
-                        <SortableTh
-                          label="Siap OPR"
-                          column="updatedAt"
-                          activeColumn={sortKey}
-                          dir={sortDir}
-                          onSort={onSort}
-                        />
-                        <th className="px-3 py-2 text-left text-slate-600 font-medium">
-                          Tindakan
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {g.items.map((r, i) => (
-                        <tr
-                          key={r.pergerakanId}
-                          className="border-t border-black/5"
-                          style={sektorRowStyle(r.sektorCode, r.jenis)}
-                        >
-                          <td className="px-3 py-2 text-slate-500">{i + 1}</td>
-                          <td className="px-3 py-2">
-                            <div className="font-medium text-slate-900">{r.nama}</div>
-                          </td>
-                          <td className="px-3 py-2 text-slate-700">{r.jawatan || "—"}</td>
-                          <td className="px-3 py-2 text-slate-900">{r.urusan}</td>
-                          <td className="px-3 py-2 text-slate-700">{r.lokasi || "—"}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-slate-700">
-                            {formatDate(r.tarikhPergi)}
-                            {r.tarikhKembali.slice(0, 10) !== r.tarikhPergi.slice(0, 10) && (
-                              <> – {formatDate(r.tarikhKembali)}</>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-slate-600 text-xs">
-                            {formatDate(r.updatedAt)}
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <Link
-                              href={`/my/${r.pergerakanId}/opr/print`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-brand-700 hover:underline font-medium"
-                            >
-                              Lihat / Cetak
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <>
+                  {/* Unified: card list for all breakpoints (match Utama). */}
+                  <div className="space-y-2">
+                    {g.items.map((r) => (
+                      <article
+                        key={r.pergerakanId}
+                        className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+                      >
+                        <div className="flex">
+                          <div
+                            className="w-1.5 shrink-0"
+                            style={{ backgroundColor: sektorStyle(r.sektorCode).border }}
+                            aria-hidden
+                          />
+                          <div className="p-2.5 min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <div className="font-semibold text-slate-900 truncate">{r.urusan}</div>
+                                <div className="text-xs text-slate-500 mt-0.5 truncate">
+                                  {[r.sektorName, r.nama].filter(Boolean).join(" · ")}
+                                </div>
+                              </div>
+                              <Link
+                                href={`/my/${r.pergerakanId}/opr/print`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-slate-50 text-slate-700 border-slate-200 shrink-0"
+                              >
+                                Cetak
+                              </Link>
+                            </div>
+                            <div className="mt-1.5 text-[11px] text-slate-500 truncate">
+                              {r.lokasi ? (
+                                <>
+                                  <span className="font-medium text-slate-600">{r.lokasi}</span>
+                                  <span className="text-slate-300"> · </span>
+                                </>
+                              ) : null}
+                              {formatDate(r.tarikhPergi)}
+                              {r.tarikhKembali.slice(0, 10) !== r.tarikhPergi.slice(0, 10) && (
+                                <> – {formatDate(r.tarikhKembali)}</>
+                              )}
+                              <span className="text-slate-300"> · </span>
+                              Siap: {formatDate(r.updatedAt)}
+                            </div>
+                            <div className="mt-1 text-xs text-slate-600 truncate">
+                              {r.jawatan || "—"}
+                            </div>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
                   </div>
+                  </>
                 )}
               </section>
             );

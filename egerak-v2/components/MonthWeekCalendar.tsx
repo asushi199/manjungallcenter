@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 import { TZ } from "@/lib/dates";
 import { buildDayBuckets } from "@/lib/calendar-buckets";
 import type { HolidayDetail } from "@/lib/holidays/types";
-import type { CalendarGridOrientation, CalendarWeekStartsOn } from "@/lib/actions/calendar-settings";
+import type { CalendarWeekStartsOn } from "@/lib/actions/calendar-settings";
 import { replaceWithSearchParams } from "@/lib/navigate";
 import SektorFilterDropdown from "@/components/SektorFilterDropdown";
 import type { SektorOption } from "@/components/FilterBar";
@@ -17,6 +17,7 @@ import type { CalendarItem } from "@/components/MonthCalendar";
 import SelectedDayCards from "@/components/SelectedDayCards";
 
 type DotKind = "myToday" | "myFuture" | "myPast" | "anyPergerakan" | "holidayOnly" | "none";
+type HolidayStripe = "none" | "public" | "school";
 
 const DAY_LABELS_MON = ["Isn", "Sel", "Rab", "Kha", "Jum", "Sab", "Aha"];
 const DAY_LABELS_SUN = ["Aha", "Isn", "Sel", "Rab", "Kha", "Jum", "Sab"];
@@ -50,7 +51,7 @@ export default function MonthWeekCalendar({
   items,
   highlightDate,
   weekStartsOn,
-  gridOrientation, // kept for compatibility (not used in new UI)
+  currentUserId,
   sektors,
   sektorIds,
   toolbarLeading,
@@ -64,7 +65,7 @@ export default function MonthWeekCalendar({
   items: CalendarItem[];
   highlightDate?: string;
   weekStartsOn?: CalendarWeekStartsOn;
-  gridOrientation?: CalendarGridOrientation;
+  currentUserId: number;
   sektors: SektorOption[];
   sektorIds: number[];
   toolbarLeading?: ReactNode;
@@ -77,6 +78,8 @@ export default function MonthWeekCalendar({
   const router = useRouter();
   const params = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const calendarRef = useRef<HTMLDivElement>(null);
+  const [showBackToCalendar, setShowBackToCalendar] = useState(false);
 
   const effectiveWeekStartsOn: CalendarWeekStartsOn = weekStartsOn ?? "mon";
   const weekStartsOnValue = effectiveWeekStartsOn === "sun" ? 0 : 1;
@@ -118,6 +121,21 @@ export default function MonthWeekCalendar({
     setSelectedDay(initialSelectedDay);
   }, [initialSelectedDay]);
 
+  // Floating "back to calendar" button: appear when calendar scrolls away.
+  useEffect(() => {
+    const el = calendarRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const e = entries[0];
+        setShowBackToCalendar(!e.isIntersecting);
+      },
+      { root: null, threshold: 0.05 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   // Optional: sync selected day into URL without triggering RSC reload.
   useEffect(() => {
     if (syncingUrlRef.current) return;
@@ -147,6 +165,18 @@ export default function MonthWeekCalendar({
     }
     return out;
   }, [buckets, gridDays, myDaysSet, publicHolidays, schoolHolidays, todayYmd]);
+
+  const stripeByDay = useMemo(() => {
+    const out = new Map<string, HolidayStripe>();
+    for (const d of gridDays) {
+      const day = ymdKey(d);
+      let kind: HolidayStripe = "none";
+      if (publicHolidays?.[day]) kind = "public";
+      else if (schoolHolidays?.[day]) kind = "school";
+      out.set(day, kind);
+    }
+    return out;
+  }, [gridDays, publicHolidays, schoolHolidays]);
 
   const selectedWeekRange = useMemo(() => {
     const sel = new Date(`${selectedDay}T12:00:00`);
@@ -202,7 +232,7 @@ export default function MonthWeekCalendar({
 
   return (
     <section className="space-y-3">
-      <div className="card overflow-hidden">
+      <div ref={calendarRef} className="card overflow-hidden">
         <div className="border-b bg-slate-50 px-3 py-2.5">
           <div className="space-y-2 min-w-0">
             <div className="flex flex-wrap items-center gap-2 min-w-0">
@@ -266,47 +296,65 @@ export default function MonthWeekCalendar({
             const isToday = day === todayYmd;
             const isSelected = day === selectedDay;
             const dot = dotByDay.get(day) ?? "none";
+            const stripe = stripeByDay.get(day) ?? "none";
+            const paintClass =
+              dot === "myToday"
+                ? "bg-brand-700/20"
+                : dot === "myFuture"
+                  ? "bg-lime-400/45 ring-1 ring-lime-500/35"
+                  : dot === "myPast"
+                    ? "bg-slate-400/20"
+                    : dot === "anyPergerakan"
+                      ? "bg-cyan-400/55 ring-1 ring-cyan-500/40"
+                      : null;
             return (
               <button
                 key={day}
                 type="button"
                 onClick={() => setSelectedDay(day)}
                 className={cn(
-                  "relative min-h-11 bg-white rounded-lg flex flex-col items-center justify-center py-1.5 ring-1 ring-transparent",
+                  "relative min-h-11 rounded-lg flex flex-col items-center justify-center py-1.5 transition-colors",
                   !inMonth && "text-slate-300",
-                  isSelected && "bg-slate-100 ring-slate-300",
-                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 focus-visible:z-10",
+                  !isSelected && "hover:bg-slate-50/80",
+                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 focus-visible:ring-offset-1",
                 )}
                 aria-current={isSelected ? "date" : undefined}
+                aria-selected={isSelected}
                 aria-label={day}
               >
-                <span
-                  className={cn(
-                    "text-base font-semibold leading-none",
-                    isToday &&
-                      "inline-flex w-8 h-8 items-center justify-center rounded-full ring-2 ring-brand-700 text-brand-700",
-                  )}
-                >
-                  {format(d, "d")}
-                </span>
-
-                <div className="mt-1 h-3 flex items-center justify-center">
-                  {dot === "none" ? null : dot === "holidayOnly" ? (
-                    <span
-                      className="inline-block w-3 h-[2px] rounded bg-yellow-300/80"
-                      aria-label="Cuti"
-                      title="Cuti"
-                    />
-                  ) : (
+                <div className="relative flex items-center justify-center">
+                  {paintClass && (
                     <span
                       className={cn(
-                        "inline-block w-2 h-2 rounded-full",
-                        dot === "myToday" && "bg-brand-700",
-                        dot === "myFuture" && "bg-emerald-500",
-                        dot === "myPast" && "bg-slate-400",
-                        dot === "anyPergerakan" && "border-2 border-blue-500 bg-transparent",
+                        "absolute inset-x-0 top-1/2 -translate-y-1/2 h-6 rounded-full",
+                        paintClass,
                       )}
-                      aria-label={dot}
+                      aria-hidden="true"
+                    />
+                  )}
+                  <span
+                    className={cn(
+                      "inline-flex h-8 w-8 items-center justify-center rounded-full text-base font-semibold leading-none",
+                      isSelected && !isToday && "bg-slate-500 text-white",
+                      isSelected && isToday && "bg-brand-700 text-white ring-2 ring-brand-800 ring-offset-1",
+                      !isSelected &&
+                        isToday &&
+                        "ring-2 ring-brand-700 text-brand-700 bg-white",
+                    )}
+                  >
+                    {format(d, "d")}
+                  </span>
+                </div>
+
+                <div className="mt-1 h-3 flex flex-col items-center justify-center space-y-0.5">
+                  {stripe !== "none" && (
+                    <span
+                      className={cn(
+                        "inline-block w-4 h-[2px] rounded-full",
+                        stripe === "public" && "bg-rose-600",
+                        stripe === "school" && "bg-amber-300",
+                      )}
+                      aria-label={stripe === "public" ? "Cuti umum" : "Cuti sekolah"}
                     />
                   )}
                 </div>
@@ -341,7 +389,21 @@ export default function MonthWeekCalendar({
         items={selectedItems}
         publicHoliday={selectedPublicHoliday}
         schoolHoliday={selectedSchoolHoliday}
+        currentUserId={currentUserId}
       />
+
+      {showBackToCalendar ? (
+        <button
+          type="button"
+          className="fixed right-4 bottom-4 z-30 rounded-full bg-slate-900/90 text-white text-xs font-semibold px-3 py-2 shadow-lg hover:bg-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 focus-visible:ring-offset-2"
+          onClick={() => {
+            calendarRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+          aria-label="Kembali ke kalendar"
+        >
+          ↑ Kalendar
+        </button>
+      ) : null}
     </section>
   );
 }

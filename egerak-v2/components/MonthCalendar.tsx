@@ -25,6 +25,7 @@ import type {
   CalendarWeekStartsOn,
 } from "@/lib/actions/calendar-settings";
 import { CALENDAR_MY_REG_STYLES } from "@/lib/calendar-timing-color-presets";
+import type { OprStatus } from "@/lib/opr-status";
 
 type MyRegTiming = "past" | "today" | "future";
 
@@ -36,6 +37,7 @@ function myRegTimingForDay(dayYmd: string, todayYmd: string): MyRegTiming | null
 
 export type CalendarItem = {
   id: number;
+  userId?: number;
   nama: string;
   jawatan: string;
   sektorCode: string | null;
@@ -45,6 +47,7 @@ export type CalendarItem = {
   lokasi: string;
   tarikhPergi: string;
   tarikhKembali: string;
+  oprStatus?: OprStatus | null;
 };
 
 const DAY_LABELS_MON = ["Isn", "Sel", "Rab", "Kha", "Jum", "Sab", "Aha"];

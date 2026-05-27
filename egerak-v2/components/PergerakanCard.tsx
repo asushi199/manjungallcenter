@@ -72,113 +72,84 @@ export default function PergerakanCard({
   const sektorShort = formatSektorShort(item.sektorCode);
   const oprBadge = item.jenis === "Pergerakan" ? oprStatusBadge(item.oprStatus) : null;
 
+  const subtitle =
+    variant === "dashboard"
+      ? [item.sektorName, item.nama].filter(Boolean).join(" · ")
+      : item.sektorName ?? undefined;
+
+  const metaLine = (
+    <div className="text-[11px] text-slate-500 truncate">
+      {item.lokasi ? (
+        <>
+          <span className="font-medium text-slate-600">{item.lokasi}</span>
+          <span className="text-slate-300"> · </span>
+        </>
+      ) : null}
+      {tarikh}
+      <span className="text-slate-300"> · </span>
+      {masa}
+    </div>
+  );
+
   const article = (
     <article
       className={cn(
-        "rounded-lg border border-slate-200/90 bg-white shadow-sm overflow-hidden transition-shadow",
-        variant === "dashboard" && "hover:shadow",
+        "rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden",
+        variant === "dashboard" && "hover:shadow transition-shadow",
         variant === "mine" && selected && "ring-2 ring-brand-600 ring-offset-1",
       )}
-      style={{ borderLeft: `4px solid ${style.border}` }}
     >
-      <div className="px-3 py-2.5 space-y-2" style={{ backgroundColor: style.bg }}>
-        <div className="flex gap-2.5 items-start">
-          {variant === "dashboard" && index != null && (
-            <span
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-              style={{ backgroundColor: style.chip }}
-              aria-hidden
-            >
-              {index}
-            </span>
-          )}
-
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
-              <h3 className="font-semibold text-slate-900 leading-snug min-w-0 flex-1 text-[15px]">
-                {item.urusan}
-              </h3>
-              <div className="flex flex-wrap items-center gap-1 shrink-0">
-                {item.jenis === "Bercuti" && (
-                  <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-emerald-600 text-white">
-                    Cuti
-                  </span>
-                )}
-                {sektorShort && (
-                  <span
-                    className="rounded border px-1.5 py-0.5 text-[10px] font-medium max-w-[9rem] truncate"
-                    style={{
-                      backgroundColor: "rgba(255,255,255,0.7)",
-                      borderColor: style.border,
-                      color: style.text,
-                    }}
-                    title={item.sektorName ?? sektorShort}
-                  >
-                    {sektorShort}
-                  </span>
-                )}
-                {variant === "mine" && oprBadge && (
-                  <span className={cn("badge text-[10px]", oprBadge.className)}>
-                    {oprBadge.label}
-                  </span>
-                )}
+      <div className="flex">
+        <div
+          className="w-1.5 shrink-0"
+          style={{ backgroundColor: style.border }}
+          aria-hidden
+        />
+        <div className="p-2.5 min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="font-semibold text-slate-900 truncate">
+                {variant === "dashboard" && index != null ? `${index}. ${item.urusan}` : item.urusan}
               </div>
+              {subtitle ? <div className="text-xs text-slate-500 mt-0.5 truncate">{subtitle}</div> : null}
             </div>
-
-            {variant === "dashboard" ? (
-              <>
-                <p className="text-sm text-slate-700 leading-snug">
-                  <span className="font-medium" style={{ color: style.text }}>
-                    {item.nama}
-                  </span>
-                  {item.jawatan ? (
-                    <span className="text-slate-500"> · {item.jawatan}</span>
-                  ) : null}
-                </p>
-                <MetaLine label="Tarikh">
-                  <span>
-                    {tarikh}
-                    <span className="text-slate-400"> · </span>
-                    {masa}
-                  </span>
-                </MetaLine>
-                {item.lokasi ? (
-                  <MetaLine label="Lokasi">
-                    <span className="font-medium text-slate-800">{item.lokasi}</span>
-                  </MetaLine>
-                ) : null}
-              </>
-            ) : (
-              <>
-                {item.lokasi ? (
-                  <MetaLine label="Lokasi">
-                    <span className="font-medium text-slate-800">{item.lokasi}</span>
-                  </MetaLine>
-                ) : null}
-                {item.sektorName ? (
-                  <MetaLine label="Sektor">
-                    <span>{item.sektorName}</span>
-                  </MetaLine>
-                ) : null}
-                <MetaLine label="Tarikh">
-                  <span>
-                    {tarikh}
-                    <span className="text-slate-400"> · </span>
-                    {masa}
-                  </span>
-                </MetaLine>
-              </>
-            )}
+            <div className="flex flex-wrap items-center gap-1 shrink-0">
+              {variant === "mine" && oprBadge ? (
+                <span className={cn("badge text-[10px]", oprBadge.className)}>{oprBadge.label}</span>
+              ) : null}
+              {sektorShort ? (
+                <span
+                  className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-slate-50 text-slate-700 border-slate-200 max-w-[10rem] truncate"
+                  title={item.sektorName ?? sektorShort}
+                >
+                  {sektorShort}
+                </span>
+              ) : null}
+              <span
+                className={cn(
+                  "text-[10px] font-semibold px-2 py-0.5 rounded-full border",
+                  item.jenis === "Bercuti"
+                    ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                    : "bg-slate-50 text-slate-700 border-slate-200",
+                )}
+              >
+                {item.jenis === "Bercuti" ? "Bercuti" : "Pergerakan"}
+              </span>
+            </div>
           </div>
-        </div>
 
-        {variant === "mine" && (
-          <MinePergerakanCardActions
-            pergerakanId={item.id}
-            jenis={item.jenis}
-            oprStatus={item.oprStatus}
-          />
-        )}
+          <div className="mt-1.5">{metaLine}</div>
+
+          {variant === "mine" ? (
+            <div className="mt-2">
+              <MinePergerakanCardActions
+                pergerakanId={item.id}
+                jenis={item.jenis}
+                oprStatus={item.oprStatus}
+              />
+            </div>
+          ) : null}
+        </div>
       </div>
     </article>
   );
