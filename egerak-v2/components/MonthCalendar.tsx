@@ -50,9 +50,8 @@ export type CalendarItem = {
 const DAY_LABELS_MON = ["Isn", "Sel", "Rab", "Kha", "Jum", "Sab", "Aha"];
 const DAY_LABELS_SUN = ["Aha", "Isn", "Sel", "Rab", "Kha", "Jum", "Sab"];
 
-/** Vertikal: saiz sel seragam; teks dipotong, butiran penuh dalam laci. */
+/** Vertikal: saiz sel seragam; kolum minggu muat lebar skrin (tanpa scroll mendatar). */
 const VERTICAL_ROW_HEIGHT = "5.5rem";
-const VERTICAL_COL_MIN = "4.75rem";
 
 /** Hari ini — tepi merah pada sel penuh (lebih ketara daripada bulatan nombor sahaja). */
 const TODAY_CELL_RING = "ring-2 ring-inset ring-brand-700 z-[1]";
@@ -321,7 +320,7 @@ export default function MonthCalendar({
           </div>
         ) : null}
 
-        <div className={cn(isVerticalGrid && "min-w-0 overflow-x-auto")}>
+        <div className={cn(isVerticalGrid && "min-w-0")}>
           {!isVerticalGrid ? (
             <div className="grid grid-cols-7 text-center text-xs font-semibold text-slate-500 bg-slate-50 border-b">
               {dayLabels.map((d) => (
@@ -333,12 +332,12 @@ export default function MonthCalendar({
           ) : null}
 
           <div
-            className={cn("grid", !isVerticalGrid ? "grid-cols-7" : "w-max min-w-full")}
+            className={cn("grid w-full", !isVerticalGrid && "grid-cols-7")}
             style={
               isVerticalGrid
                 ? {
                     gridTemplateRows: `repeat(7, ${VERTICAL_ROW_HEIGHT})`,
-                    gridTemplateColumns: `repeat(${weeks}, minmax(${VERTICAL_COL_MIN}, 1fr))`,
+                    gridTemplateColumns: `repeat(${weeks}, minmax(0, 1fr))`,
                     gridAutoFlow: "column",
                   }
                 : undefined
