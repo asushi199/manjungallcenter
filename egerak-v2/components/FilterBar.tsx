@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import SektorFilterDropdown from "@/components/SektorFilterDropdown";
+import { cn } from "@/lib/cn";
 import { replaceWithSearchParams } from "@/lib/navigate";
 
 export type SektorOption = { id: number; code: string; name: string };
@@ -15,6 +16,8 @@ export default function FilterBar({
   inline = false,
   stacked = false,
   monthControls,
+  /** Ikon tetapan dll. — baris pertama stacked (sebelah penapis & cuti) */
+  toolbarLeading,
 }: {
   sektors: SektorOption[];
   current: {
@@ -29,6 +32,7 @@ export default function FilterBar({
   /** Baris 1: cuti · Baris 2: sektor + monthControls */
   stacked?: boolean;
   monthControls?: ReactNode;
+  toolbarLeading?: ReactNode;
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -62,9 +66,15 @@ export default function FilterBar({
   }
 
   const cutiPegawaiLabel = (
-    <label className="flex items-center gap-2 text-sm text-slate-700 shrink-0 cursor-pointer">
+    <label
+      className={cn(
+        "flex items-center gap-1.5 text-slate-700 shrink-0 cursor-pointer",
+        stacked ? "text-xs" : "text-sm gap-2",
+      )}
+    >
       <input
         type="checkbox"
+        className="shrink-0"
         checked={current.includeCuti}
         onChange={(e) => update({ includeCuti: e.target.checked })}
         disabled={isPending}
@@ -74,9 +84,15 @@ export default function FilterBar({
   );
 
   const cutiSekolahLabel = (
-    <label className="flex items-center gap-2 text-sm text-slate-700 shrink-0 cursor-pointer">
+    <label
+      className={cn(
+        "flex items-center gap-1.5 text-slate-700 shrink-0 cursor-pointer",
+        stacked ? "text-xs" : "text-sm gap-2",
+      )}
+    >
       <input
         type="checkbox"
+        className="shrink-0"
         checked={current.showSchoolHolidays}
         onChange={(e) => update({ showSchoolHolidays: e.target.checked })}
         disabled={isPending}
@@ -87,17 +103,9 @@ export default function FilterBar({
 
   if (stacked) {
     return (
-      <div className="w-full space-y-2.5 min-w-0">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          {cutiPegawaiLabel}
-          {cutiSekolahLabel}
-          {isPending && (
-            <span className="text-xs font-medium text-brand-700 ml-auto" role="status">
-              Memuatkan…
-            </span>
-          )}
-        </div>
-        <div className="flex flex-wrap items-end gap-2 gap-y-2">
+      <div className="w-full space-y-2 min-w-0">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
+          {toolbarLeading ? <div className="shrink-0">{toolbarLeading}</div> : null}
           <div className="shrink-0">
             <SektorFilterDropdown
               sektors={sektors}
@@ -109,8 +117,17 @@ export default function FilterBar({
               triggerVariant="icon"
             />
           </div>
-          {monthControls ? <div className="shrink-0 ml-auto">{monthControls}</div> : null}
+          {cutiPegawaiLabel}
+          {cutiSekolahLabel}
+          {isPending && (
+            <span className="text-xs font-medium text-brand-700 ml-auto" role="status">
+              Memuatkan…
+            </span>
+          )}
         </div>
+        {monthControls ? (
+          <div className="flex flex-wrap items-center justify-end gap-2">{monthControls}</div>
+        ) : null}
       </div>
     );
   }

@@ -78,6 +78,7 @@ export default function MonthCalendar({
   header,
   toolbar,
   calendarFilter,
+  filterToolbarLeading,
   publicHolidays,
   publicHolidayDetails,
   schoolHolidays,
@@ -92,8 +93,10 @@ export default function MonthCalendar({
   header?: ReactNode;
   /** @deprecated Guna calendarFilter (susun atur dua baris) */
   toolbar?: ReactNode;
-  /** Baris 1: cuti pegawai / cuti sekolah · Baris 2: sektor + navigasi bulan */
+  /** Baris 1: tetapan + penapis + cuti · Baris 2: navigasi bulan */
   calendarFilter?: CalendarFilterConfig;
+  /** Ikon tetapan kalendar (diserahkan dari Dashboard) */
+  filterToolbarLeading?: ReactNode;
   /** Tarikh rujukan penapis (URL `date`, bukan sorotan sel) */
   highlightDate?: string;
   /** Hari dalam bulan ini yang pengguna sudah ada pergerakan/cuti (garis hijau) */
@@ -222,6 +225,7 @@ export default function MonthCalendar({
         <div className="border-b bg-slate-50 px-3 py-2.5">
           <FilterBar
             stacked
+            toolbarLeading={filterToolbarLeading}
             sektors={calendarFilter.sektors}
             current={{
               date: calendarFilter.date,

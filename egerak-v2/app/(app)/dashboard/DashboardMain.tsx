@@ -147,19 +147,19 @@ export default async function DashboardMain({
           items={calItems}
           highlightDate={date}
           header={
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h1 className="text-lg font-semibold text-slate-900">Kalendar Pergerakan</h1>
-                <p className="text-sm text-slate-500 mt-0.5">
-                  {formatInTimeZone(monthStart, TZ, "MMMM yyyy")} · {monthItems.length} rekod · warna
-                  mengikut sektor · <strong>klik hari</strong> untuk butiran (laci)
-                </p>
-              </div>
-              <CalendarSettingsPanel
-                weekStartsOn={calendarSettings.weekStartsOn as CalendarWeekStartsOn}
-                gridOrientation={calendarSettings.gridOrientation as CalendarGridOrientation}
-              />
-            </div>
+            <>
+              <h1 className="text-lg font-semibold text-slate-900">Kalendar Pergerakan</h1>
+              <p className="text-sm text-slate-500 mt-0.5">
+                {formatInTimeZone(monthStart, TZ, "MMMM yyyy")} · {monthItems.length} rekod · warna
+                mengikut sektor · <strong>klik hari</strong> untuk butiran (laci)
+              </p>
+            </>
+          }
+          filterToolbarLeading={
+            <CalendarSettingsPanel
+              weekStartsOn={calendarSettings.weekStartsOn as CalendarWeekStartsOn}
+              gridOrientation={calendarSettings.gridOrientation as CalendarGridOrientation}
+            />
           }
           calendarFilter={{
             sektors: filterSektors,
