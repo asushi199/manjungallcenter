@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import {
@@ -24,6 +25,9 @@ import type { LaporanOprRange } from "@/lib/laporan-opr-period";
 import { replaceWithSearchParams } from "@/lib/navigate";
 
 const BRAND = "#b81049";
+/** Jalur atas — bezakan dua jenis analisis */
+const ACCENT_PERGERAKAN = BRAND;
+const ACCENT_PROGRAM = "#0d9488";
 
 const RANGE_OPTIONS: { value: LaporanOprRange; label: string }[] = [
   { value: "year", label: "Tahun" },
@@ -71,15 +75,32 @@ function AnalisisCollapsible({
   title,
   count,
   hint,
+  accentColor,
   children,
 }: {
   title: string;
   count: number;
   hint: string;
+  accentColor: string;
   children: ReactNode;
 }) {
+  const shellRef = useRef<HTMLDivElement>(null);
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+
+  function closeSection() {
+    const el = detailsRef.current;
+    if (!el) return;
+    el.open = false;
+    shellRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
   return (
-    <details className="rounded-lg border border-slate-200 bg-white overflow-hidden group">
+    <div
+      ref={shellRef}
+      className="rounded-lg border border-slate-200 bg-white overflow-hidden"
+    >
+      <div className="h-1.5 w-full" style={{ backgroundColor: accentColor }} aria-hidden />
+      <details ref={detailsRef} className="group">
       <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
         <span className="text-slate-400 text-xs w-4 shrink-0 group-open:rotate-90 transition-transform">
           ▶
@@ -87,13 +108,30 @@ function AnalisisCollapsible({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
-            <span className="text-lg font-bold text-brand-700 tabular-nums">{count}</span>
+            <span
+              className="text-lg font-bold tabular-nums"
+              style={{ color: accentColor }}
+            >
+              {count}
+            </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">{hint}</p>
         </div>
       </summary>
-      <div className="px-4 pb-4 pt-2 space-y-4 border-t border-slate-100">{children}</div>
-    </details>
+      <div className="px-4 pb-4 pt-2 space-y-4 border-t border-slate-100">
+        {children}
+        <div className="flex justify-center pt-2 border-t border-slate-100">
+          <button
+            type="button"
+            className="btn-secondary text-sm px-4 py-2"
+            onClick={closeSection}
+          >
+            Tutup ▴
+          </button>
+        </div>
+      </div>
+      </details>
+    </div>
   );
 }
 
@@ -308,6 +346,7 @@ export default function AnalisisPergerakanClient({
           title="Analisis pergerakan"
           count={pergerakanAggregates.totalRecords}
           hint="Setiap rekod pergerakan = 1 · ikut sektor pendaftaran"
+          accentColor={ACCENT_PERGERAKAN}
         >
           <p className="text-xs text-slate-500 text-center">
             Tidak termasuk cuti/Bercuti. Tiada penggabungan aktiviti.
@@ -326,6 +365,7 @@ export default function AnalisisPergerakanClient({
           title="Analisis program (OPR siap)"
           count={programAggregates.totalRecords}
           hint="Satu OPR siap = satu program · ikut sektor yang menghantar OPR"
+          accentColor={ACCENT_PROGRAM}
         >
           <p className="text-xs text-slate-500 text-center">
             Hanya OPR berstatus <strong>SIAP</strong>. Sektor = override OPR (jika ada) atau sektor
