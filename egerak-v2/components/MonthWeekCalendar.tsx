@@ -272,9 +272,9 @@ export default function MonthWeekCalendar({
                 type="button"
                 onClick={() => setSelectedDay(day)}
                 className={cn(
-                  "relative min-h-11 bg-white rounded-lg flex flex-col items-center justify-center py-1.5",
+                  "relative min-h-11 bg-white rounded-lg flex flex-col items-center justify-center py-1.5 ring-1 ring-transparent",
                   !inMonth && "text-slate-300",
-                  isSelected && "bg-slate-100",
+                  isSelected && "bg-slate-100 ring-slate-300",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 focus-visible:z-10",
                 )}
                 aria-current={isSelected ? "date" : undefined}
