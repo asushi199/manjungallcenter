@@ -9,7 +9,6 @@ import {
   endOfWeek,
   format,
   isSameMonth,
-  isToday,
   startOfMonth,
   startOfWeek,
 } from "date-fns";
@@ -21,6 +20,11 @@ import { sektorStyle } from "@/lib/sektor-colors";
 import { replaceWithSearchParams } from "@/lib/navigate";
 import { TZ } from "@/lib/dates";
 import { formatInTimeZone } from "date-fns-tz";
+import type {
+  CalendarGridOrientation,
+  CalendarWeekStartsOn,
+} from "@/lib/actions/calendar-settings";
+import { CALENDAR_MY_REG_STYLES } from "@/lib/calendar-timing-color-presets";
 
 type MyRegTiming = "past" | "today" | "future";
 
@@ -43,7 +47,15 @@ export type CalendarItem = {
   tarikhKembali: string;
 };
 
-const DAY_LABELS = ["Isn", "Sel", "Rab", "Kha", "Jum", "Sab", "Aha"];
+const DAY_LABELS_MON = ["Isn", "Sel", "Rab", "Kha", "Jum", "Sab", "Aha"];
+const DAY_LABELS_SUN = ["Aha", "Isn", "Sel", "Rab", "Kha", "Jum", "Sab"];
+
+/** Vertikal: saiz sel seragam; teks dipotong, butiran penuh dalam laci. */
+const VERTICAL_ROW_HEIGHT = "5.5rem";
+const VERTICAL_COL_MIN = "4.75rem";
+
+/** Hari ini — tepi merah pada sel penuh (lebih ketara daripada bulatan nombor sahaja). */
+const TODAY_CELL_RING = "ring-2 ring-inset ring-brand-700 z-[1]";
 
 /** Bilangan aktiviti dipapar dalam sel; selebihnya: "+N lagi" + klik untuk laci */
 const MAX_IN_CELL = 4;
@@ -72,6 +84,8 @@ export default function MonthCalendar({
   schoolHolidays,
   schoolHolidayDetails,
   myRegisteredDays,
+  weekStartsOn,
+  gridOrientation,
 }: {
   month: string;
   items: CalendarItem[];
@@ -85,6 +99,9 @@ export default function MonthCalendar({
   highlightDate?: string;
   /** Hari dalam bulan ini yang pengguna sudah ada pergerakan/cuti (garis hijau) */
   myRegisteredDays?: string[];
+  /** Tetapan paparan kalendar — masih dipakai secara penuh pada Phase B selanjutnya. */
+  weekStartsOn?: CalendarWeekStartsOn;
+  gridOrientation?: CalendarGridOrientation;
   /** Cuti umum — Record (serializable dari RSC) */
   publicHolidays?: Record<string, string>;
   publicHolidayDetails?: Record<string, HolidayDetail>;
@@ -94,8 +111,19 @@ export default function MonthCalendar({
 }) {
   const [y, m] = month.split("-").map(Number);
   const firstOfMonth = new Date(y, m - 1, 1);
-  const gridStart = startOfWeek(startOfMonth(firstOfMonth), { weekStartsOn: 1 });
-  const gridEnd = endOfWeek(endOfMonth(firstOfMonth), { weekStartsOn: 1 });
+  const effectiveWeekStartsOn: CalendarWeekStartsOn = weekStartsOn ?? "mon";
+  const effectiveGridOrientation: CalendarGridOrientation = gridOrientation ?? "horizontal";
+
+  const dayLabels =
+    effectiveWeekStartsOn === "sun" ? DAY_LABELS_SUN : DAY_LABELS_MON;
+
+  // date-fns: Sunday=0, Monday=1
+  const weekStartsOnValue = effectiveWeekStartsOn === "sun" ? 0 : 1;
+
+  const gridStart = startOfWeek(startOfMonth(firstOfMonth), {
+    weekStartsOn: weekStartsOnValue,
+  });
+  const gridEnd = endOfWeek(endOfMonth(firstOfMonth), { weekStartsOn: weekStartsOnValue });
 
   const gridDays = useMemo(() => {
     const out: Date[] = [];
@@ -106,6 +134,22 @@ export default function MonthCalendar({
     }
     return out;
   }, [gridStart, gridEnd]);
+
+  const weeks = Math.max(1, Math.floor(gridDays.length / 7));
+  const verticalCellDays = useMemo(() => {
+    // Kolum = minggu, row = hari (Weekday). Index renderer: gridDays[col*7 + row].
+    const out: Date[] = [];
+    for (let row = 0; row < 7; row++) {
+      for (let col = 0; col < weeks; col++) {
+        const idx = col * 7 + row;
+        if (idx < gridDays.length) out.push(gridDays[idx]);
+      }
+    }
+    return out;
+  }, [gridDays, weeks]);
+
+  const isVerticalGrid = effectiveGridOrientation === "vertical";
+  const cellDays = isVerticalGrid ? verticalCellDays : gridDays;
 
   const buckets = useMemo(() => buildDayBuckets(items, gridDays), [items, gridDays]);
   const myDaysSet = useMemo(() => new Set(myRegisteredDays ?? []), [myRegisteredDays]);
@@ -256,18 +300,54 @@ export default function MonthCalendar({
           </div>
         </div>
       )}
-      <div className="grid grid-cols-7 text-center text-xs font-semibold text-slate-500 bg-slate-50 border-b">
-        {DAY_LABELS.map((d) => (
-          <div key={d} className="py-2">
-            {d}
+      <div
+        className={cn(
+          isVerticalGrid ? "grid grid-cols-[2.75rem_minmax(0,1fr)] min-w-0" : "space-y-0",
+        )}
+      >
+        {isVerticalGrid ? (
+          <div
+            className="grid grid-rows-7 text-center text-xs font-semibold text-slate-500 bg-slate-50 border-r border-b shrink-0"
+            style={{ gridTemplateRows: `repeat(7, ${VERTICAL_ROW_HEIGHT})` }}
+          >
+            {dayLabels.map((d) => (
+              <div
+                key={d}
+                className="flex items-center justify-center border-b border-slate-100 last:border-b-0"
+              >
+                {d}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-7">
-        {gridDays.map((d) => {
+        ) : null}
+
+        <div className={cn(isVerticalGrid && "min-w-0 overflow-x-auto")}>
+          {!isVerticalGrid ? (
+            <div className="grid grid-cols-7 text-center text-xs font-semibold text-slate-500 bg-slate-50 border-b">
+              {dayLabels.map((d) => (
+                <div key={d} className="py-2">
+                  {d}
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          <div
+            className={cn("grid", !isVerticalGrid ? "grid-cols-7" : "w-max min-w-full")}
+            style={
+              isVerticalGrid
+                ? {
+                    gridTemplateRows: `repeat(7, ${VERTICAL_ROW_HEIGHT})`,
+                    gridTemplateColumns: `repeat(${weeks}, minmax(${VERTICAL_COL_MIN}, 1fr))`,
+                    gridAutoFlow: "column",
+                  }
+                : undefined
+            }
+          >
+            {gridDays.map((d) => {
           const key = ymdKey(d);
           const inMonth = isSameMonth(d, firstOfMonth);
-          const today = isToday(d);
+          const isCalendarToday = key === todayYmd;
           const hasMyRegistration = myDaysSet.has(key);
           const myRegTiming = hasMyRegistration
             ? myRegTimingForDay(key, todayYmd)
@@ -290,39 +370,49 @@ export default function MonthCalendar({
                 }
               }}
               className={cn(
-                "relative text-left min-h-[100px] border-b border-r p-1 align-top hover:bg-slate-50/80 transition cursor-pointer",
+                "relative text-left border-b border-r p-1 align-top hover:bg-slate-50/80 transition cursor-pointer min-w-0",
+                isVerticalGrid
+                  ? "flex flex-col overflow-hidden h-[5.5rem] max-h-[5.5rem]"
+                  : "min-h-[100px]",
                 !inMonth && "bg-slate-50/50 text-slate-400",
-                myRegTiming === "past" &&
-                  "bg-slate-50/95 ring-2 ring-inset ring-slate-400/75 shadow-[inset_0_-3px_0_0_rgb(100_116_139)]",
-                myRegTiming === "future" &&
-                  "bg-emerald-50/55 ring-2 ring-inset ring-emerald-500/60 shadow-[inset_0_-3px_0_0_rgb(16_185_129)]",
+                myRegTiming === "past" && CALENDAR_MY_REG_STYLES.pastCellClasses,
+                myRegTiming === "future" && CALENDAR_MY_REG_STYLES.futureCellClasses,
                 myRegTiming === "today" &&
-                  "bg-emerald-50/70 ring-2 ring-inset ring-emerald-600/70 shadow-[inset_0_-3px_0_0_rgb(5_150_105)]",
+                  "bg-emerald-50/70 shadow-[inset_0_-3px_0_0_rgb(5_150_105)]",
+                isCalendarToday && TODAY_CELL_RING,
               )}
               aria-label={
-                myRegTiming === "past"
-                  ? "Anda sudah mendaftar, hari telah berlalu"
-                  : myRegTiming === "future"
-                    ? "Anda sudah mendaftar, hari akan datang"
-                    : myRegTiming === "today"
-                      ? "Anda sudah mendaftar hari ini"
-                      : undefined
+                isCalendarToday
+                  ? myRegTiming === "today"
+                    ? "Hari ini — anda sudah mendaftar"
+                    : "Hari ini"
+                  : myRegTiming === "past"
+                    ? "Anda sudah mendaftar, hari telah berlalu"
+                    : myRegTiming === "future"
+                      ? "Anda sudah mendaftar, hari akan datang"
+                      : myRegTiming === "today"
+                        ? "Anda sudah mendaftar hari ini"
+                        : undefined
               }
               title={
-                myRegTiming === "past"
-                  ? "Anda sudah mendaftar (hari telah berlalu)"
-                  : myRegTiming === "future"
-                    ? "Anda sudah mendaftar (akan datang)"
-                    : myRegTiming === "today"
-                      ? "Anda sudah mendaftar hari ini"
-                      : undefined
+                isCalendarToday
+                  ? myRegTiming === "today"
+                    ? "Hari ini — anda sudah mendaftar"
+                    : "Hari ini"
+                  : myRegTiming === "past"
+                    ? "Anda sudah mendaftar (hari telah berlalu)"
+                    : myRegTiming === "future"
+                      ? "Anda sudah mendaftar (akan datang)"
+                      : myRegTiming === "today"
+                        ? "Anda sudah mendaftar hari ini"
+                        : undefined
               }
             >
               <div className="flex items-center justify-between gap-0.5 px-0.5 min-w-0">
                 <span
                   className={cn(
                     "text-xs font-semibold shrink-0",
-                    today &&
+                    isCalendarToday &&
                       "inline-flex w-6 h-6 items-center justify-center rounded-full bg-brand-600 text-white",
                   )}
                 >
@@ -352,7 +442,12 @@ export default function MonthCalendar({
                   {schoolHolidayName}
                 </button>
               )}
-              <div className="mt-0.5 space-y-0.5">
+              <div
+                className={cn(
+                  "mt-0.5 space-y-0.5 min-h-0 min-w-0",
+                  isVerticalGrid && "flex-1 overflow-hidden",
+                )}
+              >
                 {shown.map((it) => {
                   const st = sektorStyle(it.sektorCode, it.jenis);
                   return (
@@ -383,8 +478,10 @@ export default function MonthCalendar({
                 )}
               </div>
             </div>
-          );
-        })}
+            );
+          })}
+          </div>
+        </div>
       </div>
 
       {drawerDay && (

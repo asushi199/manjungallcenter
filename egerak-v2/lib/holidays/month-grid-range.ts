@@ -1,11 +1,15 @@
 import { addDays, endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from "date-fns";
 
 /** Julat yyyy-MM-dd grid kalendar (termasuk hari bulan lain). */
-export function monthCalendarGridRange(month: string): { fromYmd: string; toYmd: string } {
+export function monthCalendarGridRange(
+  month: string,
+  /** date-fns: Sunday=0, Monday=1 */
+  weekStartsOn: 0 | 1 = 1,
+): { fromYmd: string; toYmd: string } {
   const [y, m] = month.split("-").map(Number);
   const firstOfMonth = new Date(y, m - 1, 1);
-  const gridStart = startOfWeek(startOfMonth(firstOfMonth), { weekStartsOn: 1 });
-  const gridEnd = endOfWeek(endOfMonth(firstOfMonth), { weekStartsOn: 1 });
+  const gridStart = startOfWeek(startOfMonth(firstOfMonth), { weekStartsOn });
+  const gridEnd = endOfWeek(endOfMonth(firstOfMonth), { weekStartsOn });
   return {
     fromYmd: format(gridStart, "yyyy-MM-dd"),
     toYmd: format(gridEnd, "yyyy-MM-dd"),

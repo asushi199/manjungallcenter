@@ -51,6 +51,10 @@ export const users = pgTable(
     /** Skop sektor Laporan OPR untuk Timbalan_PPD (ID sektor, tanpa Pegawai PPD). */
     laporanSektorIds: jsonb("laporan_sektor_ids").$type<number[]>().notNull().default([]),
     peranan: peranan("peranan").notNull().default("Pengguna"),
+    /** Tetapan paparan kalendar (wujud untuk semua peranan / pengguna). */
+    calendarWeekStartsOn: text("calendar_week_starts_on").notNull().default("mon"),
+    calendarGridOrientation: text("calendar_grid_orientation").notNull().default("horizontal"),
+    calendarColorPreset: text("calendar_color_preset").notNull().default("default"),
     aktif: boolean("aktif").notNull().default(true),
     mustChangePassword: boolean("must_change_password").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

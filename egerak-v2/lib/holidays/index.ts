@@ -22,9 +22,9 @@ function toLabelMap(details: Map<string, HolidayDetail>): Map<string, string> {
 /** Cuti untuk grid kalendar bulan (termasuk hari luar bulan). */
 export async function getCalendarHolidays(
   month: string,
-  opts: { showSchoolHolidays: boolean },
+  opts: { showSchoolHolidays: boolean; weekStartsOn?: 0 | 1 },
 ): Promise<CalendarHolidays> {
-  const { fromYmd, toYmd } = monthCalendarGridRange(month);
+  const { fromYmd, toYmd } = monthCalendarGridRange(month, opts.weekStartsOn ?? 1);
   const years = yearsTouchingRange(fromYmd, toYmd);
 
   const publicFull = filterHolidayMapByYmdRange(

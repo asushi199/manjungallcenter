@@ -3,6 +3,7 @@ import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
 import MonthCalendar, { type CalendarItem } from "@/components/MonthCalendar";
 import { listAllSektors } from "@/lib/actions/users";
 import SektorLegend from "@/components/SektorLegend";
+import CalendarSettingsPanel from "@/components/CalendarSettingsPanel";
 import {
   listPergerakanForDashboard,
   listMyPergerakanDayKeysInMonth,
@@ -11,6 +12,9 @@ import {
 import { TZ } from "@/lib/dates";
 import { getCalendarHolidays, type CalendarHolidays } from "@/lib/holidays";
 import { serializeCalendarHolidays } from "@/lib/holidays/serialize";
+import { getUserCalendarSettings } from "@/lib/actions/calendar-settings";
+import type { CalendarGridOrientation, CalendarWeekStartsOn } from "@/lib/actions/calendar-settings";
+import { CALENDAR_MY_REG_STYLES } from "@/lib/calendar-timing-color-presets";
 
 export type DashboardMainProps = {
   date: string;
@@ -50,6 +54,8 @@ export default async function DashboardMain({
   includeCuti,
   showSchoolHolidays,
 }: DashboardMainProps) {
+  const calendarSettings = await getUserCalendarSettings();
+  const weekStartsOnValue = calendarSettings.weekStartsOn === "sun" ? 0 : 1;
   const [y, m] = month.split("-").map(Number);
   const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const monthStart = fromZonedTime(`${month}-01T00:00:00`, TZ);
@@ -64,7 +70,7 @@ export default async function DashboardMain({
   };
 
   const [holidaysRes, pergerakanRes, sektorsRes, myDaysRes] = await Promise.allSettled([
-    getCalendarHolidays(month, { showSchoolHolidays }),
+    getCalendarHolidays(month, { showSchoolHolidays, weekStartsOn: weekStartsOnValue }),
     fetchPergerakanWithRetry({
       start: monthStart,
       end: monthEnd,
@@ -141,13 +147,19 @@ export default async function DashboardMain({
           items={calItems}
           highlightDate={date}
           header={
-            <>
-              <h1 className="text-lg font-semibold text-slate-900">Kalendar Pergerakan</h1>
-              <p className="text-sm text-slate-500 mt-0.5">
-                {formatInTimeZone(monthStart, TZ, "MMMM yyyy")} · {monthItems.length} rekod · warna
-                mengikut sektor · <strong>klik hari</strong> untuk butiran (laci)
-              </p>
-            </>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h1 className="text-lg font-semibold text-slate-900">Kalendar Pergerakan</h1>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  {formatInTimeZone(monthStart, TZ, "MMMM yyyy")} · {monthItems.length} rekod · warna
+                  mengikut sektor · <strong>klik hari</strong> untuk butiran (laci)
+                </p>
+              </div>
+              <CalendarSettingsPanel
+                weekStartsOn={calendarSettings.weekStartsOn as CalendarWeekStartsOn}
+                gridOrientation={calendarSettings.gridOrientation as CalendarGridOrientation}
+              />
+            </div>
           }
           calendarFilter={{
             sektors: filterSektors,
@@ -156,6 +168,8 @@ export default async function DashboardMain({
             includeCuti,
             showSchoolHolidays,
           }}
+          weekStartsOn={calendarSettings.weekStartsOn as CalendarWeekStartsOn}
+          gridOrientation={calendarSettings.gridOrientation as CalendarGridOrientation}
           publicHolidays={holidayProps.publicLabels}
           publicHolidayDetails={holidayProps.publicDetails}
           schoolHolidays={showSchoolHolidays ? holidayProps.schoolLabels : undefined}
@@ -165,11 +179,15 @@ export default async function DashboardMain({
         <SektorLegend />
         <div className="text-xs text-slate-500 space-y-1">
           <p>
-            <span className="inline-block w-5 h-3 rounded-sm bg-emerald-50 ring-2 ring-inset ring-emerald-500/60 shadow-[inset_0_-2px_0_0_rgb(16_185_129)] align-middle mr-1" />
+            <span className="inline-block w-5 h-3 rounded-sm ring-2 ring-inset ring-brand-700 align-middle mr-1" />
+            Tepi merah = hari ini
+          </p>
+          <p>
+            <span className={CALENDAR_MY_REG_STYLES.futureLegendClasses} />
             Hijau = anda sudah daftar — hari akan datang
           </p>
           <p>
-            <span className="inline-block w-5 h-3 rounded-sm bg-slate-50 ring-2 ring-inset ring-slate-400/75 shadow-[inset_0_-2px_0_0_rgb(100_116_139)] align-middle mr-1" />
+            <span className={CALENDAR_MY_REG_STYLES.pastLegendClasses} />
             Kelabu = anda sudah daftar — hari telah berlalu
           </p>
           <p>
