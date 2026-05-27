@@ -301,20 +301,22 @@ export default function MonthCalendar({
       )}
       <div
         className={cn(
-          isVerticalGrid ? "grid grid-cols-[2.75rem_minmax(0,1fr)] min-w-0" : "space-y-0",
+          isVerticalGrid ? "grid grid-cols-[1.375rem_minmax(0,1fr)] min-w-0" : "space-y-0",
         )}
       >
         {isVerticalGrid ? (
           <div
-            className="grid grid-rows-7 text-center text-xs font-semibold text-slate-500 bg-slate-50 border-r border-b shrink-0"
+            className="grid grid-rows-7 text-center text-[10px] font-semibold text-slate-500 bg-slate-50 border-r border-b shrink-0"
             style={{ gridTemplateRows: `repeat(7, ${VERTICAL_ROW_HEIGHT})` }}
           >
             {dayLabels.map((d) => (
               <div
                 key={d}
-                className="flex items-center justify-center border-b border-slate-100 last:border-b-0"
+                className="flex items-center justify-center border-b border-slate-100 last:border-b-0 px-0.5"
               >
-                {d}
+                <span className="inline-block -rotate-90 whitespace-nowrap leading-none tracking-tight">
+                  {d}
+                </span>
               </div>
             ))}
           </div>
