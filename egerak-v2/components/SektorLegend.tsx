@@ -3,7 +3,7 @@ import { CUTI_STYLE, SEKTOR_STYLE } from "@/lib/sektor-colors";
 export default function SektorLegend() {
   const entries = Object.entries(SEKTOR_STYLE);
   return (
-    <div className="card p-3">
+    <div>
       <div className="text-xs font-semibold text-slate-600 mb-2">Petunjuk warna sektor</div>
       <div className="flex flex-wrap gap-2">
         {entries.map(([code, s]) => (

@@ -175,7 +175,8 @@ export default async function DashboardMain({
           <summary className="cursor-pointer select-none text-sm font-semibold text-slate-800">
             Petunjuk (warna / titik)
           </summary>
-          <div className="mt-2 space-y-1 text-xs text-slate-600">
+          <div className="mt-2 space-y-3 text-xs text-slate-600">
+            <div className="space-y-1">
             <p>
               <span className="inline-block w-4 h-4 rounded-full ring-2 ring-brand-700 align-middle mr-1" />
               Hari ini = bulatan merah pada tarikh
@@ -200,10 +201,12 @@ export default async function DashboardMain({
               <span className="inline-block w-3 h-[2px] rounded bg-yellow-300/80 align-middle mr-1" />
               Garis kuning = cuti (tiada pergerakan)
             </p>
+            </div>
+            <div className="pt-2 border-t border-slate-200/60">
+              <SektorLegend />
+            </div>
           </div>
         </details>
-
-        <SektorLegend />
       </div>
     </section>
   );

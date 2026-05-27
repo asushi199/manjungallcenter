@@ -251,7 +251,7 @@ export default function MonthWeekCalendar({
           </div>
         </div>
 
-        <div className="grid grid-cols-7 text-center text-[11px] font-semibold text-slate-500 bg-white border-b">
+        <div className="grid grid-cols-7 text-center text-[11px] font-semibold text-slate-500 bg-white border-b border-slate-100">
           {dayLabels.map((d) => (
             <div key={d} className="py-2">
               {d}
@@ -259,7 +259,7 @@ export default function MonthWeekCalendar({
           ))}
         </div>
 
-        <div className="grid grid-cols-7">
+        <div className="grid grid-cols-7 gap-y-1 px-1 py-1">
           {visibleDays.map((d) => {
             const day = ymdKey(d);
             const inMonth = isSameMonth(d, firstOfMonth);
@@ -272,27 +272,25 @@ export default function MonthWeekCalendar({
                 type="button"
                 onClick={() => setSelectedDay(day)}
                 className={cn(
-                  "relative px-1.5 py-1.5 border-b border-r min-h-11 text-left bg-white",
-                  !inMonth && "bg-slate-50/60 text-slate-400",
-                  isSelected && "bg-slate-50",
+                  "relative min-h-11 bg-white rounded-lg flex flex-col items-center justify-center py-1.5",
+                  !inMonth && "text-slate-300",
+                  isSelected && "bg-slate-100",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 focus-visible:z-10",
                 )}
                 aria-current={isSelected ? "date" : undefined}
                 aria-label={day}
               >
-                <div className="flex items-center justify-between">
-                  <span
-                    className={cn(
-                      "text-xs font-semibold",
-                      isToday &&
-                        "inline-flex w-6 h-6 items-center justify-center rounded-full ring-2 ring-brand-700 text-brand-700",
-                    )}
-                  >
-                    {format(d, "d")}
-                  </span>
-                </div>
+                <span
+                  className={cn(
+                    "text-base font-semibold leading-none",
+                    isToday &&
+                      "inline-flex w-8 h-8 items-center justify-center rounded-full ring-2 ring-brand-700 text-brand-700",
+                  )}
+                >
+                  {format(d, "d")}
+                </span>
 
-                <div className="mt-1 h-3 flex items-center">
+                <div className="mt-1 h-3 flex items-center justify-center">
                   {dot === "none" ? null : dot === "holidayOnly" ? (
                     <span
                       className="inline-block w-3 h-[2px] rounded bg-yellow-300/80"
