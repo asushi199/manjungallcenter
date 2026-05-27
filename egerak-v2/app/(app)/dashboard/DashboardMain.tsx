@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
-import MonthCalendar, { type CalendarItem } from "@/components/MonthCalendar";
+import type { CalendarItem } from "@/components/MonthCalendar";
+import MonthWeekCalendar from "@/components/MonthWeekCalendar";
 import { listAllSektors } from "@/lib/actions/users";
 import SektorLegend from "@/components/SektorLegend";
 import CalendarSettingsPanel from "@/components/CalendarSettingsPanel";
@@ -14,7 +15,6 @@ import { getCalendarHolidays, type CalendarHolidays } from "@/lib/holidays";
 import { serializeCalendarHolidays } from "@/lib/holidays/serialize";
 import { getUserCalendarSettings } from "@/lib/actions/calendar-settings";
 import type { CalendarGridOrientation, CalendarWeekStartsOn } from "@/lib/actions/calendar-settings";
-import { CALENDAR_MY_REG_STYLES } from "@/lib/calendar-timing-color-presets";
 
 export type DashboardMainProps = {
   date: string;
@@ -51,8 +51,8 @@ export default async function DashboardMain({
   date,
   month,
   sektorIds,
-  includeCuti,
-  showSchoolHolidays,
+  includeCuti: _includeCuti,
+  showSchoolHolidays: _showSchoolHolidays,
 }: DashboardMainProps) {
   const calendarSettings = await getUserCalendarSettings();
   const weekStartsOnValue = calendarSettings.weekStartsOn === "sun" ? 0 : 1;
@@ -66,11 +66,11 @@ export default async function DashboardMain({
 
   const filter = {
     sektorIds: sektorIds.length ? sektorIds : undefined,
-    includeCuti,
+    includeCuti: true,
   };
 
   const [holidaysRes, pergerakanRes, sektorsRes, myDaysRes] = await Promise.allSettled([
-    getCalendarHolidays(month, { showSchoolHolidays, weekStartsOn: weekStartsOnValue }),
+    getCalendarHolidays(month, { showSchoolHolidays: true, weekStartsOn: weekStartsOnValue }),
     fetchPergerakanWithRetry({
       start: monthStart,
       end: monthEnd,
@@ -142,65 +142,68 @@ export default async function DashboardMain({
       )}
 
       <div className="space-y-3">
-        <MonthCalendar
+        <div>
+          <h1 className="text-lg font-semibold text-slate-900">Kalendar Pergerakan</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {formatInTimeZone(monthStart, TZ, "MMMM yyyy")} · {monthItems.length} rekod · warna
+            mengikut sektor · <strong>klik hari</strong> untuk butiran (kad)
+          </p>
+        </div>
+
+        <MonthWeekCalendar
           month={month}
           items={calItems}
           highlightDate={date}
-          header={
-            <>
-              <h1 className="text-lg font-semibold text-slate-900">Kalendar Pergerakan</h1>
-              <p className="text-sm text-slate-500 mt-0.5">
-                {formatInTimeZone(monthStart, TZ, "MMMM yyyy")} · {monthItems.length} rekod · warna
-                mengikut sektor · <strong>klik hari</strong> untuk butiran (laci)
-              </p>
-            </>
-          }
-          filterToolbarLeading={
+          toolbarLeading={
             <CalendarSettingsPanel
               weekStartsOn={calendarSettings.weekStartsOn as CalendarWeekStartsOn}
               gridOrientation={calendarSettings.gridOrientation as CalendarGridOrientation}
             />
           }
-          calendarFilter={{
-            sektors: filterSektors,
-            date,
-            sektorIds,
-            includeCuti,
-            showSchoolHolidays,
-          }}
           weekStartsOn={calendarSettings.weekStartsOn as CalendarWeekStartsOn}
           gridOrientation={calendarSettings.gridOrientation as CalendarGridOrientation}
+          sektors={filterSektors}
+          sektorIds={sektorIds}
           publicHolidays={holidayProps.publicLabels}
           publicHolidayDetails={holidayProps.publicDetails}
-          schoolHolidays={showSchoolHolidays ? holidayProps.schoolLabels : undefined}
-          schoolHolidayDetails={showSchoolHolidays ? holidayProps.schoolDetails : undefined}
-          myRegisteredDays={myRegisteredDays}
+          schoolHolidays={holidayProps.schoolLabels}
+          schoolHolidayDetails={holidayProps.schoolDetails}
+          myRegisteredDays={myRegisteredDays ?? []}
         />
-        <SektorLegend />
-        <div className="text-xs text-slate-500 space-y-1">
-          <p>
-            <span className="inline-block w-5 h-3 rounded-sm ring-2 ring-inset ring-brand-700 align-middle mr-1" />
-            Tepi merah = hari ini
-          </p>
-          <p>
-            <span className={CALENDAR_MY_REG_STYLES.futureLegendClasses} />
-            Hijau = anda sudah daftar — hari akan datang
-          </p>
-          <p>
-            <span className={CALENDAR_MY_REG_STYLES.pastLegendClasses} />
-            Kelabu = anda sudah daftar — hari telah berlalu
-          </p>
-          <p>
-            <span className="inline-block w-2 h-2 rounded-sm bg-rose-100 border border-rose-300 align-middle mr-1" />
-            Merah jambu = cuti umum Perak
-          </p>
-          {showSchoolHolidays && (
+
+        <details className="card p-3">
+          <summary className="cursor-pointer select-none text-sm font-semibold text-slate-800">
+            Petunjuk (warna / titik)
+          </summary>
+          <div className="mt-2 space-y-1 text-xs text-slate-600">
             <p>
-              <span className="inline-block w-2 h-2 rounded-sm bg-yellow-100 border border-yellow-400 align-middle mr-1" />
-              Kuning = cuti sekolah KPM
+              <span className="inline-block w-4 h-4 rounded-full ring-2 ring-brand-700 align-middle mr-1" />
+              Hari ini = bulatan merah pada tarikh
             </p>
-          )}
-        </div>
+            <p>
+              <span className="inline-block w-2 h-2 rounded-full bg-brand-700 align-middle mr-1" />
+              Titik merah = hari ini anda ada aktiviti
+            </p>
+            <p>
+              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 align-middle mr-1" />
+              Titik hijau = anda ada aktiviti (akan datang)
+            </p>
+            <p>
+              <span className="inline-block w-2 h-2 rounded-full bg-slate-400 align-middle mr-1" />
+              Titik kelabu = anda ada aktiviti (telah berlalu)
+            </p>
+            <p>
+              <span className="inline-block w-2 h-2 rounded-full border-2 border-blue-500 align-middle mr-1" />
+              Titik biru (kosong) = ada pergerakan (mana-mana pegawai)
+            </p>
+            <p>
+              <span className="inline-block w-3 h-[2px] rounded bg-yellow-300/80 align-middle mr-1" />
+              Garis kuning = cuti (tiada pergerakan)
+            </p>
+          </div>
+        </details>
+
+        <SektorLegend />
       </div>
     </section>
   );
