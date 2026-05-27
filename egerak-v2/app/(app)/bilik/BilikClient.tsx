@@ -81,6 +81,7 @@ export default function BilikClient({
     tarikh: weekStart,
     slot: "AM" as "AM" | "PM",
     title: "",
+    fullDay: false,
   });
 
   const days = Array.from({ length: 14 }, (_, i) =>
@@ -102,8 +103,12 @@ export default function BilikClient({
         setMsg(res.error);
         return;
       }
-      setMsg("Tempahan berjaya.");
-      setForm((f) => ({ ...f, title: "" }));
+      setMsg(
+        res.slotsBooked === 2
+          ? "Tempahan berjaya — Pagi & Petang (sepanjang hari)."
+          : "Tempahan berjaya.",
+      );
+      setForm((f) => ({ ...f, title: "", fullDay: false }));
       router.refresh();
     });
   }
@@ -192,6 +197,7 @@ export default function BilikClient({
             <select
               className="input"
               value={form.slot}
+              disabled={form.fullDay}
               onChange={(e) => setForm({ ...form, slot: e.target.value as "AM" | "PM" })}
             >
               {SLOTS.map((s) => (
@@ -200,6 +206,23 @@ export default function BilikClient({
                 </option>
               ))}
             </select>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="flex items-start gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={form.fullDay}
+                onChange={(e) => setForm({ ...form, fullDay: e.target.checked })}
+              />
+              <span>
+                <strong>Aktiviti sepanjang hari</strong>
+                <span className="block text-xs text-slate-600 mt-0.5">
+                  Tempah Pagi & Petang untuk tarikh ini (seluruh hari tidak tersedia di
+                  kalendar).
+                </span>
+              </span>
+            </label>
           </div>
           <div className="sm:col-span-2">
             <label className="label">Tajuk aktiviti</label>

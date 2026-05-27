@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatInTimeZone } from "date-fns-tz";
@@ -18,7 +18,16 @@ import {
 import { resolveLokasiFields } from "@/lib/pergerakan-presets";
 import { formatTarikhBm } from "@/lib/room-slots";
 import DateTimeField from "@/components/DateTimeField";
-import { DEFAULT_TIME_KEMBALI, DEFAULT_TIME_PERGI } from "@/lib/datetime-picker";
+import {
+  DEFAULT_TIME_KEMBALI,
+  DEFAULT_TIME_PERGI,
+  addMinutesToDateTime,
+  combineDateAndTime,
+  ensureReturnAfterDeparture,
+  getReturnTimeOptions,
+  splitDateTime,
+  syncReturnWhenDepartChanges,
+} from "@/lib/datetime-picker";
 import { parseLocalInput, TZ } from "@/lib/dates";
 
 const emptyAvailability: RoomAvailabilityCheck = {
@@ -78,6 +87,42 @@ export default function PergerakanForm({
   const lokasi = isLainLain ? lokasiLain : lokasiSel;
   const needsRoom = /budiman|bestari/i.test(lokasi) && jenis === "Pergerakan";
   const willBookRoom = needsRoom && tempahBilik;
+
+  const tarikhPergiDate = splitDateTime(tarikhPergi).date;
+  const tarikhKembaliDate = splitDateTime(tarikhKembali).date;
+  const returnTimeOptions = useMemo(
+    () => getReturnTimeOptions(tarikhPergi, tarikhKembaliDate || tarikhPergiDate || ""),
+    [tarikhPergi, tarikhKembaliDate, tarikhPergiDate],
+  );
+  const defaultKembaliTime = tarikhPergi
+    ? splitDateTime(addMinutesToDateTime(tarikhPergi, 30)).time
+    : DEFAULT_TIME_KEMBALI;
+
+  function handleTarikhPergiChange(v: string) {
+    const prevDepart = tarikhPergi;
+    setTarikhPergi(v);
+    setTarikhKembali((prev) => syncReturnWhenDepartChanges(prevDepart, v, prev));
+  }
+
+  function handleTarikhKembaliChange(v: string) {
+    if (!tarikhPergi) {
+      setTarikhKembali(v);
+      return;
+    }
+    let next = v;
+    const startDate = splitDateTime(tarikhPergi).date;
+    const endDate = splitDateTime(v).date;
+    if (startDate && endDate && endDate < startDate) {
+      next = combineDateAndTime(startDate, splitDateTime(v).time);
+    }
+    setTarikhKembali(ensureReturnAfterDeparture(tarikhPergi, next));
+  }
+
+  useEffect(() => {
+    if (!tarikhPergi || !tarikhKembali) return;
+    const fixed = ensureReturnAfterDeparture(tarikhPergi, tarikhKembali);
+    if (fixed !== tarikhKembali) setTarikhKembali(fixed);
+  }, [tarikhPergi, tarikhKembali]);
 
   useEffect(() => {
     if (!tarikhPergi) {
@@ -256,7 +301,7 @@ export default function PergerakanForm({
           id="pergi"
           label="Tarikh & Masa Pergi"
           value={tarikhPergi}
-          onChange={setTarikhPergi}
+          onChange={handleTarikhPergiChange}
           defaultTime={DEFAULT_TIME_PERGI}
           required
         />
@@ -264,8 +309,10 @@ export default function PergerakanForm({
           id="kembali"
           label="Tarikh & Masa Kembali"
           value={tarikhKembali}
-          onChange={setTarikhKembali}
-          defaultTime={DEFAULT_TIME_KEMBALI}
+          onChange={handleTarikhKembaliChange}
+          defaultTime={defaultKembaliTime}
+          minDate={tarikhPergiDate || undefined}
+          timeOptions={returnTimeOptions}
           required
         />
       </div>

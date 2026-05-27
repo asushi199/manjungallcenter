@@ -35,11 +35,10 @@ function computeDotKind(opts: {
 }): DotKind {
   const { day, todayYmd, hasMine, hasAnyPergerakan, hasAnyHoliday } = opts;
 
-  // My status priority (confirmed)
   if (hasMine) {
+    if (day < todayYmd) return "myPast";
     if (day === todayYmd) return "myToday";
-    if (day > todayYmd) return "myFuture";
-    return "myPast";
+    return "myFuture";
   }
   if (hasAnyPergerakan) return "anyPergerakan";
   if (hasAnyHoliday) return "holidayOnly";
@@ -234,7 +233,7 @@ export default function MonthWeekCalendar({
     <section className="space-y-3">
       <div ref={calendarRef} className="card overflow-hidden">
         <div className="border-b bg-slate-50 px-3 py-2.5">
-          <div className="space-y-2 min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 min-w-0">
             <div className="flex flex-wrap items-center gap-2 min-w-0">
               {toolbarLeading ? <div className="shrink-0">{toolbarLeading}</div> : null}
               <div className="shrink-0">
@@ -250,7 +249,7 @@ export default function MonthWeekCalendar({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0 ml-auto">
               <button
                 type="button"
                 className="btn-secondary px-2 py-1.5 text-sm"
@@ -298,15 +297,13 @@ export default function MonthWeekCalendar({
             const dot = dotByDay.get(day) ?? "none";
             const stripe = stripeByDay.get(day) ?? "none";
             const paintClass =
-              dot === "myToday"
-                ? "bg-brand-700/20"
-                : dot === "myFuture"
-                  ? "bg-lime-400/45 ring-1 ring-lime-500/35"
-                  : dot === "myPast"
-                    ? "bg-slate-400/20"
-                    : dot === "anyPergerakan"
-                      ? "bg-cyan-400/55 ring-1 ring-cyan-500/40"
-                      : null;
+              dot === "myFuture" || dot === "myToday"
+                ? "bg-lime-400/45 ring-1 ring-lime-500/35"
+                : dot === "myPast"
+                  ? "bg-slate-400/20"
+                  : dot === "anyPergerakan"
+                    ? "bg-cyan-400/55 ring-1 ring-cyan-500/40"
+                    : null;
             return (
               <button
                 key={day}
@@ -335,11 +332,9 @@ export default function MonthWeekCalendar({
                   <span
                     className={cn(
                       "inline-flex h-8 w-8 items-center justify-center rounded-full text-base font-semibold leading-none",
-                      isSelected && !isToday && "bg-slate-500 text-white",
-                      isSelected && isToday && "bg-brand-700 text-white ring-2 ring-brand-800 ring-offset-1",
-                      !isSelected &&
-                        isToday &&
-                        "ring-2 ring-brand-700 text-brand-700 bg-white",
+                      isSelected && "bg-slate-500 text-white",
+                      isToday && "ring-2 ring-brand-700 ring-offset-1",
+                      !isSelected && isToday && "text-brand-700 bg-white",
                     )}
                   >
                     {format(d, "d")}

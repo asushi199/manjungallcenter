@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useMemo } from "react";
 import {
-  TIME_OPTIONS_5MIN,
+  TIME_OPTIONS_REGISTER,
   combineDateAndTime,
   splitDateTime,
 } from "@/lib/datetime-picker";
@@ -13,6 +14,10 @@ type Props = {
   onChange: (value: string) => void;
   defaultTime?: string;
   required?: boolean;
+  /** Tarikh minimum (yyyy-MM-dd), contoh: tidak sebelum tarikh pergi */
+  minDate?: string;
+  /** Senarai masa; lalai = TIME_OPTIONS_REGISTER */
+  timeOptions?: string[];
 };
 
 export default function DateTimeField({
@@ -22,16 +27,35 @@ export default function DateTimeField({
   onChange,
   defaultTime = "08:00",
   required,
+  minDate,
+  timeOptions: timeOptionsProp,
 }: Props) {
   const { date, time } = splitDateTime(value);
+  const timeOptions = timeOptionsProp ?? TIME_OPTIONS_REGISTER;
   const timeValue = date ? time : defaultTime;
+
+  const effectiveTime = useMemo(() => {
+    if (timeOptions.includes(timeValue)) return timeValue;
+    return timeOptions[0] ?? defaultTime;
+  }, [timeOptions, timeValue, defaultTime]);
+
+  useEffect(() => {
+    if (!date || !timeOptions.length) return;
+    if (timeValue !== effectiveTime) {
+      onChange(combineDateAndTime(date, effectiveTime));
+    }
+  }, [date, effectiveTime, timeOptions.length, timeValue, onChange]);
 
   function setDate(nextDate: string) {
     if (!nextDate) {
       onChange("");
       return;
     }
-    onChange(combineDateAndTime(nextDate, timeValue || defaultTime));
+    if (minDate && nextDate < minDate) {
+      nextDate = minDate;
+    }
+    const t = timeOptions.includes(timeValue) ? timeValue : (timeOptions[0] ?? defaultTime);
+    onChange(combineDateAndTime(nextDate, t));
   }
 
   function setTime(nextTime: string) {
@@ -51,6 +75,7 @@ export default function DateTimeField({
           className="input flex-1 min-w-0"
           required={required}
           value={date}
+          min={minDate}
           onChange={(e) => setDate(e.target.value)}
         />
         <select
@@ -58,11 +83,11 @@ export default function DateTimeField({
           className="input w-[6.25rem] shrink-0 tabular-nums"
           required={required && Boolean(date)}
           disabled={!date}
-          value={date ? timeValue : defaultTime}
+          value={date ? effectiveTime : defaultTime}
           onChange={(e) => setTime(e.target.value)}
           aria-label={`Masa ${label}`}
         >
-          {TIME_OPTIONS_5MIN.map((t) => (
+          {timeOptions.map((t) => (
             <option key={t} value={t}>
               {t}
             </option>

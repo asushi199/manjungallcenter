@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { SortableTh, type SortDir } from "@/components/SortableTh";
+import type { SortDir } from "@/components/SortableTh";
 import { formatInTimeZone } from "date-fns-tz";
 import SektorFilterDropdown from "@/components/SektorFilterDropdown";
-import { sektorRowStyle, sektorStyle } from "@/lib/sektor-colors";
+import { sektorStyle } from "@/lib/sektor-colors";
+import CompactExpandableCard, { ClampText } from "@/components/CompactExpandableCard";
 import { formatDate } from "@/lib/dates";
 import { TZ } from "@/lib/dates";
 import type { LaporanOprRow } from "@/lib/actions/laporan-opr";
@@ -493,55 +494,36 @@ export default function LaporanOprClient({
                   <>
                   {/* Unified: card list for all breakpoints (match Utama). */}
                   <div className="space-y-2">
-                    {g.items.map((r) => (
-                      <article
-                        key={r.pergerakanId}
-                        className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden"
-                      >
-                        <div className="flex">
-                          <div
-                            className="w-1.5 shrink-0"
-                            style={{ backgroundColor: sektorStyle(r.sektorCode).border }}
-                            aria-hidden
-                          />
-                          <div className="p-2.5 min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <div className="font-semibold text-slate-900 truncate">{r.urusan}</div>
-                                <div className="text-xs text-slate-500 mt-0.5 truncate">
-                                  {[r.sektorName, r.nama].filter(Boolean).join(" · ")}
-                                </div>
-                              </div>
-                              <Link
-                                href={`/my/${r.pergerakanId}/opr/print`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-slate-50 text-slate-700 border-slate-200 shrink-0"
-                              >
-                                Cetak
-                              </Link>
-                            </div>
-                            <div className="mt-1.5 text-[11px] text-slate-500 truncate">
-                              {r.lokasi ? (
-                                <>
-                                  <span className="font-medium text-slate-600">{r.lokasi}</span>
-                                  <span className="text-slate-300"> · </span>
-                                </>
-                              ) : null}
-                              {formatDate(r.tarikhPergi)}
-                              {r.tarikhKembali.slice(0, 10) !== r.tarikhPergi.slice(0, 10) && (
-                                <> – {formatDate(r.tarikhKembali)}</>
-                              )}
-                              <span className="text-slate-300"> · </span>
-                              Siap: {formatDate(r.updatedAt)}
-                            </div>
-                            <div className="mt-1 text-xs text-slate-600 truncate">
-                              {r.jawatan || "—"}
-                            </div>
-                          </div>
-                        </div>
-                      </article>
-                    ))}
+                    {g.items.map((r) => {
+                      const st = sektorStyle(r.sektorCode);
+                      const metaText = `${r.lokasi ? `${r.lokasi} · ` : ""}${formatDate(r.tarikhPergi)}${
+                        r.tarikhKembali.slice(0, 10) !== r.tarikhPergi.slice(0, 10)
+                          ? ` – ${formatDate(r.tarikhKembali)}`
+                          : ""
+                      } · Siap: ${formatDate(r.updatedAt)}`;
+                      return (
+                        <CompactExpandableCard
+                          key={r.pergerakanId}
+                          title={r.urusan}
+                          subtitle={[r.sektorName, r.nama].filter(Boolean).join(" · ")}
+                          tone="pergerakan"
+                          stripeColor={st.border}
+                          trailing={
+                            <Link
+                              href={`/my/${r.pergerakanId}/opr/print`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-slate-50 text-slate-700 border-slate-200 shrink-0"
+                            >
+                              Cetak
+                            </Link>
+                          }
+                        >
+                          <ClampText className="text-[11px] text-slate-500">{metaText}</ClampText>
+                          <ClampText className="text-xs text-slate-600">{r.jawatan || "—"}</ClampText>
+                        </CompactExpandableCard>
+                      );
+                    })}
                   </div>
                   </>
                 )}

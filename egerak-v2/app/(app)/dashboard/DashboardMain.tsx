@@ -188,16 +188,12 @@ export default async function DashboardMain({
                 Bulatan merah = hari ini
               </p>
               <p>
-                <span className="inline-block w-7 h-4 rounded-full bg-brand-700/20 align-middle mr-1" />
-                Latar merah lembut = hari ini anda ada aktiviti
-              </p>
-              <p>
                 <span className="inline-block w-7 h-4 rounded-full bg-lime-400/45 align-middle mr-1 border border-lime-500/35" />
-                Latar hijau lebih jelas = anda ada aktiviti (akan datang)
+                Latar hijau = anda ada aktiviti (hari ini & akan datang)
               </p>
               <p>
                 <span className="inline-block w-7 h-4 rounded-full bg-slate-400/20 align-middle mr-1" />
-                Latar kelabu lembut = anda ada aktiviti (telah berlalu)
+                Latar kelabu = anda ada aktiviti (telah berlalu)
               </p>
               <p>
                 <span className="inline-block w-7 h-4 rounded-full bg-cyan-400/55 align-middle mr-1 border border-cyan-500/40" />

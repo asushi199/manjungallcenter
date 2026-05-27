@@ -38,7 +38,8 @@ export default async function BilikPage({
           <h1 className="text-xl font-semibold">Tempahan Bilik & Dewan</h1>
           <p className="text-sm text-slate-500">
             Bilik Budiman dan Dewan Bestari — slot <strong>Pagi (AM)</strong> dan{" "}
-            <strong>Petang (PM)</strong> boleh ditempah berasingan pada hari sama.
+            <strong>Petang (PM)</strong> boleh ditempah berasingan atau{" "}
+            <strong>sepanjang hari</strong> (kedua-dua slot sekali gus).
           </p>
         </div>
         {isAdmin && (
