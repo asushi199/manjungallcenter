@@ -204,21 +204,23 @@ export default function MonthWeekCalendar({
     <section className="space-y-3">
       <div className="card overflow-hidden">
         <div className="border-b bg-slate-50 px-3 py-2.5">
-          <div className="flex flex-wrap items-center gap-2">
-            {toolbarLeading ? <div className="shrink-0">{toolbarLeading}</div> : null}
-            <div className="shrink-0">
-              <SektorFilterDropdown
-                sektors={sektors}
-                selectedIds={sektorIds}
-                onChange={setSektorIds}
-                disabled={isPending}
-                label="Saring sektor"
-                compact
-                triggerVariant="icon"
-              />
+          <div className="space-y-2 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
+              {toolbarLeading ? <div className="shrink-0">{toolbarLeading}</div> : null}
+              <div className="shrink-0">
+                <SektorFilterDropdown
+                  sektors={sektors}
+                  selectedIds={sektorIds}
+                  onChange={setSektorIds}
+                  disabled={isPending}
+                  label="Saring sektor"
+                  compact
+                  triggerVariant="icon"
+                />
+              </div>
             </div>
 
-            <div className="ml-auto flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center justify-end gap-1.5">
               <button
                 type="button"
                 className="btn-secondary px-2 py-1.5 text-sm"
