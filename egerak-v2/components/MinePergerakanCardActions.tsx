@@ -21,16 +21,7 @@ export default function MinePergerakanCardActions({
   const [pending, startTransition] = useTransition();
 
   if (jenis === "Bercuti") {
-    return (
-      <div className="flex flex-wrap gap-2 pt-1 border-t border-white/60">
-        <Link
-          href={`/my/${pergerakanId}/edit`}
-          className="btn-secondary text-xs py-1.5 px-3 min-h-0"
-        >
-          Edit
-        </Link>
-      </div>
-    );
+    return null;
   }
 
   const showPerlu = needsOprAction(jenis, oprStatus);
@@ -61,25 +52,18 @@ export default function MinePergerakanCardActions({
   }
 
   return (
-    <div className="flex flex-wrap gap-2 pt-1 border-t border-white/60">
-      <Link
-        href={`/my/${pergerakanId}/edit`}
-        className="btn-secondary text-xs py-1.5 px-3 min-h-0"
-      >
-        Edit
-      </Link>
-
+    <div className="mt-1 flex flex-wrap gap-1.5">
       {showPerlu ? (
         <>
           <Link
             href={`/my/${pergerakanId}/opr`}
-            className="btn-primary text-xs py-1.5 px-3 min-h-0"
+            className="btn-primary text-[11px] py-1 px-2.5 min-h-0"
           >
             Isi OPR
           </Link>
           <button
             type="button"
-            className="btn-secondary text-xs py-1.5 px-3 min-h-0 border-slate-400 font-medium"
+            className="btn-secondary text-[11px] py-1 px-2.5 min-h-0 border-slate-300 font-medium"
             disabled={pending}
             onClick={onMarkTiada}
           >
@@ -92,13 +76,13 @@ export default function MinePergerakanCardActions({
         <>
           <Link
             href={`/my/${pergerakanId}/opr`}
-            className="btn-secondary text-xs py-1.5 px-3 min-h-0"
+            className="btn-secondary text-[11px] py-1 px-2.5 min-h-0"
           >
             OPR — Tiada
           </Link>
           <button
             type="button"
-            className="text-xs py-1.5 px-3 min-h-0 text-slate-600 underline hover:text-slate-900 disabled:opacity-50"
+            className="text-[11px] py-1 px-2.5 min-h-0 text-slate-600 underline hover:text-slate-900 disabled:opacity-50"
             disabled={pending}
             onClick={onReopen}
           >
@@ -110,7 +94,7 @@ export default function MinePergerakanCardActions({
       {isSiap ? (
         <Link
           href={`/my/${pergerakanId}/opr`}
-          className="btn-secondary text-xs py-1.5 px-3 min-h-0"
+          className="btn-secondary text-[11px] py-1 px-2.5 min-h-0"
         >
           Lihat OPR
         </Link>

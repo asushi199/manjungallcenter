@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import OprPhotoGallery from "./OprPhotoGallery";
 import { useRouter } from "next/navigation";
 import {
@@ -52,6 +52,13 @@ export default function OprFormClient({
   const [photos, setPhotos] = useState(initialPhotos);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const atPhotoLimit = photos.length >= OPR_MAX_PHOTOS;
+  const [generatedKey, setGeneratedKey] = useState<string | null>(null);
+
+  const currentGenerateKey = useMemo(() => {
+    // Unlock only when user changes input hints for AI generation.
+    // Keep sektor override out (user requested), but include nota pegawai.
+    return `${form.maklumatTambahan.trim()}|${form.sasaran.trim()}|${form.notaPegawai.trim()}`;
+  }, [form.maklumatTambahan, form.sasaran, form.notaPegawai]);
 
   useEffect(() => {
     setPhotos(initialPhotos);
@@ -60,6 +67,11 @@ export default function OprFormClient({
   useEffect(() => {
     setForm(initial);
   }, [initial]);
+
+  useEffect(() => {
+    // New OPR page / different pergerakan: reset generate lock.
+    setGeneratedKey(null);
+  }, [pergerakanId]);
 
   function onSave(markSiap = false) {
     setMsg(null);
@@ -119,6 +131,7 @@ export default function OprFormClient({
           refleksi: draft.refleksi,
           status: "DRAFT",
         }));
+        setGeneratedKey(currentGenerateKey);
         setMsg(draft.disclaimer);
       } catch (e) {
         setMsg(e instanceof Error ? e.message : "Gagal jana draf");
@@ -278,8 +291,14 @@ export default function OprFormClient({
                 onChange={(e) => setForm({ ...form, notaPegawai: e.target.value })}
               />
             </div>
-            <button type="button" className="btn-primary" disabled={pending} onClick={onGenerate}>
-              {pending ? "Menjana…" : "Jana Draf (AI)"}
+            <button
+              type="button"
+              className={generatedKey === currentGenerateKey ? "btn-secondary" : "btn-primary"}
+              disabled={pending || generatedKey === currentGenerateKey}
+              onClick={onGenerate}
+              aria-disabled={pending || generatedKey === currentGenerateKey}
+            >
+              {pending ? "Menjana…" : generatedKey === currentGenerateKey ? "Draf dijana" : "Jana Draf (AI)"}
             </button>
           </div>
 

@@ -8,6 +8,72 @@ import PrintToolbar from "./PrintToolbar";
 
 export const dynamic = "force-dynamic";
 
+type TextBlock =
+  | { kind: "p"; text: string }
+  | { kind: "ul"; items: string[] };
+
+function splitIntoBlocks(raw: string | null | undefined): TextBlock[] {
+  const lines = (raw ?? "").replace(/\r\n/g, "\n").split("\n");
+  const blocks: TextBlock[] = [];
+
+  let cur: string[] = [];
+  const flush = () => {
+    if (cur.length === 0) return;
+    const nonEmpty = cur.join("\n").trimEnd();
+    if (!nonEmpty.trim()) {
+      cur = [];
+      return;
+    }
+
+    const bulletRe = /^\s*(?:-|\u2022)\s+/;
+    const isAllBullets = cur.every((l) => !l.trim() || bulletRe.test(l));
+    if (isAllBullets) {
+      const items = cur
+        .map((l) => l.replace(bulletRe, "").trim())
+        .filter(Boolean);
+      if (items.length) blocks.push({ kind: "ul", items });
+    } else {
+      blocks.push({ kind: "p", text: nonEmpty });
+    }
+    cur = [];
+  };
+
+  for (const l of lines) {
+    if (l.trim() === "") {
+      flush();
+      continue;
+    }
+    cur.push(l);
+  }
+  flush();
+  return blocks;
+}
+
+function OprPrintText({ value }: { value: string | null | undefined }) {
+  const blocks = splitIntoBlocks(value);
+  if (blocks.length === 0) return <span>—</span>;
+  return (
+    <div className="opr-print-rich">
+      {blocks.map((b, idx) => {
+        if (b.kind === "ul") {
+          return (
+            <ul key={`ul-${idx}`}>
+              {b.items.map((it, i) => (
+                <li key={`li-${idx}-${i}`}>{it}</li>
+              ))}
+            </ul>
+          );
+        }
+        return (
+          <p key={`p-${idx}`} className="whitespace-pre-wrap">
+            {b.text}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export default async function OprPrintPage({ params }: { params: Promise<{ id: string }> }) {
   await requireUser();
   const { id } = await params;
@@ -72,36 +138,42 @@ export default async function OprPrintPage({ params }: { params: Promise<{ id: s
           <div className="opr-print-text space-y-1.5">
             <section>
               <h2 className="opr-print-section-title">Dapatan</h2>
-              <div className="opr-print-section-body whitespace-pre-wrap">{o.dapatan || "—"}</div>
+              <div className="opr-print-section-body">
+                <OprPrintText value={o.dapatan} />
+              </div>
             </section>
             <section>
               <h2 className="opr-print-section-title">Rumusan</h2>
-              <div className="opr-print-section-body whitespace-pre-wrap">{o.rumusan || "—"}</div>
+              <div className="opr-print-section-body">
+                <OprPrintText value={o.rumusan} />
+              </div>
             </section>
             <section>
               <h2 className="opr-print-section-title">Refleksi</h2>
-              <div className="opr-print-section-body whitespace-pre-wrap">{o.refleksi || "—"}</div>
+              <div className="opr-print-section-body">
+                <OprPrintText value={o.refleksi} />
+              </div>
             </section>
           </div>
-
-          {photos.length > 0 ? (
-            <aside className="opr-print-photos">
-              <h2 className="opr-print-section-title mb-1">Gambar</h2>
-              <div className="opr-print-photo-stack">
-                {photos.map((ph) => (
-                  <div key={ph.id} className="opr-print-photo-frame">
-                    <img
-                      src={ph.src}
-                      alt=""
-                      className="opr-print-photo"
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-                ))}
-              </div>
-            </aside>
-          ) : null}
         </div>
+
+        {photos.length > 0 ? (
+          <section className="opr-print-photos">
+            <h2 className="opr-print-section-title mb-1">Gambar aktiviti</h2>
+            <div className="opr-print-photo-grid">
+              {photos.slice(0, 4).map((ph) => (
+                <div key={ph.id} className="opr-print-photo-frame">
+                  <img
+                    src={ph.src}
+                    alt=""
+                    className="opr-print-photo"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <footer className="opr-print-footer text-[7pt] text-slate-600 text-center">
           Dijana melalui eGerak PPD Manjung · {new Date().toLocaleDateString("ms-MY")}

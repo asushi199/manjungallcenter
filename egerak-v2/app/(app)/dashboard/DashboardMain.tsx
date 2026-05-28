@@ -175,7 +175,7 @@ export default async function DashboardMain({
 
         <details className="card p-3">
           <summary className="cursor-pointer select-none text-sm font-semibold text-slate-800">
-            Petunjuk (warna / titik)
+            Petunjuk
           </summary>
           <div className="mt-2 space-y-3 text-xs text-slate-600">
             <div className="space-y-1">

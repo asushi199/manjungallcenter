@@ -6,6 +6,7 @@ import type { CalendarItem } from "@/components/MonthCalendar";
 import { sektorStyle } from "@/lib/sektor-colors";
 import MinePergerakanCardActions from "@/components/MinePergerakanCardActions";
 import CompactExpandableCard, { ClampText } from "@/components/CompactExpandableCard";
+import Link from "next/link";
 
 function dayTitle(day: string) {
   const d = new Date(day);
@@ -28,10 +29,16 @@ function LeaveCard({ it }: { it: CalendarItem }) {
   const st = sektorStyle(it.sektorCode, "Bercuti");
   const title = it.nama ? it.nama : "Bercuti";
   const subtitle = it.jawatan ? it.jawatan : it.sektorName ? it.sektorName : undefined;
+  const pergi = new Date(it.tarikhPergi);
+  const kembali = new Date(it.tarikhKembali);
+  const sameDay = format(pergi, "yyyy-MM-dd") === format(kembali, "yyyy-MM-dd");
+  const tarikh = sameDay
+    ? format(pergi, "dd MMM yyyy")
+    : `${format(pergi, "dd MMM")} – ${format(kembali, "dd MMM yyyy")}`;
   return (
     <CompactExpandableCard title={title} subtitle={subtitle} tone="leave" stripeColor={st.border}>
       <ClampText className="text-sm font-medium text-slate-800">{it.urusan}</ClampText>
-      {it.lokasi ? <ClampText className="text-xs text-slate-500">{it.lokasi}</ClampText> : null}
+      <ClampText className="text-[11px] text-slate-500">{tarikh}</ClampText>
     </CompactExpandableCard>
   );
 }
@@ -44,12 +51,16 @@ function PergerakanCard({
   isMine: boolean;
 }) {
   const st = sektorStyle(it.sektorCode, "Pergerakan");
-  const subtitleParts = [it.sektorName, it.nama].filter(Boolean);
+  const subtitleParts = isMine ? [] : [it.nama, it.sektorName].filter(Boolean);
   const subtitle = subtitleParts.join(" · ");
-  const metaText = `${it.lokasi ? `${it.lokasi} · ` : ""}${format(new Date(it.tarikhPergi), "dd MMM")} – ${format(
-    new Date(it.tarikhKembali),
-    "dd MMM",
-  )}`;
+  const pergi = new Date(it.tarikhPergi);
+  const kembali = new Date(it.tarikhKembali);
+  const sameDay = format(pergi, "yyyy-MM-dd") === format(kembali, "yyyy-MM-dd");
+  const tarikh = sameDay
+    ? format(pergi, "dd MMM yyyy")
+    : `${format(pergi, "dd MMM")} – ${format(kembali, "dd MMM yyyy")}`;
+  const masa = `${format(pergi, "HH:mm")} – ${format(kembali, "HH:mm")}`;
+  const metaText = `${it.lokasi ? `${it.lokasi} · ` : ""}${tarikh} · ${masa}`;
 
   return (
     <CompactExpandableCard
@@ -57,6 +68,32 @@ function PergerakanCard({
       subtitle={subtitle || undefined}
       tone="pergerakan"
       stripeColor={st.border}
+      className={isMine ? "border-brand-300 ring-1 ring-brand-100" : undefined}
+      trailing={
+        isMine ? (
+          <Link
+            href={`/my/${it.id}/edit`}
+            className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-slate-200 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+            aria-label="Edit rekod"
+            data-no-toggle
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+            </svg>
+          </Link>
+        ) : undefined
+      }
       footer={
         isMine ? (
           <MinePergerakanCardActions

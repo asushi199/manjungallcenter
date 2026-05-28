@@ -95,10 +95,7 @@
   }
 
   .opr-print-body {
-    display: grid;
-    grid-template-columns: 1fr 32%;
-    gap: 3mm;
-    align-items: start;
+    display: block;
   }
 
   .opr-print-section-title {
@@ -114,15 +111,35 @@
     line-height: 1.2;
   }
 
-  .opr-print-photo-stack {
-    display: flex;
-    flex-direction: column;
+  .opr-print-rich p + p {
+    margin-top: 1.2mm;
+  }
+
+  .opr-print-rich ul {
+    margin-top: 1.2mm;
+    padding-left: 4mm;
+    list-style: disc;
+  }
+
+  .opr-print-rich li {
+    padding-left: 0.4mm;
+  }
+
+  .opr-print-photos {
+    margin-top: 2mm;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .opr-print-photo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 2mm;
   }
 
   .opr-print-photo-frame {
     width: 100%;
-    height: 32mm;
+    height: 24mm;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -132,12 +149,9 @@
     background: #f8fafc;
   }
 
-  /* Kekalkan nisbah aspek — elak gambar kelihatan "pipih" */
   .opr-print-photo {
-    max-width: 100%;
-    max-height: 100%;
-    width: auto;
-    height: auto;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
     object-position: center;
   }
@@ -330,15 +344,7 @@ body.bilik-print-page .app-site-footer {
 }
 
 .opr-print-body {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-}
-
-@media (min-width: 640px) {
-  .opr-print-body {
-    grid-template-columns: 1fr 32%;
-  }
+  display: block;
 }
 
 .opr-print-section-title {
@@ -349,16 +355,33 @@ body.bilik-print-page .app-site-footer {
   @apply text-xs leading-snug text-slate-800;
 }
 
-.opr-print-photo-stack {
-  @apply flex flex-col gap-1.5;
+.opr-print-rich p + p {
+  @apply mt-2;
+}
+
+.opr-print-rich ul {
+  @apply mt-2 pl-4 list-disc;
+}
+
+.opr-print-rich li {
+  padding-left: 0.15rem;
+}
+
+.opr-print-photos {
+  @apply mt-4;
+}
+
+.opr-print-photo-grid {
+  @apply grid grid-cols-2 gap-2;
 }
 
 .opr-print-photo-frame {
-  @apply w-full h-28 flex items-center justify-center overflow-hidden border rounded bg-slate-50;
+  @apply w-full flex items-center justify-center overflow-hidden border rounded bg-slate-50;
+  height: 120px;
 }
 
 .opr-print-photo {
-  @apply max-w-full max-h-full w-auto h-auto object-contain;
+  @apply w-full h-full object-contain;
 }
 
 /* Pratonton skrin — jadual tempahan bilik */

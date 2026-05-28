@@ -99,6 +99,8 @@ export default function LaporanOprClient({
   const [sortKey, setSortKey] = useState<SortKey>("tarikh");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [visibleCount, setVisibleCount] = useState<Record<string, number>>({});
+  const PAGE_SIZE = 20;
 
   const filtered = useMemo(() => {
     const q = current.q.trim().toLowerCase();
@@ -161,10 +163,24 @@ export default function LaporanOprClient({
       }
       return next;
     });
+    // Init pagination count per sektor.
+    setVisibleCount((prev) => {
+      const next = { ...prev };
+      for (const g of groups) {
+        const key = g.sektorId != null ? String(g.sektorId) : "_none";
+        if (!(key in next)) next[key] = PAGE_SIZE;
+      }
+      return next;
+    });
   }, [groups]);
 
   function toggleGroup(key: string) {
-    setCollapsed((m) => ({ ...m, [key]: !(m[key] ?? true) }));
+    setCollapsed((m) => {
+      const nextCollapsed = !(m[key] ?? true);
+      return { ...m, [key]: nextCollapsed };
+    });
+    // When opening, start at first page.
+    setVisibleCount((m) => ({ ...m, [key]: PAGE_SIZE }));
   }
 
   function isGroupCollapsed(key: string) {
@@ -180,6 +196,16 @@ export default function LaporanOprClient({
       }
       return next;
     });
+    if (!nextCollapsed) {
+      setVisibleCount((m) => {
+        const next = { ...m };
+        for (const g of groups) {
+          const key = g.sektorId != null ? String(g.sektorId) : "_none";
+          next[key] = PAGE_SIZE;
+        }
+        return next;
+      });
+    }
   }
 
   function replaceParams(
@@ -462,6 +488,8 @@ export default function LaporanOprClient({
             const st = sektorStyle(g.sektorCode);
             const key = g.sektorId != null ? String(g.sektorId) : "_none";
             const isCollapsed = isGroupCollapsed(key);
+            const total = g.items.length;
+            const shown = Math.min(visibleCount[key] ?? PAGE_SIZE, total);
             return (
               <section key={g.sektorId ?? "_none"} className="space-y-2">
                 <button
@@ -481,7 +509,7 @@ export default function LaporanOprClient({
                         ) : null}
                       </h2>
                       <span className="text-xs font-medium text-slate-600">
-                        {g.items.length} laporan
+                        {total} laporan{!isCollapsed ? ` · ${shown}/${total}` : ""}
                       </span>
                     </div>
                     <span className="text-xs font-semibold text-slate-600" aria-hidden>
@@ -494,7 +522,7 @@ export default function LaporanOprClient({
                   <>
                   {/* Unified: card list for all breakpoints (match Utama). */}
                   <div className="space-y-2">
-                    {g.items.map((r) => {
+                    {g.items.slice(0, shown).map((r) => {
                       const st = sektorStyle(r.sektorCode);
                       const metaText = `${r.lokasi ? `${r.lokasi} · ` : ""}${formatDate(r.tarikhPergi)}${
                         r.tarikhKembali.slice(0, 10) !== r.tarikhPergi.slice(0, 10)
@@ -513,9 +541,9 @@ export default function LaporanOprClient({
                               href={`/my/${r.pergerakanId}/opr/print`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-slate-50 text-slate-700 border-slate-200 shrink-0"
+                              className="text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 bg-brand-600 text-white border-brand-600 hover:bg-brand-700 hover:border-brand-700"
                             >
-                              Cetak
+                              OPR
                             </Link>
                           }
                         >
@@ -525,6 +553,17 @@ export default function LaporanOprClient({
                       );
                     })}
                   </div>
+                  {shown < total ? (
+                    <div className="flex justify-center pt-1">
+                      <button
+                        type="button"
+                        className="btn-secondary text-sm"
+                        onClick={() => setVisibleCount((m) => ({ ...m, [key]: shown + PAGE_SIZE }))}
+                      >
+                        Muat lagi
+                      </button>
+                    </div>
+                  ) : null}
                   </>
                 )}
               </section>

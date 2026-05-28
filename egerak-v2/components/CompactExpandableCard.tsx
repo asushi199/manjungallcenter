@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 const CardExpandContext = createContext(false);
@@ -39,6 +39,7 @@ export default function CompactExpandableCard({
   const bodyRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
+  const isToggleable = hasOverflow;
 
   useEffect(() => {
     const root = bodyRef.current;
@@ -66,13 +67,59 @@ export default function CompactExpandableCard({
     };
   }, [expanded, title, subtitle, children, footer, trailing]);
 
+  const hintChevron = useMemo(() => {
+    if (!isToggleable) return null;
+    return (
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+        className={cn("text-slate-400 transition-transform", expanded ? "rotate-180" : "rotate-0")}
+      >
+        <path d="m6 9 6 6 6-6" />
+      </svg>
+    );
+  }, [expanded, isToggleable]);
+
+  function shouldIgnoreToggle(target: EventTarget | null) {
+    const el = target as HTMLElement | null;
+    if (!el) return true;
+    return Boolean(
+      el.closest(
+        "button,a,input,select,textarea,label,[data-no-toggle]",
+      ),
+    );
+  }
+
   return (
     <CardExpandContext.Provider value={expanded}>
       <div
         className={cn(
           "rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden",
+          isToggleable && "cursor-pointer hover:shadow-md hover:border-slate-300 transition-shadow",
           className,
         )}
+        role={isToggleable ? "button" : undefined}
+        tabIndex={isToggleable ? 0 : undefined}
+        aria-expanded={isToggleable ? expanded : undefined}
+        onClick={(e) => {
+          if (!isToggleable) return;
+          if (shouldIgnoreToggle(e.target)) return;
+          setExpanded((v) => !v);
+        }}
+        onKeyDown={(e) => {
+          if (!isToggleable) return;
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setExpanded((v) => !v);
+          }
+        }}
       >
         <div className="flex">
           <div
@@ -90,7 +137,7 @@ export default function CompactExpandableCard({
                   </div>
                 ) : null}
               </div>
-              <div className="flex flex-wrap items-center gap-1 shrink-0 justify-end">
+              <div className="flex items-center gap-1 shrink-0 justify-end">
                 {tone ? (
                   <span
                     className={cn(
@@ -104,6 +151,7 @@ export default function CompactExpandableCard({
                     </span>
                 ) : null}
                 {trailing}
+                {hintChevron ? <span className="ml-0.5">{hintChevron}</span> : null}
               </div>
             </div>
             {children ? (
@@ -111,16 +159,10 @@ export default function CompactExpandableCard({
                 {children}
               </div>
             ) : null}
-            {footer ? <div className="mt-2">{footer}</div> : null}
-            {hasOverflow ? (
-              <button
-                type="button"
-                className="mt-2 w-full text-center text-[11px] font-semibold text-brand-700 hover:text-brand-800 py-1 rounded-md hover:bg-slate-50 transition-colors"
-                onClick={() => setExpanded((v) => !v)}
-                aria-expanded={expanded}
-              >
-                {expanded ? "Tutup ▴" : "Butiran penuh ▾"}
-              </button>
+            {footer ? (
+              <div className="mt-2" data-no-toggle>
+                {footer}
+              </div>
             ) : null}
           </div>
         </div>
