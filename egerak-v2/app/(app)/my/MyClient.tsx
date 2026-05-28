@@ -75,6 +75,10 @@ function defaultOpenMonths(): Set<string> {
   return new Set([current, prev]);
 }
 
+function defaultOpenYears(): Set<string> {
+  return new Set([format(new Date(), "yyyy")]);
+}
+
 export default function MyClient({ items }: { items: MyItem[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -83,7 +87,8 @@ export default function MyClient({ items }: { items: MyItem[] }) {
   const [oprFilter, setOprFilter] = useState<OprTodoFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("tarikh");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [openMonths, setOpenMonths] = useState<Set<string>>(() => defaultOpenMonths());
+  const [openYears, setOpenYears] = useState<Set<string>>(() => defaultOpenYears());
+  const [openMonths, setOpenMonths] = useState<Set<string>>(() => new Set());
 
   const oprCounts = useMemo(() => countByOprCategory(items), [items]);
 
@@ -111,14 +116,23 @@ export default function MyClient({ items }: { items: MyItem[] }) {
   }, [filtered, sortKey, sortDir]);
 
   const grouped = useMemo(() => {
-    const map = new Map<string, MyItem[]>();
+    const byYear = new Map<string, Map<string, MyItem[]>>();
     for (const it of sorted) {
+      const y = format(new Date(it.tarikhPergi), "yyyy");
       const ym = format(new Date(it.tarikhPergi), "yyyy-MM");
-      const list = map.get(ym) ?? [];
+      const yearMap = byYear.get(y) ?? new Map<string, MyItem[]>();
+      const list = yearMap.get(ym) ?? [];
       list.push(it);
-      map.set(ym, list);
+      yearMap.set(ym, list);
+      byYear.set(y, yearMap);
     }
-    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+
+    const years = [...byYear.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+    return years.map(([y, monthsMap]) => {
+      const months = [...monthsMap.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+      const total = months.reduce((acc, [, list]) => acc + list.length, 0);
+      return { year: y, months, total };
+    });
   }, [sorted]);
 
   const monthSummaries = useMemo(() => {
@@ -135,6 +149,15 @@ export default function MyClient({ items }: { items: MyItem[] }) {
     }
     return map;
   }, [items]);
+
+  function toggleYear(y: string) {
+    setOpenYears((prev) => {
+      const next = new Set(prev);
+      if (next.has(y)) next.delete(y);
+      else next.add(y);
+      return next;
+    });
+  }
 
   function toggleMonth(ym: string) {
     setOpenMonths((prev) => {
@@ -258,45 +281,82 @@ export default function MyClient({ items }: { items: MyItem[] }) {
         </div>
       ) : (
         <div className="space-y-3">
-          {grouped.map(([ym, groupItems]) => {
-            const open = openMonths.has(ym);
+          {grouped.map((g) => {
+            const yOpen = openYears.has(g.year);
             return (
-              <section key={ym} className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+              <section
+                key={g.year}
+                className="rounded-lg border border-slate-200 bg-white overflow-hidden"
+              >
                 <button
                   type="button"
                   className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-slate-50 transition-colors"
-                  onClick={() => toggleMonth(ym)}
-                  aria-expanded={open}
+                  onClick={() => toggleYear(g.year)}
+                  aria-expanded={yOpen}
                 >
-                  <span
-                    className="text-slate-400 text-xs w-4 shrink-0"
-                    aria-hidden
-                  >
-                    {open ? "▼" : "▶"}
+                  <span className="text-slate-400 text-xs w-4 shrink-0" aria-hidden>
+                    {yOpen ? "▼" : "▶"}
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                      <h2 className="text-sm font-semibold text-slate-800">{monthLabel(ym)}</h2>
-                      <span className="text-xs text-slate-500">
-                        {groupItems.length} rekod
-                      </span>
+                      <h2 className="text-sm font-semibold text-slate-800">{g.year}</h2>
+                      <span className="text-xs text-slate-500">{g.total} rekod</span>
                     </div>
                     <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                      {monthSummaries.get(ym)}
+                      {yOpen ? "Klik bulan untuk lihat rekod." : `${g.months.length} bulan`}
                     </p>
                   </div>
                 </button>
-                {open ? (
-                  <div className="px-3 pb-3 space-y-2 border-t border-slate-100 pt-2">
-                    {groupItems.map((it) => (
-                      <PergerakanCard
-                        key={it.id}
-                        variant="mine"
-                        item={it}
-                        selected={selected.has(it.id)}
-                        onToggleSelect={() => toggle(it.id)}
-                      />
-                    ))}
+
+                {yOpen ? (
+                  <div className="border-t border-slate-100">
+                    {g.months.map(([ym, groupItems], idx) => {
+                      const open = openMonths.has(ym);
+                      return (
+                        <div
+                          key={ym}
+                          className={cn(idx !== 0 && "border-t border-slate-100")}
+                        >
+                          <button
+                            type="button"
+                            className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-slate-50 transition-colors"
+                            onClick={() => toggleMonth(ym)}
+                            aria-expanded={open}
+                          >
+                            <span className="text-slate-400 text-xs w-4 shrink-0" aria-hidden>
+                              {open ? "▼" : "▶"}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                                <h3 className="text-sm font-semibold text-slate-800">
+                                  {monthLabel(ym)}
+                                </h3>
+                                <span className="text-xs text-slate-500">
+                                  {groupItems.length} rekod
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                                {monthSummaries.get(ym)}
+                              </p>
+                            </div>
+                          </button>
+
+                          {open ? (
+                            <div className="px-3 pb-3 space-y-2 pt-2">
+                              {groupItems.map((it) => (
+                                <PergerakanCard
+                                  key={it.id}
+                                  variant="mine"
+                                  item={it}
+                                  selected={selected.has(it.id)}
+                                  onToggleSelect={() => toggle(it.id)}
+                                />
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : null}
               </section>
