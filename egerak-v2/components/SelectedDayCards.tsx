@@ -135,8 +135,8 @@ export default function SelectedDayCards({
 
   return (
     <div className="space-y-2 max-w-5xl mx-auto">
-      <div className="card p-3">
-        <div className="text-xs uppercase tracking-wide text-slate-500">Butiran hari</div>
+      <div className="px-1">
+        <div className="text-[11px] uppercase tracking-wide text-slate-500">Butiran hari</div>
         <div className="font-semibold text-slate-900">{dayTitle(day)}</div>
       </div>
 

@@ -6,13 +6,15 @@ import { useRouter } from "next/navigation";
 import {
   saveUserCalendarSettings,
   type CalendarWeekStartsOn,
+  type CalendarDefaultView,
 } from "@/lib/actions/calendar-settings";
 
 type Props = {
   weekStartsOn: CalendarWeekStartsOn;
+  defaultView: CalendarDefaultView;
 };
 
-export default function CalendarSettingsPanel({ weekStartsOn }: Props) {
+export default function CalendarSettingsPanel({ weekStartsOn, defaultView }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
@@ -23,6 +25,7 @@ export default function CalendarSettingsPanel({ weekStartsOn }: Props) {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
   const [nextWeekStartsOn, setNextWeekStartsOn] = useState<CalendarWeekStartsOn>(weekStartsOn);
+  const [nextDefaultView, setNextDefaultView] = useState<CalendarDefaultView>(defaultView);
 
   useEffect(() => {
     if (!open) return;
@@ -69,15 +72,20 @@ export default function CalendarSettingsPanel({ weekStartsOn }: Props) {
     setNextWeekStartsOn(weekStartsOn);
   }, [weekStartsOn]);
 
+  useEffect(() => {
+    setNextDefaultView(defaultView);
+  }, [defaultView]);
+
   const changed = useMemo(() => {
-    return nextWeekStartsOn !== weekStartsOn;
-  }, [nextWeekStartsOn, weekStartsOn]);
+    return nextWeekStartsOn !== weekStartsOn || nextDefaultView !== defaultView;
+  }, [nextWeekStartsOn, weekStartsOn, nextDefaultView, defaultView]);
 
   function onSave() {
     if (!changed) return;
     startTransition(async () => {
       const res = await saveUserCalendarSettings({
         weekStartsOn: nextWeekStartsOn,
+        defaultView: nextDefaultView,
       });
       if (!res.ok) {
         alert(res.error ?? "Gagal simpan tetapan");
@@ -149,6 +157,19 @@ export default function CalendarSettingsPanel({ weekStartsOn }: Props) {
               >
                 <option value="mon">Isnin (Mon)</option>
                 <option value="sun">Ahad (Sun)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="label text-xs text-slate-700">Paparan lalai</label>
+              <select
+                className="input"
+                value={nextDefaultView}
+                disabled={pending}
+                onChange={(e) => setNextDefaultView(e.target.value as CalendarDefaultView)}
+              >
+                <option value="month">Bulan</option>
+                <option value="week">Minggu</option>
               </select>
             </div>
 

@@ -15,6 +15,7 @@ import SektorFilterDropdown from "@/components/SektorFilterDropdown";
 import type { SektorOption } from "@/components/FilterBar";
 import type { CalendarItem } from "@/components/MonthCalendar";
 import SelectedDayCards from "@/components/SelectedDayCards";
+import type { CalendarDefaultView } from "@/lib/actions/calendar-settings";
 
 type DotKind = "myToday" | "myFuture" | "myPast" | "anyPergerakan" | "holidayOnly" | "none";
 type HolidayStripe = "none" | "public" | "school";
@@ -50,6 +51,7 @@ export default function MonthWeekCalendar({
   items,
   highlightDate,
   weekStartsOn,
+  defaultView,
   currentUserId,
   sektors,
   sektorIds,
@@ -64,6 +66,7 @@ export default function MonthWeekCalendar({
   items: CalendarItem[];
   highlightDate?: string;
   weekStartsOn?: CalendarWeekStartsOn;
+  defaultView?: CalendarDefaultView;
   currentUserId: number;
   sektors: SektorOption[];
   sektorIds: number[];
@@ -111,7 +114,7 @@ export default function MonthWeekCalendar({
   }, [highlightDate, month, todayYmd]);
 
   const [selectedDay, setSelectedDay] = useState<string>(initialSelectedDay);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => (defaultView ?? "month") === "week");
   const dragStartY = useRef<number | null>(null);
   const syncingUrlRef = useRef(false);
 
@@ -119,6 +122,12 @@ export default function MonthWeekCalendar({
   useEffect(() => {
     setSelectedDay(initialSelectedDay);
   }, [initialSelectedDay]);
+
+  // If user changes default view in settings, apply it.
+  useEffect(() => {
+    if (!defaultView) return;
+    setCollapsed(defaultView === "week");
+  }, [defaultView]);
 
   // Floating "back to calendar" button: appear when calendar scrolls away.
   useEffect(() => {
@@ -361,8 +370,8 @@ export default function MonthWeekCalendar({
         <div className="border-t bg-white py-1.5 flex items-center justify-center">
           <button
             type="button"
-            className="h-6 w-16 rounded-full bg-slate-200 hover:bg-slate-300 transition"
-            aria-label={collapsed ? "Buka paparan bulan" : "Tutup kepada paparan minggu"}
+            className="h-6 w-20 rounded-full bg-slate-200 hover:bg-slate-300 transition text-[11px] font-semibold text-slate-700"
+            aria-label={collapsed ? "Tukar ke paparan bulan" : "Tukar ke paparan minggu"}
             onClick={() => setCollapsed((v) => !v)}
             onPointerDown={(e) => {
               dragStartY.current = e.clientY;
@@ -375,7 +384,9 @@ export default function MonthWeekCalendar({
               if (delta <= -18) setCollapsed(true);
               else if (delta >= 18) setCollapsed(false);
             }}
-          />
+          >
+            {collapsed ? "Bulan" : "Minggu"}
+          </button>
         </div>
       </div>
 

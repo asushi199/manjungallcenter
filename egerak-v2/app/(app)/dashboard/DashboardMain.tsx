@@ -161,9 +161,13 @@ export default async function DashboardMain({
           highlightDate={date}
           currentUserId={currentUserId}
           toolbarLeading={
-            <CalendarSettingsPanel weekStartsOn={calendarSettings.weekStartsOn as CalendarWeekStartsOn} />
+            <CalendarSettingsPanel
+              weekStartsOn={calendarSettings.weekStartsOn as CalendarWeekStartsOn}
+              defaultView={calendarSettings.defaultView}
+            />
           }
           weekStartsOn={calendarSettings.weekStartsOn as CalendarWeekStartsOn}
+          defaultView={calendarSettings.defaultView}
           sektors={filterSektors}
           sektorIds={sektorIds}
           publicHolidays={holidayProps.publicLabels}

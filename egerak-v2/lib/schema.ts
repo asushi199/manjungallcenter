@@ -54,6 +54,7 @@ export const users = pgTable(
     /** Tetapan paparan kalendar (wujud untuk semua peranan / pengguna). */
     calendarWeekStartsOn: text("calendar_week_starts_on").notNull().default("mon"),
     calendarGridOrientation: text("calendar_grid_orientation").notNull().default("horizontal"),
+    calendarDefaultView: text("calendar_default_view").notNull().default("month"),
     calendarColorPreset: text("calendar_color_preset").notNull().default("default"),
     aktif: boolean("aktif").notNull().default(true),
     mustChangePassword: boolean("must_change_password").notNull().default(true),
