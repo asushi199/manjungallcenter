@@ -115,10 +115,18 @@
     margin-top: 1.2mm;
   }
 
-  .opr-print-rich ul {
+  .opr-print-rich ul,
+  .opr-print-rich ol {
     margin-top: 1.2mm;
     padding-left: 4mm;
+  }
+
+  .opr-print-rich ul {
     list-style: disc;
+  }
+
+  .opr-print-rich ol {
+    list-style: decimal;
   }
 
   .opr-print-rich li {
@@ -365,6 +373,10 @@ body.bilik-print-page .app-site-footer {
 
 .opr-print-rich ul {
   @apply mt-2 pl-4 list-disc;
+}
+
+.opr-print-rich ol {
+  @apply mt-2 pl-4 list-decimal;
 }
 
 .opr-print-rich li {
