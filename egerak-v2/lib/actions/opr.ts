@@ -255,7 +255,9 @@ export async function generateOprDraft(
     detail: { pergerakanId },
   });
 
-  revalidatePath(`/my/${pergerakanId}/opr`);
+  // Tiada revalidatePath di sini: halaman OPR sudah force-dynamic dan klien
+  // mengemas kini borang terus dgn draf. Revalidate mencetus refresh RSC yang
+  // kadangkala gagal ("Server Components render") walaupun Gemini berjaya.
   return {
     ...draft,
     disclaimer: notice,
