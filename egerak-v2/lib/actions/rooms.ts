@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { rooms, roomBookings, auditLog, users } from "@/lib/schema";
 import { requireUser, requireAdmin } from "@/lib/rbac";
+import { formatTitleCase } from "@/lib/format-display-text";
 
 const bookSchema = z
   .object({
@@ -65,8 +66,8 @@ export async function bookRoom(input: unknown): Promise<BookResult> {
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak sah" };
   }
-  const { roomId, tarikh, title, pergerakanId, fullDay } = parsed.data;
-  const trimmedTitle = title.trim();
+  const { roomId, tarikh, pergerakanId, fullDay } = parsed.data;
+  const trimmedTitle = formatTitleCase(parsed.data.title).slice(0, 200);
   const userId = Number(user.id);
   const slots: Array<"AM" | "PM"> = fullDay ? ["AM", "PM"] : [parsed.data.slot!];
 

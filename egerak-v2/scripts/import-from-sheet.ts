@@ -11,6 +11,7 @@ import {
   mapJenis,
   normalizeSektorCode,
 } from "../lib/csv-parse";
+import { formatTitleCase } from "../lib/format-display-text";
 
 /**
  * Import CSV dari eksport Pergerakan / Rancangan sheet lama.
@@ -67,8 +68,8 @@ async function main() {
       userId: user.id,
       sektorId: sektor?.id ?? user.sektorId ?? null,
       jenis: mapJenis(r.jenis ?? ""),
-      urusan: r.urusan ?? "",
-      lokasi: r.lokasi ?? "",
+      urusan: formatTitleCase(r.urusan ?? ""),
+      lokasi: formatTitleCase(r.lokasi ?? ""),
       tarikhPergi: pergi,
       tarikhKembali: kembali,
       aktif: true,

@@ -6,6 +6,7 @@ import { TZ, ymd } from "@/lib/dates";
 import { SLOT_LABEL, formatTarikhBm } from "@/lib/room-slots";
 import { roomBookings, rooms, auditLog } from "@/lib/schema";
 import type * as schema from "@/lib/schema";
+import { formatTitleCase } from "@/lib/format-display-text";
 
 type Db = PostgresJsDatabase<typeof schema>;
 
@@ -261,7 +262,7 @@ export async function syncRoomBookingsFromPergerakan(
       slot: s.slot,
       userId: input.userId,
       pergerakanId: input.pergerakanId,
-      title: input.title.trim().slice(0, 200),
+      title: formatTitleCase(input.title).slice(0, 200),
       status: "BOOKED" as const,
     })),
   );
