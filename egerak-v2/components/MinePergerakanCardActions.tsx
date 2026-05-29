@@ -10,12 +10,15 @@ type Props = {
   pergerakanId: number;
   jenis: "Pergerakan" | "Bercuti";
   oprStatus?: OprStatus | null;
+  /** Halaman asal — supaya OPR boleh patah balik ke sini (lalai /my). */
+  backTo?: string;
 };
 
 export default function MinePergerakanCardActions({
   pergerakanId,
   jenis,
   oprStatus,
+  backTo = "/my",
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -23,6 +26,8 @@ export default function MinePergerakanCardActions({
   if (jenis === "Bercuti") {
     return null;
   }
+
+  const oprHref = `/my/${pergerakanId}/opr?from=${encodeURIComponent(backTo)}`;
 
   const showPerlu = needsOprAction(jenis, oprStatus);
   const isTiada = oprStatus === "TIADA";
@@ -56,7 +61,7 @@ export default function MinePergerakanCardActions({
       {showPerlu ? (
         <>
           <Link
-            href={`/my/${pergerakanId}/opr`}
+            href={oprHref}
             className="btn-primary text-[11px] py-1 px-2.5 min-h-0"
           >
             Isi OPR
@@ -75,7 +80,7 @@ export default function MinePergerakanCardActions({
       {isTiada ? (
         <>
           <Link
-            href={`/my/${pergerakanId}/opr`}
+            href={oprHref}
             className="btn-secondary text-[11px] py-1 px-2.5 min-h-0"
           >
             OPR — Tiada
@@ -93,7 +98,7 @@ export default function MinePergerakanCardActions({
 
       {isSiap ? (
         <Link
-          href={`/my/${pergerakanId}/opr`}
+          href={oprHref}
           className="btn-secondary text-[11px] py-1 px-2.5 min-h-0"
         >
           Lihat OPR

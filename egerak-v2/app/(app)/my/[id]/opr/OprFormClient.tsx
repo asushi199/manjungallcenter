@@ -16,6 +16,10 @@ import { oprStatusBadge } from "@/lib/opr-status";
 
 type Props = {
   pergerakanId: number;
+  /** Ke mana selepas selesai (lalai /my). */
+  returnTo?: string;
+  /** Label untuk butang patah balik. */
+  returnLabel?: string;
   sektors: Array<{ id: number; code: string; name: string }>;
   initial: {
     sektorOverrideId: number | null;
@@ -39,6 +43,8 @@ type Props = {
 
 export default function OprFormClient({
   pergerakanId,
+  returnTo = "/my",
+  returnLabel = "Pergerakan Saya",
   sektors,
   initial,
   photos: initialPhotos,
@@ -217,7 +223,7 @@ export default function OprFormClient({
       {isSiap && (
         <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
           <strong>OPR telah ditandakan siap.</strong> Laporan dianggap muktamad untuk rekod ini. Anda
-          masih boleh edit dan cetak semula jika perlu; gunakan &quot;Simpan Draf&quot; tidak menukar
+          masih boleh edit dan cetak semula jika perlu; &quot;Simpan Draf&quot; tidak menukar
           status kecuali anda ubah kandungan kemudian tekan semula &quot;Tandakan Siap&quot;.
         </div>
       )}
@@ -362,6 +368,29 @@ export default function OprFormClient({
               {isSiap ? "Sudah Siap" : "Tandakan Siap"}
             </button>
           </div>
+
+          {isSiap && (
+            <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-3 flex flex-wrap items-center gap-2">
+              <span className="text-sm text-emerald-900 font-medium mr-auto">
+                Laporan siap — seterusnya?
+              </span>
+              <Link
+                href={`/my/${pergerakanId}/opr/print`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary text-sm"
+              >
+                Cetak / Pratonton
+              </Link>
+              <button
+                type="button"
+                className="btn-secondary text-sm"
+                onClick={() => router.push(returnTo)}
+              >
+                ← Kembali ke {returnLabel}
+              </button>
+            </div>
+          )}
         </>
       ) : null}
     </div>

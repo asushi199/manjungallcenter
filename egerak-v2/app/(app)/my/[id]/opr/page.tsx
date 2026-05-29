@@ -13,11 +13,22 @@ export const dynamic = "force-dynamic";
 /** Vercel Pro: hingga 60s; Hobby kekal ~10s. Kurangkan 504 jika Gemini perlahan. */
 export const maxDuration = 30;
 
-export default async function OprPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function OprPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
+}) {
   await requireUser();
   const { id } = await params;
   const pergerakanId = Number(id);
   if (!Number.isFinite(pergerakanId)) notFound();
+
+  // Hanya benarkan laluan dalaman (elak open redirect).
+  const { from } = await searchParams;
+  const returnTo = from && from.startsWith("/") && !from.startsWith("//") ? from : "/my";
+  const returnLabel = returnTo.startsWith("/dashboard") ? "Utama" : "Pergerakan Saya";
 
   let data;
   try {
@@ -35,8 +46,8 @@ export default async function OprPage({ params }: { params: Promise<{ id: string
     <div className="mx-auto max-w-3xl p-4 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <Link href="/my" className="text-sm text-brand-600 hover:underline">
-            ← Pergerakan Saya
+          <Link href={returnTo} className="text-sm text-brand-600 hover:underline">
+            ← {returnLabel}
           </Link>
           <div className="flex flex-wrap items-center gap-2 mt-1">
             <h1 className="text-xl font-semibold">OPR — {p.urusan}</h1>
@@ -59,6 +70,8 @@ export default async function OprPage({ params }: { params: Promise<{ id: string
 
       <OprFormClient
         pergerakanId={pergerakanId}
+        returnTo={returnTo}
+        returnLabel={returnLabel}
         sektors={sektors.map((s) => ({ id: s.id, code: s.code, name: s.name }))}
         initial={{
           sektorOverrideId: o.sektorOverrideId,

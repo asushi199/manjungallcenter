@@ -234,6 +234,17 @@ export default function MonthWeekCalendar({
     });
   }
 
+  function goToToday() {
+    if (todayYmd.startsWith(month)) {
+      setSelectedDay(todayYmd);
+    } else {
+      patchDashboardParams((next) => {
+        next.set("month", todayYmd.slice(0, 7));
+        next.set("date", todayYmd);
+      });
+    }
+  }
+
   const selectedItems = buckets.get(selectedDay) ?? [];
   const selectedPublicHoliday = publicHolidayDetails?.[selectedDay];
   const selectedSchoolHoliday = schoolHolidayDetails?.[selectedDay];
@@ -392,6 +403,8 @@ export default function MonthWeekCalendar({
 
       <SelectedDayCards
         day={selectedDay}
+        today={todayYmd}
+        onGoToday={goToToday}
         items={selectedItems}
         publicHoliday={selectedPublicHoliday}
         schoolHoliday={selectedSchoolHoliday}

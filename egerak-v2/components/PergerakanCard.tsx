@@ -123,6 +123,7 @@ export default function PergerakanCard({
             pergerakanId={item.id}
             jenis={item.jenis}
             oprStatus={item.oprStatus}
+            backTo="/my"
           />
         ) : undefined
       }
