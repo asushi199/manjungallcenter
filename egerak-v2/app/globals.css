@@ -125,6 +125,10 @@
     padding-left: 0.4mm;
   }
 
+  .opr-print-rich strong {
+    font-weight: 700;
+  }
+
   .opr-print-photos {
     margin-top: 2mm;
     break-inside: avoid;
@@ -365,6 +369,10 @@ body.bilik-print-page .app-site-footer {
 
 .opr-print-rich li {
   padding-left: 0.15rem;
+}
+
+.opr-print-rich strong {
+  font-weight: 700;
 }
 
 .opr-print-photos {

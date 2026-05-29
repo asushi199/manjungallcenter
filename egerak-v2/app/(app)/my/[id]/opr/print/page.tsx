@@ -4,75 +4,10 @@ import { requireUser } from "@/lib/rbac";
 import { formatDateTime } from "@/lib/dates";
 import PpdLogo from "@/components/PpdLogo";
 import { oprPhotoDisplayUrl } from "@/lib/opr-photo-url";
+import OprRichText from "@/components/OprRichText";
 import PrintToolbar from "./PrintToolbar";
 
 export const dynamic = "force-dynamic";
-
-type TextBlock =
-  | { kind: "p"; text: string }
-  | { kind: "ul"; items: string[] };
-
-function splitIntoBlocks(raw: string | null | undefined): TextBlock[] {
-  const lines = (raw ?? "").replace(/\r\n/g, "\n").split("\n");
-  const blocks: TextBlock[] = [];
-
-  let cur: string[] = [];
-  const flush = () => {
-    if (cur.length === 0) return;
-    const nonEmpty = cur.join("\n").trimEnd();
-    if (!nonEmpty.trim()) {
-      cur = [];
-      return;
-    }
-
-    const bulletRe = /^\s*(?:-|\u2022)\s+/;
-    const isAllBullets = cur.every((l) => !l.trim() || bulletRe.test(l));
-    if (isAllBullets) {
-      const items = cur
-        .map((l) => l.replace(bulletRe, "").trim())
-        .filter(Boolean);
-      if (items.length) blocks.push({ kind: "ul", items });
-    } else {
-      blocks.push({ kind: "p", text: nonEmpty });
-    }
-    cur = [];
-  };
-
-  for (const l of lines) {
-    if (l.trim() === "") {
-      flush();
-      continue;
-    }
-    cur.push(l);
-  }
-  flush();
-  return blocks;
-}
-
-function OprPrintText({ value }: { value: string | null | undefined }) {
-  const blocks = splitIntoBlocks(value);
-  if (blocks.length === 0) return <span>—</span>;
-  return (
-    <div className="opr-print-rich">
-      {blocks.map((b, idx) => {
-        if (b.kind === "ul") {
-          return (
-            <ul key={`ul-${idx}`}>
-              {b.items.map((it, i) => (
-                <li key={`li-${idx}-${i}`}>{it}</li>
-              ))}
-            </ul>
-          );
-        }
-        return (
-          <p key={`p-${idx}`} className="whitespace-pre-wrap">
-            {b.text}
-          </p>
-        );
-      })}
-    </div>
-  );
-}
 
 export default async function OprPrintPage({ params }: { params: Promise<{ id: string }> }) {
   await requireUser();
@@ -139,19 +74,19 @@ export default async function OprPrintPage({ params }: { params: Promise<{ id: s
             <section>
               <h2 className="opr-print-section-title">Dapatan</h2>
               <div className="opr-print-section-body">
-                <OprPrintText value={o.dapatan} />
+                <OprRichText value={o.dapatan} />
               </div>
             </section>
             <section>
               <h2 className="opr-print-section-title">Rumusan</h2>
               <div className="opr-print-section-body">
-                <OprPrintText value={o.rumusan} />
+                <OprRichText value={o.rumusan} />
               </div>
             </section>
             <section>
               <h2 className="opr-print-section-title">Refleksi</h2>
               <div className="opr-print-section-body">
-                <OprPrintText value={o.refleksi} />
+                <OprRichText value={o.refleksi} />
               </div>
             </section>
           </div>
