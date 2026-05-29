@@ -114,16 +114,12 @@ function PergerakanCard({
 
 export default function SelectedDayCards({
   day,
-  today,
-  onGoToday,
   items,
   publicHoliday,
   schoolHoliday,
   currentUserId,
 }: {
   day: string;
-  today?: string;
-  onGoToday?: () => void;
   items: CalendarItem[];
   publicHoliday?: HolidayDetail;
   schoolHoliday?: HolidayDetail;
@@ -142,20 +138,9 @@ export default function SelectedDayCards({
 
   return (
     <div className="space-y-2 max-w-5xl mx-auto">
-      <div className="px-1 flex items-end justify-between gap-2">
-        <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-wide text-slate-500">Butiran hari</div>
-          <div className="font-semibold text-slate-900 truncate">{dayTitle(day)}</div>
-        </div>
-        {onGoToday && today && day !== today ? (
-          <button
-            type="button"
-            onClick={onGoToday}
-            className="shrink-0 text-xs font-medium text-brand-600 hover:text-brand-700 hover:underline"
-          >
-            → Hari ini
-          </button>
-        ) : null}
+      <div className="px-1">
+        <div className="text-[11px] uppercase tracking-wide text-slate-500">Butiran hari</div>
+        <div className="font-semibold text-slate-900 truncate">{dayTitle(day)}</div>
       </div>
 
       {!hasAny ? (

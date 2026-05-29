@@ -76,7 +76,7 @@ export async function generateOprWithGemini(input: OprPromptInput): Promise<Gemi
     };
   }
 
-  const model = (process.env.GEMINI_MODEL || "gemini-3.5-flash").trim();
+  const model = (process.env.GEMINI_MODEL || "gemini-2.5-flash").trim();
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
   const res = await fetch(url, {
@@ -87,8 +87,11 @@ export async function generateOprWithGemini(input: OprPromptInput): Promise<Gemi
       contents: [{ parts: [{ text: buildUserPrompt(input) }] }],
       generationConfig: {
         maxOutputTokens: 2048,
-        // Gemini 3.5: jangan set temperature/top_p; LOW = lebih pantas untuk OPR JSON ringkas
-        thinkingConfig: { thinkingLevel: "LOW" },
+        // OPR = penulisan/polish, bukan penaakulan kompleks.
+        // Temperature rendah (0.3) = laras & tepat; thinkingBudget 0 = matikan
+        // "thinking" pada Gemini 2.5 Flash untuk laju & jimat token.
+        temperature: 0.3,
+        thinkingConfig: { thinkingBudget: 0 },
       },
     }),
   });
@@ -104,7 +107,7 @@ export async function generateOprWithGemini(input: OprPromptInput): Promise<Gemi
       return {
         draft: buildFallbackOpr(input),
         notice:
-          `Kuota Gemini untuk model ${model} telah habis / tidak tersedia. Draf asas diisi secara automatik — sila semak & edit. Semak GEMINI_MODEL (lalai gemini-3.5-flash) atau billing di Google AI Studio.`,
+          `Kuota Gemini untuk model ${model} telah habis / tidak tersedia. Draf asas diisi secara automatik — sila semak & edit. Semak GEMINI_MODEL (lalai gemini-2.5-flash) atau billing di Google AI Studio.`,
       };
     }
     throw new Error(`Gemini API: ${detail}`);

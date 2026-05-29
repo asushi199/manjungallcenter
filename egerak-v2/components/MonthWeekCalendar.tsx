@@ -378,7 +378,7 @@ export default function MonthWeekCalendar({
           })}
         </div>
 
-        <div className="border-t bg-white py-1.5 flex items-center justify-center">
+        <div className="border-t bg-white py-1.5 flex items-center justify-center gap-2">
           <button
             type="button"
             className="h-6 w-20 rounded-full bg-slate-200 hover:bg-slate-300 transition text-[11px] font-semibold text-slate-700"
@@ -398,13 +398,20 @@ export default function MonthWeekCalendar({
           >
             {collapsed ? "Bulan" : "Minggu"}
           </button>
+          {selectedDay !== todayYmd ? (
+            <button
+              type="button"
+              className="h-6 px-3 rounded-full bg-brand-600 hover:bg-brand-700 transition text-[11px] font-semibold text-white"
+              onClick={goToToday}
+            >
+              Hari ini
+            </button>
+          ) : null}
         </div>
       </div>
 
       <SelectedDayCards
         day={selectedDay}
-        today={todayYmd}
-        onGoToday={goToToday}
         items={selectedItems}
         publicHoliday={selectedPublicHoliday}
         schoolHoliday={selectedSchoolHoliday}
