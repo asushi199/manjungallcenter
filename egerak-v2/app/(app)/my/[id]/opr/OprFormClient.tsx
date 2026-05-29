@@ -17,7 +17,12 @@ import { buildOprGenerateKey } from "@/lib/opr-generate-lock";
 import { cn } from "@/lib/cn";
 
 function oprMsgTone(msg: string) {
-  if (msg.includes("Gagal") || (msg.includes("Gemini API") && !msg.includes("Kuota"))) {
+  if (
+    msg.includes("Gagal") ||
+    msg.includes("Server Components") ||
+    msg.includes("production builds") ||
+    (msg.includes("Gemini API") && !msg.includes("Kuota"))
+  ) {
     return "bg-red-50 border-red-200 text-red-800";
   }
   if (msg.includes("Kuota") || msg.includes("draf asas")) {
@@ -27,19 +32,23 @@ function oprMsgTone(msg: string) {
 }
 
 function isOprMsgError(msg: string) {
-  return msg.includes("Gagal") || (msg.includes("Gemini API") && !msg.includes("Kuota"));
-}
-
-function isOprMsgNearGenerate(msg: string) {
   return (
-    msg.includes("Dijana") ||
-    msg.includes("Gemini") ||
-    msg.includes("Kuota") ||
-    msg.includes("draf asas") ||
-    msg.includes("Menjana") ||
-    msg.toLowerCase().includes("jana draf")
+    msg.includes("Gagal") ||
+    msg.includes("Server Components") ||
+    msg.includes("production builds") ||
+    (msg.includes("Gemini API") && !msg.includes("Kuota"))
   );
 }
+
+function formatJanaError(e: unknown): string {
+  const raw = e instanceof Error ? e.message : "Gagal jana draf";
+  if (raw.includes("Server Components") || raw.includes("production builds")) {
+    return "Pelayan sibuk atau gangguan rangkaian. Jika Dapatan sudah berisi teks, teruskan edit; jika kosong, cuba Jana sekali lagi.";
+  }
+  return raw;
+}
+
+type FeedbackAnchor = "generate" | "form";
 
 function OprMsgBanner({ msg }: { msg: string }) {
   return (
@@ -103,6 +112,7 @@ export default function OprFormClient({
     initial.aiGenerateInputKey,
   );
   const [isGenerating, setIsGenerating] = useState(false);
+  const [feedbackAnchor, setFeedbackAnchor] = useState<FeedbackAnchor>("form");
   const generateInFlightRef = useRef(false);
 
   const currentGenerateKey = useMemo(
@@ -141,6 +151,7 @@ export default function OprFormClient({
   }, [msg]);
 
   function onSave(markSiap = false) {
+    setFeedbackAnchor("form");
     setMsg(null);
     startTransition(async () => {
       const res = await saveOpr({
@@ -183,6 +194,7 @@ export default function OprFormClient({
 
     generateInFlightRef.current = true;
     setIsGenerating(true);
+    setFeedbackAnchor("generate");
     setMsg(null);
 
     startTransition(async () => {
@@ -205,9 +217,10 @@ export default function OprFormClient({
         }));
         setGeneratedKey(currentGenerateKey);
         setMsg(draft.disclaimer);
-        router.refresh();
+        // Jangan router.refresh() — revalidatePath sudah dalam server action;
+        // refresh RSC kadang gagal di production dan papar ralat "Server Components".
       } catch (e) {
-        setMsg(e instanceof Error ? e.message : "Gagal jana draf");
+        setMsg(formatJanaError(e));
       } finally {
         generateInFlightRef.current = false;
         setIsGenerating(false);
@@ -374,7 +387,7 @@ export default function OprFormClient({
                 Sedang menjana draf AI… biasanya <strong>10–30 saat</strong>. Sila tunggu — jangan
                 tutup halaman atau tekan semula.
               </p>
-            ) : msg && isOprMsgNearGenerate(msg) ? (
+            ) : msg && feedbackAnchor === "generate" ? (
               <OprMsgBanner msg={msg} />
             ) : null}
           </div>
@@ -421,7 +434,7 @@ export default function OprFormClient({
             />
           </div>
 
-          {msg && !isOprMsgNearGenerate(msg) ? <OprMsgBanner msg={msg} /> : null}
+          {msg && feedbackAnchor === "form" ? <OprMsgBanner msg={msg} /> : null}
 
           <div className="flex flex-wrap gap-2 justify-end items-center">
             <button
