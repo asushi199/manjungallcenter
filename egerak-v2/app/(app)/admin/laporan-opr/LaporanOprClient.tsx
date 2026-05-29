@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { SortDir } from "@/components/SortableTh";
 import { formatInTimeZone } from "date-fns-tz";
 import SektorFilterDropdown from "@/components/SektorFilterDropdown";
@@ -101,6 +101,14 @@ export default function LaporanOprClient({
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [visibleCount, setVisibleCount] = useState<Record<string, number>>({});
   const PAGE_SIZE = 20;
+  const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
+
+  function collapseGroupAndScroll(key: string) {
+    setCollapsed((m) => ({ ...m, [key]: true }));
+    requestAnimationFrame(() => {
+      sectionRefs.current.get(key)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
 
   const filtered = useMemo(() => {
     const q = current.q.trim().toLowerCase();
@@ -491,7 +499,14 @@ export default function LaporanOprClient({
             const total = g.items.length;
             const shown = Math.min(visibleCount[key] ?? PAGE_SIZE, total);
             return (
-              <section key={g.sektorId ?? "_none"} className="space-y-2">
+              <section
+                key={g.sektorId ?? "_none"}
+                ref={(el) => {
+                  if (el) sectionRefs.current.set(key, el);
+                  else sectionRefs.current.delete(key);
+                }}
+                className="space-y-2 scroll-mt-20"
+              >
                 <button
                   type="button"
                   className="w-full text-left rounded-md border overflow-hidden bg-white"
@@ -564,6 +579,15 @@ export default function LaporanOprClient({
                       </button>
                     </div>
                   ) : null}
+                  <div className="flex justify-center pt-1">
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-slate-500 hover:text-slate-800 px-3 py-1"
+                      onClick={() => collapseGroupAndScroll(key)}
+                    >
+                      Tutup bahagian ▴
+                    </button>
+                  </div>
                   </>
                 )}
               </section>

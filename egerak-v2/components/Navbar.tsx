@@ -42,7 +42,7 @@ export default function Navbar() {
   );
 
   return (
-    <header className="bg-brand-700 text-white shadow">
+    <header className="bg-brand-700 text-white shadow sticky top-0 z-40">
       <div className="mx-auto max-w-7xl md:hidden flex items-center gap-2 px-3 py-2.5 min-h-[3.25rem]">
         <Link href="/dashboard" className="flex items-center gap-2 min-w-0 flex-1">
           <PpdLogo width={44} className="shrink-0 object-contain" />
