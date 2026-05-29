@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import OprPhotoGallery from "./OprPhotoGallery";
 import { useRouter } from "next/navigation";
 import {
@@ -102,11 +102,16 @@ export default function OprFormClient({
   const [generatedKey, setGeneratedKey] = useState<string | null>(
     initial.aiGenerateInputKey,
   );
+  const [isGenerating, setIsGenerating] = useState(false);
+  const generateInFlightRef = useRef(false);
 
   const currentGenerateKey = useMemo(
     () => buildOprGenerateKey(form.maklumatTambahan, form.sasaran, form.notaPegawai),
     [form.maklumatTambahan, form.sasaran, form.notaPegawai],
   );
+
+  const janaLocked = generatedKey === currentGenerateKey;
+  const janaBusy = pending || isGenerating;
 
   useEffect(() => {
     setPhotos(initialPhotos);
@@ -174,7 +179,12 @@ export default function OprFormClient({
   }
 
   function onGenerate() {
+    if (janaBusy || janaLocked || generateInFlightRef.current) return;
+
+    generateInFlightRef.current = true;
+    setIsGenerating(true);
     setMsg(null);
+
     startTransition(async () => {
       try {
         const draft = await generateOprDraft(pergerakanId, {
@@ -198,6 +208,9 @@ export default function OprFormClient({
         router.refresh();
       } catch (e) {
         setMsg(e instanceof Error ? e.message : "Gagal jana draf");
+      } finally {
+        generateInFlightRef.current = false;
+        setIsGenerating(false);
       }
     });
   }
@@ -344,14 +357,26 @@ export default function OprFormClient({
             </div>
             <button
               type="button"
-              className={generatedKey === currentGenerateKey ? "btn-secondary" : "btn-primary"}
-              disabled={pending || generatedKey === currentGenerateKey}
+              className={janaBusy || janaLocked ? "btn-secondary" : "btn-primary"}
+              disabled={janaBusy || janaLocked}
               onClick={onGenerate}
-              aria-disabled={pending || generatedKey === currentGenerateKey}
+              aria-busy={janaBusy}
+              aria-disabled={janaBusy || janaLocked}
             >
-              {pending ? "Menjana…" : generatedKey === currentGenerateKey ? "Draf dijana" : "Jana Draf (AI)"}
+              {janaBusy
+                ? "Menjana…"
+                : janaLocked
+                  ? "Draf dijana"
+                  : "Jana Draf (AI)"}
             </button>
-            {msg && isOprMsgNearGenerate(msg) ? <OprMsgBanner msg={msg} /> : null}
+            {janaBusy ? (
+              <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                Sedang menjana draf AI… biasanya <strong>10–30 saat</strong>. Sila tunggu — jangan
+                tutup halaman atau tekan semula.
+              </p>
+            ) : msg && isOprMsgNearGenerate(msg) ? (
+              <OprMsgBanner msg={msg} />
+            ) : null}
           </div>
 
           <div className="card p-4 space-y-3">
