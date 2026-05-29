@@ -14,6 +14,21 @@ import { compressImageForOpr } from "@/lib/client/compress-image";
 import { OPR_MAX_PHOTOS } from "@/lib/opr-photos";
 import { oprStatusBadge } from "@/lib/opr-status";
 import { buildOprGenerateKey } from "@/lib/opr-generate-lock";
+import { cn } from "@/lib/cn";
+
+function oprMsgTone(msg: string) {
+  if (msg.includes("Gagal") || (msg.includes("Gemini API") && !msg.includes("Kuota"))) {
+    return "bg-red-50 border-red-200 text-red-800";
+  }
+  if (msg.includes("Kuota") || msg.includes("draf asas")) {
+    return "bg-amber-50 border-amber-200 text-amber-900";
+  }
+  return "bg-emerald-50 border-emerald-200 text-emerald-800";
+}
+
+function isOprMsgError(msg: string) {
+  return msg.includes("Gagal") || (msg.includes("Gemini API") && !msg.includes("Kuota"));
+}
 
 type Props = {
   pergerakanId: number;
@@ -81,6 +96,13 @@ export default function OprFormClient({
   useEffect(() => {
     setGeneratedKey(initial.aiGenerateInputKey);
   }, [initial.aiGenerateInputKey]);
+
+  // Toast di bahagian bawah — kejayaan hilang sendiri; ralat kekal sehingga tindakan seterusnya.
+  useEffect(() => {
+    if (!msg || isOprMsgError(msg)) return;
+    const t = setTimeout(() => setMsg(null), 4500);
+    return () => clearTimeout(t);
+  }, [msg]);
 
   function onSave(markSiap = false) {
     setMsg(null);
@@ -239,20 +261,6 @@ export default function OprFormClient({
         </p>
       )}
 
-      {msg && (
-        <div
-          className={`rounded-md border text-sm px-3 py-2 ${
-            msg.includes("Gagal") || (msg.includes("Gemini API") && !msg.includes("Kuota"))
-              ? "bg-red-50 border-red-200 text-red-800"
-              : msg.includes("Kuota") || msg.includes("draf asas")
-                ? "bg-amber-50 border-amber-200 text-amber-900"
-                : "bg-emerald-50 border-emerald-200 text-emerald-800"
-          }`}
-        >
-          {msg}
-        </div>
-      )}
-
       {canEdit ? (
         <>
           <div className="card p-4 space-y-3">
@@ -396,6 +404,20 @@ export default function OprFormClient({
             </div>
           )}
         </>
+      ) : null}
+
+      {msg ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className={cn(
+            "fixed z-50 left-3 right-3 mx-auto max-w-md rounded-lg border px-4 py-3 text-sm shadow-lg",
+            "bottom-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
+            oprMsgTone(msg),
+          )}
+        >
+          {msg}
+        </div>
       ) : null}
     </div>
   );
