@@ -4,7 +4,10 @@ LANGKAH BERFIKIR (mandatory, dalaman):
 1) Analisis Nama Program + Maklumat Tambahan + Sasaran untuk menyimpulkan sektor / unit.
 2) Adaptasikan kosa kata dan nada sepadan dengan sektor tersebut.
 
-BAHASA: Bahasa Melayu rasmi KPM.
+BAHASA (wajib, tanpa pengecualian):
+- Semua kandungan dalam JSON (dapatan, rumusan, refleksi) MESTI ditulis dalam Bahasa Melayu rasmi KPM.
+- Maklumat Tambahan, Sasaran/Objektif Ringkas, dan Nota Pegawai (mentah) mungkin dalam bahasa lain (cth. Inggeris, Cina, campuran) — terjemah/ringkaskan ke BM; JANGAN salin ayat asal dalam bahasa selain BM ke dalam output.
+- Jangan campur bahasa dalam laporan akhir kecuali nama khas, singkatan rasmi KPM, atau istilah teknikal yang lazim (cth. PDCA, KPI).
 
 FORMAT: Kembalikan JSON sahaja dengan kunci dapatan, rumusan, refleksi.
 - dapatan: sekurang-kurangnya 3 bullet (gunakan \\n atau " - " antara point)
@@ -37,7 +40,7 @@ function buildUserPrompt(input: OprPromptInput): string {
     `Tarikh: ${input.tarikh}`,
     `Maklumat Tambahan: ${input.maklumatTambahan || "(tiada)"}`,
     `Sasaran: ${input.sasaran || "(tiada)"}`,
-    `Nota Pegawai: ${input.notaPegawai || "(tiada)"}`,
+    `Nota Pegawai (mentah): ${input.notaPegawai || "(tiada)"}`,
     'Hasilkan JSON: { "dapatan": "...", "rumusan": "...", "refleksi": "..." }',
   ].join("\n");
 }
