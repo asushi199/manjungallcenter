@@ -7,8 +7,10 @@ export const dynamic = "force-dynamic";
 
 export default async function EditPergerakanPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { id } = await params;
   const numId = Number(id);
@@ -16,6 +18,10 @@ export default async function EditPergerakanPage({
 
   const data = await getPergerakanForEdit(numId);
   if (!data) notFound();
+
+  // Hanya benarkan laluan dalaman (elak open redirect).
+  const { from } = await searchParams;
+  const returnTo = from && from.startsWith("/") && !from.startsWith("//") ? from : "/my";
 
   return (
     <div className="mx-auto max-w-2xl p-4">
@@ -29,6 +35,7 @@ export default async function EditPergerakanPage({
           mode="edit"
           editId={data.id}
           initial={data}
+          returnTo={returnTo}
         />
       </div>
     </div>

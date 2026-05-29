@@ -77,7 +77,7 @@ export default function PergerakanCard({
       ) : null}
       {variant === "mine" ? (
         <Link
-          href={`/my/${item.id}/edit`}
+          href={`/my/${item.id}/edit?from=${encodeURIComponent("/my")}`}
           className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-slate-200 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50"
           aria-label="Edit rekod"
           data-no-toggle

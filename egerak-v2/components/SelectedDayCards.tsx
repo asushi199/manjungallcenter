@@ -46,9 +46,11 @@ function LeaveCard({ it }: { it: CalendarItem }) {
 function PergerakanCard({
   it,
   isMine,
+  backTo,
 }: {
   it: CalendarItem;
   isMine: boolean;
+  backTo: string;
 }) {
   const st = sektorStyle(it.sektorCode, "Pergerakan");
   const subtitleParts = isMine ? [] : [it.nama, it.sektorName].filter(Boolean);
@@ -72,7 +74,7 @@ function PergerakanCard({
       trailing={
         isMine ? (
           <Link
-            href={`/my/${it.id}/edit`}
+            href={`/my/${it.id}/edit?from=${encodeURIComponent(backTo)}`}
             className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-slate-200 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50"
             aria-label="Edit rekod"
             data-no-toggle
@@ -152,7 +154,14 @@ export default function SelectedDayCards({
             ))}
             {pergerakan.map((it) => {
               const isMine = it.userId === currentUserId;
-              return <PergerakanCard key={`pergerakan-${it.id}`} it={it} isMine={isMine} />;
+              return (
+                <PergerakanCard
+                  key={`pergerakan-${it.id}`}
+                  it={it}
+                  isMine={isMine}
+                  backTo={`/dashboard?date=${day}`}
+                />
+              );
             })}
           </div>
         </div>

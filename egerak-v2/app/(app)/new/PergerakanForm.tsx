@@ -45,6 +45,8 @@ type Props = {
   mode?: "create" | "edit";
   editId?: number;
   initial?: PergerakanEditData;
+  /** Edit: ke mana selepas Batal / Simpan (lalai /my). */
+  returnTo?: string;
 };
 
 export default function PergerakanForm({
@@ -52,6 +54,7 @@ export default function PergerakanForm({
   mode = "create",
   editId,
   initial,
+  returnTo = "/my",
 }: Props) {
   const isEdit = mode === "edit" && editId != null && initial != null;
   const lokasiInit = initial
@@ -266,7 +269,7 @@ export default function PergerakanForm({
               : "Rekod dikemas kini.",
         );
         setTimeout(() => {
-          router.push("/my");
+          router.push(returnTo);
           router.refresh();
         }, 800);
         return;
@@ -607,7 +610,7 @@ export default function PergerakanForm({
 
       <div className="flex justify-end gap-2">
         {isEdit ? (
-          <Link href="/my" className="btn-secondary">
+          <Link href={returnTo} className="btn-secondary">
             Batal
           </Link>
         ) : (
