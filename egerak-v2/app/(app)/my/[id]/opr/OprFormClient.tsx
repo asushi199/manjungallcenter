@@ -114,6 +114,7 @@ export default function OprFormClient({
   const [isGenerating, setIsGenerating] = useState(false);
   const [feedbackAnchor, setFeedbackAnchor] = useState<FeedbackAnchor>("form");
   const generateInFlightRef = useRef(false);
+  const siapActionsRef = useRef<HTMLDivElement | null>(null);
 
   const currentGenerateKey = useMemo(
     () => buildOprGenerateKey(form.maklumatTambahan, form.sasaran, form.notaPegawai),
@@ -170,6 +171,10 @@ export default function OprFormClient({
         setMsg("Draf disimpan.");
       } else {
         setMsg(null);
+        // Tatal ke butang tindakan (Cetak / Kembali) supaya kelihatan di telefon.
+        setTimeout(() => {
+          siapActionsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 100);
       }
       router.refresh();
     });
@@ -456,7 +461,10 @@ export default function OprFormClient({
           </div>
 
           {isSiap && (
-            <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-3 flex flex-wrap items-center gap-2">
+            <div
+              ref={siapActionsRef}
+              className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-3 flex flex-wrap items-center gap-2 scroll-mt-4"
+            >
               <span className="text-sm text-emerald-900 font-medium mr-auto">
                 Laporan siap — seterusnya?
               </span>
