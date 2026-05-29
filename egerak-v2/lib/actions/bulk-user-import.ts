@@ -21,6 +21,7 @@ import {
   type UserPeranan,
 } from "@/lib/roles";
 import { validateLaporanSektorIds, validateSektorPeranan } from "@/lib/actions/users";
+import { formatTitleCase } from "@/lib/format-display-text";
 
 export type BulkUserImportRowResult = {
   line: number;
@@ -80,7 +81,7 @@ async function processUserRow(
   }
 
   const username = resolveUsername(row);
-  const nama = resolveNama(row);
+  const nama = formatTitleCase(resolveNama(row));
   if (!username && !nama) {
     return { line, status: "SKIPPED", message: "Tiada username atau nama" };
   }
@@ -121,7 +122,7 @@ async function processUserRow(
   const laporanErr = await validateLaporanSektorIds(peranan, laporanIds);
   if (laporanErr) return { line, status: "ERROR", message: laporanErr };
 
-  const jawatan = (row.jawatan ?? "").trim();
+  const jawatan = formatTitleCase(row.jawatan ?? "");
   const existing = await db.query.users.findFirst({ where: eq(users.username, username) });
 
   if (existing) {

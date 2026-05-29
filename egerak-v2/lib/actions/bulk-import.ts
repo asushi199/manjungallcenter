@@ -23,6 +23,7 @@ import {
   resolveBookableRoomCode,
   syncRoomBookingsFromPergerakan,
 } from "@/lib/sync-room-bookings";
+import { formatTitleCase } from "@/lib/format-display-text";
 
 export type ImportRowResult = {
   line: number;
@@ -76,8 +77,8 @@ async function processRow(
     };
   }
 
-  const urusan = (row.urusan ?? "").trim();
-  const lokasi = (row.lokasi ?? "").trim();
+  const urusan = formatTitleCase(row.urusan ?? "");
+  const lokasi = formatTitleCase(row.lokasi ?? "");
   if (!urusan) {
     return { line, status: "ERROR", message: "Urusan kosong" };
   }

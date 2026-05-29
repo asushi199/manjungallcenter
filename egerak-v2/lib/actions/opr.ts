@@ -13,6 +13,7 @@ import { formatDateTime } from "@/lib/dates";
 import { OPR_MAX_PHOTOS } from "@/lib/opr-photos";
 import { oprPhotoDisplayUrl } from "@/lib/opr-photo-url";
 import { getStorageSetupHint, isStorageConfigured, uploadOprPhoto } from "@/lib/storage";
+import { formatTitleCase } from "@/lib/format-display-text";
 
 async function assertPergerakanAccess(pergerakanId: number, userId: number, peranan: string) {
   const row = await db.query.pergerakan.findFirst({
@@ -82,12 +83,14 @@ export async function saveOpr(input: unknown) {
   const existing = await db.query.opr.findFirst({ where: eq(opr.pergerakanId, pergerakanId) });
   if (!existing) return { ok: false as const, error: "OPR tidak dijumpai" };
 
+  const sasaran = formatTitleCase(data.sasaran ?? "");
+
   await db
     .update(opr)
     .set({
       sektorOverrideId: data.sektorOverrideId ?? null,
       maklumatTambahan: data.maklumatTambahan ?? "",
-      sasaran: data.sasaran ?? "",
+      sasaran,
       notaPegawai: data.notaPegawai ?? "",
       dapatan: data.dapatan ?? "",
       rumusan: data.rumusan ?? "",
@@ -200,7 +203,7 @@ export async function generateOprDraft(
   const o = data.opr;
 
   const maklumatTambahan = form?.maklumatTambahan ?? o.maklumatTambahan ?? "";
-  const sasaran = form?.sasaran ?? o.sasaran ?? "";
+  const sasaran = formatTitleCase(form?.sasaran ?? o.sasaran ?? "");
   const notaPegawai = form?.notaPegawai ?? o.notaPegawai ?? "";
   const sektorOverrideId =
     form?.sektorOverrideId !== undefined ? form.sektorOverrideId : o.sektorOverrideId;

@@ -16,6 +16,7 @@ import {
 } from "@/lib/roles";
 import { normalizeLaporanSektorIds } from "@/lib/laporan-sektor-scope";
 import { isPenyeliaOnlySektorCode } from "@/lib/sektors";
+import { formatTitleCase } from "@/lib/format-display-text";
 
 const perananSchema = z.enum(PERANAN_VALUES);
 
@@ -108,8 +109,8 @@ export async function adminCreateUser(input: unknown): Promise<CreateUserResult>
   await db.insert(users).values({
     username,
     passwordHash,
-    nama: data.nama.trim(),
-    jawatan: (data.jawatan ?? "").trim(),
+    nama: formatTitleCase(data.nama),
+    jawatan: formatTitleCase(data.jawatan ?? ""),
     sektorId: data.sektorId ?? null,
     laporanSektorIds: laporanIds,
     peranan: data.peranan,
@@ -205,8 +206,8 @@ export async function adminUpdateUser(input: unknown): Promise<CreateUserResult>
   }
 
   const patch: Partial<typeof users.$inferInsert> = { updatedAt: new Date() };
-  if (nama !== undefined) patch.nama = nama.trim();
-  if (jawatan !== undefined) patch.jawatan = jawatan.trim();
+  if (nama !== undefined) patch.nama = formatTitleCase(nama);
+  if (jawatan !== undefined) patch.jawatan = formatTitleCase(jawatan);
   if (sektorId !== undefined) patch.sektorId = sektorId;
   if (peranan !== undefined) patch.peranan = peranan;
   patch.laporanSektorIds = nextLaporanIds;

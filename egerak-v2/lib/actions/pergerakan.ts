@@ -21,6 +21,14 @@ import {
   previewRoomBookingsForPergerakan,
   type RoomBookingPreview,
 } from "@/lib/sync-room-bookings";
+import { formatTitleCase } from "@/lib/format-display-text";
+
+function normalizePergerakanText(urusan: string, lokasi: string) {
+  return {
+    urusan: formatTitleCase(urusan),
+    lokasi: formatTitleCase(lokasi),
+  };
+}
 
 const submitSchema = z
   .object({
@@ -74,14 +82,16 @@ export async function submitPergerakan(input: unknown): Promise<SubmitResult> {
   }
   const {
     jenis,
-    urusan,
-    lokasi,
     tarikhPergi,
     tarikhKembali,
     sepenuhHari,
     tempahBilik,
     tidakPerluOpr,
   } = parsed.data;
+  const { urusan, lokasi } = normalizePergerakanText(
+    parsed.data.urusan,
+    parsed.data.lokasi,
+  );
   const pergi = parseLocalInput(tarikhPergi);
   const kembali = parseLocalInput(tarikhKembali);
   if (!pergi || !kembali) return { ok: false, error: "Format tarikh tidak sah" };
@@ -97,8 +107,8 @@ export async function submitPergerakan(input: unknown): Promise<SubmitResult> {
           userId: Number(user.id),
           sektorId: user.sektorId,
           jenis,
-          urusan: urusan.trim(),
-          lokasi: lokasi.trim(),
+          urusan,
+          lokasi,
           tarikhPergi: pergi,
           tarikhKembali: kembali,
           source: "web",
@@ -111,7 +121,7 @@ export async function submitPergerakan(input: unknown): Promise<SubmitResult> {
           pergerakanId: row.id,
           roomCode,
           userId: Number(user.id),
-          title: urusan.trim(),
+          title: urusan,
           pergi,
           kembali,
           fullDay: sepenuhHari === true,
@@ -262,8 +272,11 @@ export async function updatePergerakan(id: number, input: unknown): Promise<Upda
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak sah" };
   }
-  const { jenis, urusan, lokasi, tarikhPergi, tarikhKembali, sepenuhHari, tempahBilik } =
-    parsed.data;
+  const { jenis, tarikhPergi, tarikhKembali, sepenuhHari, tempahBilik } = parsed.data;
+  const { urusan, lokasi } = normalizePergerakanText(
+    parsed.data.urusan,
+    parsed.data.lokasi,
+  );
   const pergi = parseLocalInput(tarikhPergi);
   const kembali = parseLocalInput(tarikhKembali);
   if (!pergi || !kembali) return { ok: false, error: "Format tarikh tidak sah" };
@@ -277,8 +290,8 @@ export async function updatePergerakan(id: number, input: unknown): Promise<Upda
         .update(pergerakan)
         .set({
           jenis,
-          urusan: urusan.trim(),
-          lokasi: lokasi.trim(),
+          urusan,
+          lokasi,
           tarikhPergi: pergi,
           tarikhKembali: kembali,
           updatedAt: new Date(),
@@ -293,7 +306,7 @@ export async function updatePergerakan(id: number, input: unknown): Promise<Upda
           pergerakanId: id,
           roomCode,
           userId: existing.userId,
-          title: urusan.trim(),
+          title: urusan,
           pergi,
           kembali,
           fullDay: sepenuhHari === true,

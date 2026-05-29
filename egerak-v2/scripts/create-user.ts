@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import * as schema from "../lib/schema";
 import { isKnownPeranan, perananRequiresSektor, type UserPeranan } from "../lib/roles";
 import { isPenyeliaOnlySektorCode } from "../lib/sektors";
+import { formatTitleCase } from "../lib/format-display-text";
 
 /**
  * Penggunaan:
@@ -52,8 +53,8 @@ async function main() {
   await db.insert(schema.users).values({
     username,
     passwordHash,
-    nama,
-    jawatan: jawatan ?? "",
+    nama: formatTitleCase(nama),
+    jawatan: formatTitleCase(jawatan ?? ""),
     sektorId: sektor?.id ?? null,
     peranan,
     aktif: true,
