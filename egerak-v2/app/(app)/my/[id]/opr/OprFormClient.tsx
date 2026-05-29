@@ -21,7 +21,7 @@ function oprMsgTone(msg: string) {
     msg.includes("Gagal") ||
     msg.includes("Server Components") ||
     msg.includes("production builds") ||
-    (msg.includes("Gemini API") && !msg.includes("Kuota"))
+    ((msg.includes("Gemini API") || msg.includes("Groq API")) && !msg.includes("Kuota"))
   ) {
     return "bg-red-50 border-red-200 text-red-800";
   }
@@ -36,7 +36,7 @@ function isOprMsgError(msg: string) {
     msg.includes("Gagal") ||
     msg.includes("Server Components") ||
     msg.includes("production builds") ||
-    (msg.includes("Gemini API") && !msg.includes("Kuota"))
+    ((msg.includes("Gemini API") || msg.includes("Groq API")) && !msg.includes("Kuota"))
   );
 }
 

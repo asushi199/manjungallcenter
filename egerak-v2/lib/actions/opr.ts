@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { opr, oprPhotos, pergerakan, users, sektors, auditLog } from "@/lib/schema";
 import { requireUser } from "@/lib/rbac";
 import { isFullAdmin, isKetuaOrTimbalan, isPenyelia } from "@/lib/roles";
-import { generateOprWithGemini, type OprPromptInput } from "@/lib/gemini";
+import { generateOprWithAi, type OprPromptInput } from "@/lib/ai-opr";
 import { buildOprGenerateKey } from "@/lib/opr-generate-lock";
 import { formatDateTime } from "@/lib/dates";
 import { OPR_MAX_PHOTOS } from "@/lib/opr-photos";
@@ -237,7 +237,7 @@ export async function generateOprDraft(
     notaPegawai,
   };
 
-  const { draft, notice } = await generateOprWithGemini(promptInput);
+  const { draft, notice } = await generateOprWithAi(promptInput);
   const aiGenerateInputKey = buildOprGenerateKey(maklumatTambahan, sasaran, notaPegawai);
 
   await db
