@@ -163,6 +163,8 @@ export const opr = pgTable(
     dapatan: text("dapatan").default(""),
     rumusan: text("rumusan").default(""),
     refleksi: text("refleksi").default(""),
+    /** Snapshot input AI terakhir (Maklumat|Sasaran|Nota) — kunci semula Jana. */
+    aiGenerateInputKey: text("ai_generate_input_key"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },

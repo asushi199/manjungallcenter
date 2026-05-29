@@ -8,6 +8,7 @@ import { opr, oprPhotos, pergerakan, users, sektors, auditLog } from "@/lib/sche
 import { requireUser } from "@/lib/rbac";
 import { isFullAdmin, isKetuaOrTimbalan, isPenyelia } from "@/lib/roles";
 import { generateOprWithGemini, type OprPromptInput } from "@/lib/gemini";
+import { buildOprGenerateKey } from "@/lib/opr-generate-lock";
 import { formatDateTime } from "@/lib/dates";
 import { OPR_MAX_PHOTOS } from "@/lib/opr-photos";
 import { oprPhotoDisplayUrl } from "@/lib/opr-photo-url";
@@ -234,6 +235,7 @@ export async function generateOprDraft(
   };
 
   const { draft, notice } = await generateOprWithGemini(promptInput);
+  const aiGenerateInputKey = buildOprGenerateKey(maklumatTambahan, sasaran, notaPegawai);
 
   await db
     .update(opr)
@@ -242,6 +244,7 @@ export async function generateOprDraft(
       rumusan: draft.rumusan,
       refleksi: draft.refleksi,
       status: "DRAFT",
+      aiGenerateInputKey,
       updatedAt: new Date(),
     })
     .where(eq(opr.id, o.id));

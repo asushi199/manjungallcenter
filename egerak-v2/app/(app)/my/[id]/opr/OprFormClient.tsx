@@ -13,6 +13,7 @@ import Link from "next/link";
 import { compressImageForOpr } from "@/lib/client/compress-image";
 import { OPR_MAX_PHOTOS } from "@/lib/opr-photos";
 import { oprStatusBadge } from "@/lib/opr-status";
+import { buildOprGenerateKey } from "@/lib/opr-generate-lock";
 
 type Props = {
   pergerakanId: number;
@@ -30,6 +31,8 @@ type Props = {
     rumusan: string;
     refleksi: string;
     status: "TIADA" | "DRAFT" | "SIAP";
+    /** Input terakhir ketika Jana AI (dari DB). */
+    aiGenerateInputKey: string | null;
   };
   photos: Array<{
     id: number;
@@ -58,13 +61,14 @@ export default function OprFormClient({
   const [photos, setPhotos] = useState(initialPhotos);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const atPhotoLimit = photos.length >= OPR_MAX_PHOTOS;
-  const [generatedKey, setGeneratedKey] = useState<string | null>(null);
+  const [generatedKey, setGeneratedKey] = useState<string | null>(
+    initial.aiGenerateInputKey,
+  );
 
-  const currentGenerateKey = useMemo(() => {
-    // Unlock only when user changes input hints for AI generation.
-    // Keep sektor override out (user requested), but include nota pegawai.
-    return `${form.maklumatTambahan.trim()}|${form.sasaran.trim()}|${form.notaPegawai.trim()}`;
-  }, [form.maklumatTambahan, form.sasaran, form.notaPegawai]);
+  const currentGenerateKey = useMemo(
+    () => buildOprGenerateKey(form.maklumatTambahan, form.sasaran, form.notaPegawai),
+    [form.maklumatTambahan, form.sasaran, form.notaPegawai],
+  );
 
   useEffect(() => {
     setPhotos(initialPhotos);
@@ -75,9 +79,8 @@ export default function OprFormClient({
   }, [initial]);
 
   useEffect(() => {
-    // New OPR page / different pergerakan: reset generate lock.
-    setGeneratedKey(null);
-  }, [pergerakanId]);
+    setGeneratedKey(initial.aiGenerateInputKey);
+  }, [initial.aiGenerateInputKey]);
 
   function onSave(markSiap = false) {
     setMsg(null);
@@ -139,6 +142,7 @@ export default function OprFormClient({
         }));
         setGeneratedKey(currentGenerateKey);
         setMsg(draft.disclaimer);
+        router.refresh();
       } catch (e) {
         setMsg(e instanceof Error ? e.message : "Gagal jana draf");
       }

@@ -82,6 +82,7 @@ export default async function OprPage({
           rumusan: o.rumusan ?? "",
           refleksi: o.refleksi ?? "",
           status: o.status,
+          aiGenerateInputKey: o.aiGenerateInputKey ?? null,
         }}
         photos={(o.photos ?? []).map((ph) => ({
           id: ph.id,
