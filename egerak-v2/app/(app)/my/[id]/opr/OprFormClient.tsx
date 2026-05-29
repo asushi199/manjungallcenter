@@ -30,6 +30,29 @@ function isOprMsgError(msg: string) {
   return msg.includes("Gagal") || (msg.includes("Gemini API") && !msg.includes("Kuota"));
 }
 
+function isOprMsgNearGenerate(msg: string) {
+  return (
+    msg.includes("Dijana") ||
+    msg.includes("Gemini") ||
+    msg.includes("Kuota") ||
+    msg.includes("draf asas") ||
+    msg.includes("Menjana") ||
+    msg.toLowerCase().includes("jana draf")
+  );
+}
+
+function OprMsgBanner({ msg }: { msg: string }) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={cn("rounded-md border text-sm px-3 py-2", oprMsgTone(msg))}
+    >
+      {msg}
+    </div>
+  );
+}
+
 type Props = {
   pergerakanId: number;
   /** Ke mana selepas selesai (lalai /my). */
@@ -220,6 +243,8 @@ export default function OprFormClient({
 
   return (
     <div className="space-y-4">
+      {msg && !canEdit ? <OprMsgBanner msg={msg} /> : null}
+
       {isTiada && (
         <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 space-y-3">
           <p>
@@ -318,6 +343,7 @@ export default function OprFormClient({
             >
               {pending ? "Menjana…" : generatedKey === currentGenerateKey ? "Draf dijana" : "Jana Draf (AI)"}
             </button>
+            {msg && isOprMsgNearGenerate(msg) ? <OprMsgBanner msg={msg} /> : null}
           </div>
 
           <div className="card p-4 space-y-3">
@@ -362,6 +388,8 @@ export default function OprFormClient({
             />
           </div>
 
+          {msg && !isOprMsgNearGenerate(msg) ? <OprMsgBanner msg={msg} /> : null}
+
           <div className="flex flex-wrap gap-2 justify-end items-center">
             <button
               type="button"
@@ -404,20 +432,6 @@ export default function OprFormClient({
             </div>
           )}
         </>
-      ) : null}
-
-      {msg ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className={cn(
-            "fixed z-50 left-3 right-3 mx-auto max-w-md rounded-lg border px-4 py-3 text-sm shadow-lg",
-            "bottom-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
-            oprMsgTone(msg),
-          )}
-        >
-          {msg}
-        </div>
       ) : null}
     </div>
   );
