@@ -118,6 +118,14 @@ export default function OprFormClient({
 
   useEffect(() => {
     setGeneratedKey(initial.aiGenerateInputKey);
+  }, [pergerakanId]);
+
+  // Hanya sync dari DB bila ada nilai — elak refresh timpa kunci client selepas Jana
+  // (cth. lajur ai_generate_input_key belum wujud di Supabase).
+  useEffect(() => {
+    if (initial.aiGenerateInputKey != null && initial.aiGenerateInputKey !== "") {
+      setGeneratedKey(initial.aiGenerateInputKey);
+    }
   }, [initial.aiGenerateInputKey]);
 
   // Toast di bahagian bawah — kejayaan hilang sendiri; ralat kekal sehingga tindakan seterusnya.
@@ -142,11 +150,11 @@ export default function OprFormClient({
       }
       const nextStatus = markSiap ? "SIAP" : form.status === "SIAP" ? "SIAP" : "DRAFT";
       setForm((f) => ({ ...f, status: nextStatus }));
-      setMsg(
-        markSiap
-          ? "OPR ditandakan siap — status dipaparkan di halaman ini dan dalam senarai Pergerakan Saya."
-          : "Draf disimpan.",
-      );
+      if (!markSiap) {
+        setMsg("Draf disimpan.");
+      } else {
+        setMsg(null);
+      }
       router.refresh();
     });
   }
