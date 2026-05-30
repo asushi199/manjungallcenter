@@ -11,13 +11,13 @@ BAHASA (wajib, tanpa pengecualian):
 
 FORMAT OUTPUT: Kembalikan JSON sahaja dengan kunci dapatan, rumusan, refleksi. Jangan letak markdown atau teks luar JSON.
 
-=== DAPATAN (Do — pelaksanaan) ===
+=== DAPATAN (Plan + Do + pemerhatian — untuk cetakan laporan) ===
 Tulis tepat 3 bullet (pisahkan dengan \\n, setiap baris bermula "- "):
-1) Pelaksanaan: aktiviti/program, lokasi, tarikh, dan kaedah/latihan yang dijalankan (rujuk DATA REKOD).
-2) Penyertaan: sasaran/kumpulan sasar, tahap penyertaan atau respons peserta (nyatakan spesifik jika ada dalam nota; jika tiada data, nyatakan secara umum tanpa angka rekaan).
-3) Pemerhatian: satu isu positif ATAU cabaran khusus sektor yang berbeza daripada bullet 1–2 (rujuk Nota Pegawai jika ada).
+1) Perancangan (Plan): objektif/tujuan program (rujuk Maklumat Tambahan + Sasaran + Urusan). Sasaran sudah dipaparkan di kepala laporan — nyatakan objektif, jangan salin semula baris Sasaran verbatim.
+2) Pelaksanaan (Do): aktiviti/program, lokasi, tarikh, dan kaedah/latihan yang dijalankan (rujuk DATA REKOD).
+3) Pemerhatian: penyertaan sasaran dan satu isu positif ATAU cabaran khusus sektor (rujuk Nota Pegawai jika ada; jika tiada data penyertaan, nyatakan secara umum tanpa angka rekaan).
 
-Larangan dapatan: jangan ulang ayat sama; jangan guna frasa kosong "berjalan lancar" / "memuaskan" tanpa butiran.
+Larangan dapatan: jangan ulang ayat sama antara bullet; jangan guna frasa kosong "berjalan lancar" / "memuaskan" tanpa butiran.
 
 === RUMUSAN (Check ringkas — sintesis impak) ===
 Satu perenggan (3–5 ayat):
@@ -40,7 +40,7 @@ Larangan refleksi:
 - JANGAN salin ayat dari rumusan.
 
 CONTOH RANGKA (adaptasi ikut DATA REKOD, jangan salin verbatim):
-dapatan: "- Bengkel kesihatan mental telah dilaksanakan di SJKC X pada [tarikh] dengan fokus pengurusan stres guru.\\n- Penyertaan guru sasaran mencapai tahap memuaskan dengan engagement aktif semasa sesi.\\n- Guru masih memerlukan bimbingan berterusan untuk amalan gaya hidup sihat di luar program."
+dapatan: "- Program dirancang untuk meningkatkan kesedaran kesihatan mental dan pengurusan stres guru sasaran.\\n- Bengkel kesihatan mental telah dilaksanakan di SJKC X pada [tarikh] dengan fokus pengurusan stres dan gaya hidup sihat.\\n- Penyertaan guru aktif; namun amalan harian gaya hidup sihat masih memerlukan bimbingan berterusan."
 rumusan: "Program ini selaras dengan objektif sektor X dan menyokong kesejahteraan guru. Impak utama termasuk peningkatan kesedaran stres dan komitmen pengurusan sekolah untuk sokongan berterusan."
 refleksi: "Semakan: Pelaksanaan teratur dan penerimaan guru baik; namun amalan harian gaya hidup sihat masih rendah dan memerlukan susulan.\\n\\nTindakan susulan:\\n1. Mengadakan sesi susulan suku tahun untuk pemantauan amalan guru.\\n2. Menyediakan platform perkongsian aktiviti suka hati dan luar bilik darjah di kalangan guru."`;
 
@@ -79,8 +79,11 @@ function buildUserPrompt(input: OprPromptInput): string {
 }
 
 export function buildFallbackOpr(input: OprPromptInput): OprAiResult {
+  const objektif =
+    input.maklumatTambahan?.trim() ||
+    `menyokong pelaksanaan program ${input.urusan} selaras objektif sektor ${input.sektor}`;
   return {
-    dapatan: `- Aktiviti "${input.urusan}" telah dilaksanakan di ${input.lokasi || "lokasi program"} pada ${input.tarikh}.\n- Penyertaan sasaran (${input.sasaran || "pegawai berkenaan"}) mencapai tahap memuaskan.\n- ${input.maklumatTambahan || input.notaPegawai || "Tiada isu kritikal dilaporkan; susulan dokumentasi perlu diperkukuh."}`,
+    dapatan: `- Program dirancang untuk ${objektif}${input.sasaran ? `, melibatkan sasaran: ${input.sasaran}` : ""}.\n- Aktiviti "${input.urusan}" telah dilaksanakan di ${input.lokasi || "lokasi program"} pada ${input.tarikh}.\n- ${input.notaPegawai?.trim() || "Penyertaan sasaran memuaskan; susulan dokumentasi perlu diperkukuh."}`,
     rumusan: `Program ini selaras dengan objektif sektor ${input.sektor} dan memberi impak kepada pelaksanaan tugas PPD Manjung. Sasaran program memperoleh manfaat berkaitan ${input.urusan}.`,
     refleksi: `Semakan: Pelaksanaan teratur dan objektif program tercapai; namun dokumentasi dan susulan jangka panjang masih perlu diperkemas.\n\nTindakan susulan:\n1. Memastikan dokumentasi lengkap dan perkongsian dalam mesyuarat sektor.\n2. Merancang aktiviti susulan untuk pemantauan impak program.`,
   };
