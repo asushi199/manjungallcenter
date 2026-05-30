@@ -9,12 +9,19 @@ BAHASA (wajib, tanpa pengecualian):
 - Maklumat Tambahan, Sasaran/Objektif Ringkas, dan Nota Pegawai (mentah) mungkin dalam bahasa lain (cth. Inggeris, Cina, campuran) — terjemah/ringkaskan ke BM; JANGAN salin ayat asal dalam bahasa selain BM ke dalam output.
 - Jangan campur bahasa dalam laporan akhir kecuali nama khas, singkatan rasmi KPM, atau istilah teknikal yang lazim (cth. PDCA, KPI).
 
+NAMA PROGRAM (wajib):
+- "Nama Program / Urusan" dalam DATA REKOD ialah tajuk aktiviti — GUNAKAN ini bila merujuk program (cth. "Program [Urusan] telah dilaksanakan…" atau "[Urusan] telah dilaksanakan…").
+- "Nama" dan "Jawatan" ialah profil pegawai pelapor SAHAJA — JANGAN jadikan jawatan atau nama pegawai sebagai nama program.
+- Salah: "Program Pentadbir Sistem telah dilaksanakan…" (jawatan, bukan urusan).
+- Betul: "Program Bengkel Kesihatan Mental Guru telah dilaksanakan…" (ikut Urusan).
+- Unit penganjur boleh disebut melalui Sektor (cth. " oleh USTP") jika relevan; jangan ganti Urusan dengan Jawatan.
+
 FORMAT OUTPUT: Kembalikan JSON sahaja dengan kunci dapatan, rumusan, refleksi. Jangan letak markdown atau teks luar JSON.
 
 === DAPATAN (Plan + Do + pemerhatian — untuk cetakan laporan) ===
 Tulis tepat 3 bullet (pisahkan dengan \\n, setiap baris bermula "- "):
 1) Perancangan (Plan): objektif/tujuan program (rujuk Maklumat Tambahan + Sasaran + Urusan). Sasaran sudah dipaparkan di kepala laporan — nyatakan objektif, jangan salin semula baris Sasaran verbatim.
-2) Pelaksanaan (Do): aktiviti/program, lokasi, tarikh, dan kaedah/latihan yang dijalankan (rujuk DATA REKOD).
+2) Pelaksanaan (Do): program "[Urusan]" (WAJIB guna nilai Urusan, bukan Jawatan/Nama pegawai), lokasi, tarikh, dan kaedah/latihan (rujuk DATA REKOD). Contoh: "Program [Urusan] telah dilaksanakan di [Lokasi] pada [Tarikh]…"
 3) Pemerhatian: penyertaan sasaran dan satu isu positif ATAU cabaran khusus sektor (rujuk Nota Pegawai jika ada; jika tiada data penyertaan, nyatakan secara umum tanpa angka rekaan).
 
 Larangan dapatan: jangan ulang ayat sama antara bullet; jangan guna frasa kosong "berjalan lancar" / "memuaskan" tanpa butiran.
@@ -64,10 +71,10 @@ export type OprPromptInput = {
 function buildUserPrompt(input: OprPromptInput): string {
   return [
     "DATA REKOD:",
-    `Nama: ${input.nama}`,
-    `Jawatan: ${input.jawatan}`,
+    `Nama Pegawai (jangan guna sebagai nama program): ${input.nama}`,
+    `Jawatan Pegawai (jangan guna sebagai nama program): ${input.jawatan}`,
     `Sektor: ${input.sektor}`,
-    `Urusan: ${input.urusan}`,
+    `Nama Program / Urusan (WAJIB guna ini sebagai tajuk aktiviti): ${input.urusan}`,
     `Lokasi: ${input.lokasi}`,
     `Tarikh: ${input.tarikh}`,
     `Maklumat Tambahan: ${input.maklumatTambahan || "(tiada)"}`,
@@ -83,7 +90,7 @@ export function buildFallbackOpr(input: OprPromptInput): OprAiResult {
     input.maklumatTambahan?.trim() ||
     `menyokong pelaksanaan program ${input.urusan} selaras objektif sektor ${input.sektor}`;
   return {
-    dapatan: `- Program dirancang untuk ${objektif}${input.sasaran ? `, melibatkan sasaran: ${input.sasaran}` : ""}.\n- Aktiviti "${input.urusan}" telah dilaksanakan di ${input.lokasi || "lokasi program"} pada ${input.tarikh}.\n- ${input.notaPegawai?.trim() || "Penyertaan sasaran memuaskan; susulan dokumentasi perlu diperkukuh."}`,
+    dapatan: `- Program dirancang untuk ${objektif}${input.sasaran ? `, melibatkan sasaran: ${input.sasaran}` : ""}.\n- Program "${input.urusan}" telah dilaksanakan di ${input.lokasi || "lokasi program"} pada ${input.tarikh}.\n- ${input.notaPegawai?.trim() || "Penyertaan sasaran memuaskan; susulan dokumentasi perlu diperkukuh."}`,
     rumusan: `Program ini selaras dengan objektif sektor ${input.sektor} dan memberi impak kepada pelaksanaan tugas PPD Manjung. Sasaran program memperoleh manfaat berkaitan ${input.urusan}.`,
     refleksi: `Semakan: Pelaksanaan teratur dan objektif program tercapai; namun dokumentasi dan susulan jangka panjang masih perlu diperkemas.\n\nTindakan susulan:\n1. Memastikan dokumentasi lengkap dan perkongsian dalam mesyuarat sektor.\n2. Merancang aktiviti susulan untuk pemantauan impak program.`,
   };
