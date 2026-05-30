@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import PpdLogo from "@/components/PpdLogo";
+import PwaInstallButton from "@/components/PwaInstallButton";
 import HeaderNavDropdown from "@/components/HeaderNavDropdown";
 import MobileNavMenu from "@/components/MobileNavMenu";
 import {
@@ -87,6 +88,7 @@ export default function Navbar() {
             <div className="font-medium">{user?.nama}</div>
             <div className="text-xs text-white/80">{user?.username}</div>
           </div>
+          <PwaInstallButton variant="nav-link" />
           {logoutBtn}
         </div>
       </div>

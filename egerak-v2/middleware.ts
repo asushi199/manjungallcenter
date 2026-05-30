@@ -35,6 +35,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!api/auth|api/health|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico)$).*)",
+    "/((?!api/auth|api/health|_next/static|_next/image|favicon.ico|icons/|sw\\.js|swe-worker|workbox-|manifest\\.webmanifest|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico)$).*)",
   ],
 };

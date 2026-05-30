@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/cn";
 import type { AppNavLink } from "@/lib/app-nav";
+import PwaInstallButton from "@/components/PwaInstallButton";
 
 function isActive(path: string | null, href: string) {
   return path === href || (path?.startsWith(href + "/") ?? false);
@@ -167,7 +168,8 @@ export default function MobileNavMenu({
               )}
             </nav>
 
-            <div className="border-t p-4 shrink-0">
+            <div className="border-t p-4 shrink-0 space-y-3">
+              <PwaInstallButton variant="menu-block" />
               <button
                 type="button"
                 className="btn-secondary w-full justify-center"
