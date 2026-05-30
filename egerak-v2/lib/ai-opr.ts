@@ -9,11 +9,40 @@ BAHASA (wajib, tanpa pengecualian):
 - Maklumat Tambahan, Sasaran/Objektif Ringkas, dan Nota Pegawai (mentah) mungkin dalam bahasa lain (cth. Inggeris, Cina, campuran) — terjemah/ringkaskan ke BM; JANGAN salin ayat asal dalam bahasa selain BM ke dalam output.
 - Jangan campur bahasa dalam laporan akhir kecuali nama khas, singkatan rasmi KPM, atau istilah teknikal yang lazim (cth. PDCA, KPI).
 
-FORMAT: Kembalikan JSON sahaja dengan kunci dapatan, rumusan, refleksi.
-- dapatan: sekurang-kurangnya 3 bullet (gunakan \\n atau " - " antara point)
-- rumusan: satu perenggan kukuh
-- refleksi: penilaian kritikal + 2 tindakan susulan PDCA
-Jangan letak markdown atau teks luar JSON.`;
+FORMAT OUTPUT: Kembalikan JSON sahaja dengan kunci dapatan, rumusan, refleksi. Jangan letak markdown atau teks luar JSON.
+
+=== DAPATAN (Do — pelaksanaan) ===
+Tulis tepat 3 bullet (pisahkan dengan \\n, setiap baris bermula "- "):
+1) Pelaksanaan: aktiviti/program, lokasi, tarikh, dan kaedah/latihan yang dijalankan (rujuk DATA REKOD).
+2) Penyertaan: sasaran/kumpulan sasar, tahap penyertaan atau respons peserta (nyatakan spesifik jika ada dalam nota; jika tiada data, nyatakan secara umum tanpa angka rekaan).
+3) Pemerhatian: satu isu positif ATAU cabaran khusus sektor yang berbeza daripada bullet 1–2 (rujuk Nota Pegawai jika ada).
+
+Larangan dapatan: jangan ulang ayat sama; jangan guna frasa kosong "berjalan lancar" / "memuaskan" tanpa butiran.
+
+=== RUMUSAN (Check ringkas — sintesis impak) ===
+Satu perenggan (3–5 ayat):
+- Rumuskan impak program kepada objektif sektor dan KPI KPM yang berkaitan.
+- Sebut kesan kepada sasaran (guru/murid/pegawai/sekolah) secara spesifik.
+- Elakkan frasa generik semata-mata ("impak positif", "berjaya") tanpa menyebut WHAT dan WHO.
+
+=== REFLEKSI (Check + Act — PDCA) ===
+WAJIB ikut struktur ini (teks dalam satu string, guna \\n antara bahagian):
+
+Semakan: [1 ayat kekuatan spesifik berdasarkan dapatan] [1 ayat kelemahan atau isu spesifik — WAJIB ada; jangan hanya puji]
+
+Tindakan susulan:
+1. [tindakan konkrit, boleh diukur, berkait terus dengan kelemahan di atas]
+2. [tindakan konkrit kedua, berbeza daripada (1)]
+
+Larangan refleksi:
+- JANGAN hanya senaraikan tindakan tanpa semakan kekuatan/kelemahan.
+- JANGAN guna "perlu ada usaha berterusan" tanpa nyatakan isu spesifik.
+- JANGAN salin ayat dari rumusan.
+
+CONTOH RANGKA (adaptasi ikut DATA REKOD, jangan salin verbatim):
+dapatan: "- Bengkel kesihatan mental telah dilaksanakan di SJKC X pada [tarikh] dengan fokus pengurusan stres guru.\\n- Penyertaan guru sasaran mencapai tahap memuaskan dengan engagement aktif semasa sesi.\\n- Guru masih memerlukan bimbingan berterusan untuk amalan gaya hidup sihat di luar program."
+rumusan: "Program ini selaras dengan objektif sektor X dan menyokong kesejahteraan guru. Impak utama termasuk peningkatan kesedaran stres dan komitmen pengurusan sekolah untuk sokongan berterusan."
+refleksi: "Semakan: Pelaksanaan teratur dan penerimaan guru baik; namun amalan harian gaya hidup sihat masih rendah dan memerlukan susulan.\\n\\nTindakan susulan:\\n1. Mengadakan sesi susulan suku tahun untuk pemantauan amalan guru.\\n2. Menyediakan platform perkongsian aktiviti suka hati dan luar bilik darjah di kalangan guru."`;
 
 export type OprAiResult = { dapatan: string; rumusan: string; refleksi: string };
 
@@ -44,15 +73,16 @@ function buildUserPrompt(input: OprPromptInput): string {
     `Maklumat Tambahan: ${input.maklumatTambahan || "(tiada)"}`,
     `Sasaran: ${input.sasaran || "(tiada)"}`,
     `Nota Pegawai (mentah): ${input.notaPegawai || "(tiada)"}`,
+    'Hasilkan JSON mengikut struktur dapatan/rumusan/refleksi dalam arahan sistem. Rujuk DATA REKOD di bawah — jangan reka fakta yang tiada.',
     'Hasilkan JSON: { "dapatan": "...", "rumusan": "...", "refleksi": "..." }',
   ].join("\n");
 }
 
 export function buildFallbackOpr(input: OprPromptInput): OprAiResult {
   return {
-    dapatan: `- Aktiviti "${input.urusan}" telah dilaksanakan di ${input.lokasi || "lokasi program"}.\n- Penyertaan sasaran (${input.sasaran || "pegawai berkenaan"}) mencapai tahap memuaskan.\n- ${input.maklumatTambahan || "Tiada isu kritikal dilaporkan."}`,
-    rumusan: `Program ini menyokong objektif sektor ${input.sektor} dan memberi impak positif kepada pelaksanaan tugas PPD Manjung.`,
-    refleksi: `Kekuatan: pelaksanaan teratur. Penambahbaikan: perancangan awal boleh diperkemas. Tindakan susulan: dokumentasi lengkap dan susulan dalam mesyuarat sektor.`,
+    dapatan: `- Aktiviti "${input.urusan}" telah dilaksanakan di ${input.lokasi || "lokasi program"} pada ${input.tarikh}.\n- Penyertaan sasaran (${input.sasaran || "pegawai berkenaan"}) mencapai tahap memuaskan.\n- ${input.maklumatTambahan || input.notaPegawai || "Tiada isu kritikal dilaporkan; susulan dokumentasi perlu diperkukuh."}`,
+    rumusan: `Program ini selaras dengan objektif sektor ${input.sektor} dan memberi impak kepada pelaksanaan tugas PPD Manjung. Sasaran program memperoleh manfaat berkaitan ${input.urusan}.`,
+    refleksi: `Semakan: Pelaksanaan teratur dan objektif program tercapai; namun dokumentasi dan susulan jangka panjang masih perlu diperkemas.\n\nTindakan susulan:\n1. Memastikan dokumentasi lengkap dan perkongsian dalam mesyuarat sektor.\n2. Merancang aktiviti susulan untuk pemantauan impak program.`,
   };
 }
 
