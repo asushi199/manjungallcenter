@@ -17,7 +17,7 @@ Menggantikan stack lama GAS + Google Sheet di [`../GAS & SHEET/`](../GAS & SHEET
 | Rekod saya | `/my` | Edit, OPR |
 | Import rancangan | `/admin/import` | CSV pukal (Admin) |
 | Tempahan bilik | `/bilik` | Slot AM / PM |
-| OPR + AI | `/my/[id]/opr` | Gemini `gemini-3.5-flash`, max **4 gambar** |
+| OPR + AI | `/my/[id]/opr` | Groq utama, Gemini sandaran, max **4 gambar** |
 | Cetak OPR | `/my/[id]/opr/print` | PDF melalui pencetak pelayar |
 | Pengguna | `/admin/users` | Admin sahaja |
 
@@ -29,7 +29,7 @@ Menggantikan stack lama GAS + Google Sheet di [`../GAS & SHEET/`](../GAS & SHEET
 - **Tailwind CSS**
 - **Drizzle ORM** + Postgres (Supabase)
 - **Auth.js v5** (Credentials, JWT)
-- **Gemini API** — draf OPR
+- **Groq API** + **Gemini API** — draf OPR
 - **Gambar OPR** — Google Drive melalui **Apps Script** (disyorkan) atau Supabase Storage / Drive API
 
 Zon waktu: `Asia/Kuala_Lumpur` (`date-fns-tz`).
@@ -42,7 +42,7 @@ Zon waktu: `Asia/Kuala_Lumpur` (`date-fns-tz`).
 cd egerak-v2
 npm install
 copy .env.local.example .env.local
-# Edit DATABASE_URL, AUTH_SECRET, GEMINI_API_KEY, GAS_* (gambar)
+# Edit DATABASE_URL, AUTH_SECRET, GROQ_API_KEY/GEMINI_API_KEY, GAS_* (gambar)
 npm run db:migrate
 npm run db:seed
 npm run dev
@@ -61,8 +61,10 @@ Panduan penuh: [`docs/SETUP-V2.md`](docs/SETUP-V2.md).
 | `DATABASE_URL` | Ya | Supabase Postgres URI |
 | `AUTH_SECRET` | Ya | `openssl rand -base64 32` |
 | `NEXTAUTH_URL` | Ya | `http://localhost:3000` (dev) |
-| `GEMINI_API_KEY` | OPR AI | [Google AI Studio](https://aistudio.google.com/apikey) |
-| `GEMINI_MODEL` | Disyorkan | `gemini-3.5-flash` |
+| `GROQ_API_KEY` | OPR AI utama | [Groq Console](https://console.groq.com) |
+| `GROQ_MODEL` | Disyorkan | `meta-llama/llama-4-scout-17b-16e-instruct` |
+| `GEMINI_API_KEY` | OPR AI sandaran | [Google AI Studio](https://aistudio.google.com/apikey) |
+| `GEMINI_MODEL` | Sandaran | `gemini-2.5-flash` |
 | `OPR_PHOTO_STORAGE` | Gambar | `gas` (disyorkan) |
 | `GAS_WEB_APP_URL` | Gambar | URL Web App `/exec` |
 | `GAS_UPLOAD_SECRET` | Gambar | Sama dengan Apps Script |
@@ -90,7 +92,7 @@ app/
 lib/
   schema.ts, db.ts, auth.ts
   actions/          # Server actions
-  gemini.ts         # Draf OPR AI
+  ai-opr.ts         # Draf OPR AI (Groq utama, Gemini sandaran)
   gas-upload.ts     # Muat naik via Apps Script
   storage.ts        # gas | drive | supabase
   opr-photos.ts     # Had 4 gambar + tetapan mampatan
@@ -130,7 +132,7 @@ docs/               # SETUP, GAS, OPR, import CSV
 
 ## Keselamatan
 
-- Jangan commit `.env.local`, `secrets/`, atau kunci GAS/Gemini.
+- Jangan commit `.env.local`, `secrets/`, atau kunci GAS/Groq/Gemini.
 - `GAS_UPLOAD_SECRET` mesti panjang dan rawak.
 - Folder Drive hanya untuk gambar OPR aktiviti.
 

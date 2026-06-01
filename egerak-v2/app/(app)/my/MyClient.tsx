@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { format, subMonths } from "date-fns";
+import { format } from "date-fns";
 import { deletePergerakanIds } from "@/lib/actions/pergerakan";
 import PergerakanCard, { type PergerakanCardData } from "@/components/PergerakanCard";
 import {
@@ -66,13 +66,6 @@ function monthLabel(ym: string) {
   const [y, m] = ym.split("-").map(Number);
   const d = new Date(y, m - 1, 1);
   return format(d, "MMMM yyyy");
-}
-
-function defaultOpenMonths(): Set<string> {
-  const now = new Date();
-  const current = format(now, "yyyy-MM");
-  const prev = format(subMonths(now, 1), "yyyy-MM");
-  return new Set([current, prev]);
 }
 
 function defaultOpenYears(): Set<string> {

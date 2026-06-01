@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { rooms, roomBookings, auditLog, users } from "@/lib/schema";
-import { requireUser, requireAdmin } from "@/lib/rbac";
+import { requireUser } from "@/lib/rbac";
 import { formatTitleCase } from "@/lib/format-display-text";
 
 const bookSchema = z

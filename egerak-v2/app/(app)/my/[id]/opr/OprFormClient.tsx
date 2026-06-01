@@ -111,6 +111,7 @@ export default function OprFormClient({
   const [generatedKey, setGeneratedKey] = useState<string | null>(
     initial.aiGenerateInputKey,
   );
+  const previousPergerakanIdRef = useRef(pergerakanId);
   const [isGenerating, setIsGenerating] = useState(false);
   const [feedbackAnchor, setFeedbackAnchor] = useState<FeedbackAnchor>("form");
   const generateInFlightRef = useRef(false);
@@ -133,8 +134,11 @@ export default function OprFormClient({
   }, [initial]);
 
   useEffect(() => {
-    setGeneratedKey(initial.aiGenerateInputKey);
-  }, [pergerakanId]);
+    if (previousPergerakanIdRef.current !== pergerakanId) {
+      previousPergerakanIdRef.current = pergerakanId;
+      setGeneratedKey(initial.aiGenerateInputKey);
+    }
+  }, [pergerakanId, initial.aiGenerateInputKey]);
 
   // Hanya sync dari DB bila ada nilai — elak refresh timpa kunci client selepas Jana
   // (cth. lajur ai_generate_input_key belum wujud di Supabase).

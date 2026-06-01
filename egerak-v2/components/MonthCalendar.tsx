@@ -141,20 +141,7 @@ export default function MonthCalendar({
   }, [gridStart, gridEnd]);
 
   const weeks = Math.max(1, Math.floor(gridDays.length / 7));
-  const verticalCellDays = useMemo(() => {
-    // Kolum = minggu, row = hari (Weekday). Index renderer: gridDays[col*7 + row].
-    const out: Date[] = [];
-    for (let row = 0; row < 7; row++) {
-      for (let col = 0; col < weeks; col++) {
-        const idx = col * 7 + row;
-        if (idx < gridDays.length) out.push(gridDays[idx]);
-      }
-    }
-    return out;
-  }, [gridDays, weeks]);
-
   const isVerticalGrid = effectiveGridOrientation === "vertical";
-  const cellDays = isVerticalGrid ? verticalCellDays : gridDays;
 
   const buckets = useMemo(() => buildDayBuckets(items, gridDays), [items, gridDays]);
   const myDaysSet = useMemo(() => new Set(myRegisteredDays ?? []), [myRegisteredDays]);

@@ -1,6 +1,4 @@
 import { eq } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { users } from "@/lib/schema";
 import type { SessionUser } from "@/lib/rbac";
 import { intersectSektorIds, normalizeLaporanSektorIds } from "@/lib/laporan-sektor-scope";
 import { isFullAdmin } from "@/lib/roles";
@@ -28,6 +26,10 @@ export async function resolveUserSektorScope(user: SessionUser): Promise<SektorS
   }
 
   if (peranan === "Timbalan_PPD") {
+    const [{ db }, { users }] = await Promise.all([
+      import("@/lib/db"),
+      import("@/lib/schema"),
+    ]);
     const row = await db.query.users.findFirst({
       where: eq(users.id, Number(user.id)),
       columns: { laporanSektorIds: true },

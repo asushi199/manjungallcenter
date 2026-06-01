@@ -4,7 +4,7 @@ import { count, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { opr, oprPhotos, pergerakan, users, sektors, auditLog } from "@/lib/schema";
+import { opr, oprPhotos, pergerakan, sektors, auditLog } from "@/lib/schema";
 import { requireUser } from "@/lib/rbac";
 import { isFullAdmin, isKetuaOrTimbalan, isPenyelia } from "@/lib/roles";
 import { generateOprWithAi, type OprPromptInput } from "@/lib/ai-opr";

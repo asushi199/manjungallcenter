@@ -16,10 +16,7 @@ import {
   type CsvRow,
 } from "@/lib/csv-parse";
 import { normalizeLaporanSektorIds } from "@/lib/laporan-sektor-scope";
-import {
-  perananUsesLaporanSektorScope,
-  type UserPeranan,
-} from "@/lib/roles";
+import { perananUsesLaporanSektorScope } from "@/lib/roles";
 import { validateLaporanSektorIds, validateSektorPeranan } from "@/lib/actions/users";
 import { formatTitleCase } from "@/lib/format-display-text";
 

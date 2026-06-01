@@ -93,7 +93,7 @@ function addDaysToYmd(ymd: string, days: number): string {
 export function addMinutesToDateTime(value: string, addMinutes: number): string {
   const { date, time } = splitDateTime(value);
   if (!date) return "";
-  let total = timeToMinutes(time) + addMinutes;
+  const total = timeToMinutes(time) + addMinutes;
   if (total <= REGISTER_DAY_END_MIN) {
     return combineDateAndTime(date, minutesToTime(total));
   }

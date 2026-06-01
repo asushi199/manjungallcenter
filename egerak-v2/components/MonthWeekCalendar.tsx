@@ -336,7 +336,6 @@ export default function MonthWeekCalendar({
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 focus-visible:ring-offset-1",
                 )}
                 aria-current={isSelected ? "date" : undefined}
-                aria-selected={isSelected}
                 aria-label={day}
               >
                 <div className="relative flex items-center justify-center">

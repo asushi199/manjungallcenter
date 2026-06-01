@@ -1,7 +1,6 @@
 /**
  * @deprecated Guna `lib/holidays` — cuti umum auto (date-holidays) + cuti sekolah.
  */
-import type { HolidayDetail } from "./holidays/types";
 import { getCalendarHolidays } from "./holidays";
 
 export type PublicHolidayDetail = { name: string; note?: string };

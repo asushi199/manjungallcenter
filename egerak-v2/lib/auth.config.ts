@@ -1,4 +1,27 @@
 import type { NextAuthConfig } from "next-auth";
+import type { UserPeranan } from "./roles";
+
+type AuthUserFields = {
+  id: string;
+  username: string;
+  nama: string;
+  jawatan: string;
+  peranan: UserPeranan;
+  sektorId: number | null;
+  mustChangePassword: boolean;
+};
+
+function tokenString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function tokenPeranan(value: unknown): UserPeranan {
+  return typeof value === "string" ? (value as UserPeranan) : "Pengguna";
+}
+
+function tokenSektorId(value: unknown): number | null {
+  return typeof value === "number" ? value : null;
+}
 
 /**
  * Konfigurasi auth yang Edge-safe (untuk middleware).
@@ -21,28 +44,30 @@ export const authConfig = {
     async session({ session, token }) {
       if (token) {
         session.user.id = String(token.uid);
-        session.user.username = (token as any).username;
-        session.user.nama = (token as any).nama;
-        session.user.jawatan = (token as any).jawatan;
-        session.user.peranan = (token as any).peranan;
-        session.user.sektorId = (token as any).sektorId;
-        session.user.mustChangePassword = (token as any).mustChangePassword;
+        session.user.username = tokenString(token.username);
+        session.user.nama = tokenString(token.nama);
+        session.user.jawatan = tokenString(token.jawatan);
+        session.user.peranan = tokenPeranan(token.peranan);
+        session.user.sektorId = tokenSektorId(token.sektorId);
+        session.user.mustChangePassword =
+          typeof token.mustChangePassword === "boolean" ? token.mustChangePassword : false;
       }
       return session;
     },
     async jwt({ token, user, trigger, session }) {
       if (user) {
-        token.uid = Number((user as any).id);
-        (token as any).username = (user as any).username;
-        (token as any).nama = (user as any).nama;
-        (token as any).jawatan = (user as any).jawatan;
-        (token as any).peranan = (user as any).peranan;
-        (token as any).sektorId = (user as any).sektorId;
-        (token as any).mustChangePassword = (user as any).mustChangePassword;
+        const appUser = user as AuthUserFields;
+        token.uid = Number(appUser.id);
+        token.username = appUser.username;
+        token.nama = appUser.nama;
+        token.jawatan = appUser.jawatan;
+        token.peranan = appUser.peranan;
+        token.sektorId = appUser.sektorId;
+        token.mustChangePassword = appUser.mustChangePassword;
       }
       if (trigger === "update" && session) {
         if (typeof session.mustChangePassword === "boolean") {
-          (token as any).mustChangePassword = session.mustChangePassword;
+          token.mustChangePassword = session.mustChangePassword;
         }
       }
       return token;
