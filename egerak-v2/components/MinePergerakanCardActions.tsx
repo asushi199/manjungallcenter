@@ -56,8 +56,30 @@ export default function MinePergerakanCardActions({
     });
   }
 
+  const lampiranHref = `/api/pergerakan/${pergerakanId}/lampiran-a`;
+
   return (
-    <div className="mt-1 flex flex-wrap gap-1.5">
+    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+      <a
+        href={lampiranHref}
+        className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+        title="Muat turun Lampiran A (borang permohonan keluar)"
+        data-no-toggle
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          aria-hidden
+          className="shrink-0 text-blue-700"
+        >
+          <path
+            fill="currentColor"
+            d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm8 1.5V8h4.5L14 3.5zM8 12v6h8v-6H8zm1 1h6v4H9v-4z"
+          />
+        </svg>
+        Lampiran A
+      </a>
       {showPerlu ? (
         <>
           <Link
