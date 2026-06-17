@@ -7,7 +7,17 @@ import AdminPergerakanClient from "./AdminPergerakanClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPergerakanPage() {
+type SP = { year?: string };
+
+export default async function AdminPergerakanPage({
+  searchParams,
+}: {
+  searchParams: Promise<SP>;
+}) {
+  const sp = await searchParams;
+  const currentYear = new Date().getFullYear();
+  const yearParam = sp.year;
+  const year = yearParam === "all" ? undefined : Number(yearParam || currentYear);
   const user = await requireSectorPergerakanAdmin();
   const isAdmin = isFullAdmin(user.peranan);
   const isKetua = user.peranan === "Ketua_Unit";
@@ -28,7 +38,7 @@ export default async function AdminPergerakanPage() {
     .map((id) => allSektors.find((s) => s.id === id)?.name)
     .filter(Boolean) as string[];
 
-  const items = await listPergerakanForSectorAdmin();
+  const items = await listPergerakanForSectorAdmin(year);
 
   return (
     <div className="mx-auto max-w-6xl p-4 space-y-4">
@@ -68,6 +78,8 @@ export default async function AdminPergerakanPage() {
           tarikhPergi: it.tarikhPergi.toISOString(),
           tarikhKembali: it.tarikhKembali.toISOString(),
         }))}
+        year={year ?? "all"}
+        currentYear={currentYear}
       />
     </div>
   );

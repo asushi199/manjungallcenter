@@ -4,7 +4,7 @@ import { count, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { opr, oprPhotos, pergerakan, sektors, auditLog } from "@/lib/schema";
+import { opr, oprPhotos, pergerakan, sektors, auditLog, users } from "@/lib/schema";
 import { requireUser } from "@/lib/rbac";
 import { isFullAdmin, isKetuaOrTimbalan, isPenyelia } from "@/lib/roles";
 import { generateOprWithAi, type OprPromptInput } from "@/lib/ai-opr";
@@ -15,16 +15,42 @@ import { oprPhotoDisplayUrl } from "@/lib/opr-photo-url";
 import { getStorageSetupHint, isStorageConfigured, uploadOprPhoto } from "@/lib/storage";
 import { formatTitleCase } from "@/lib/format-display-text";
 
-async function assertPergerakanAccess(pergerakanId: number, userId: number, peranan: string) {
+async function assertPergerakanAccess(
+  pergerakanId: number,
+  userId: number,
+  peranan: string,
+  userSektorId?: number | null,
+) {
   const row = await db.query.pergerakan.findFirst({
     where: eq(pergerakan.id, pergerakanId),
     with: { user: true, sektor: true },
   });
   if (!row) return null;
-  const canViewAllOpr =
-    isFullAdmin(peranan) || isPenyelia(peranan) || isKetuaOrTimbalan(peranan);
-  if (!canViewAllOpr && row.userId !== userId) return null;
-  return row;
+
+  // Admin dan Penyelia — boleh lihat semua rekod
+  if (isFullAdmin(peranan) || isPenyelia(peranan)) return row;
+
+  // Rekod sendiri — semua peranan boleh akses
+  if (row.userId === userId) return row;
+
+  // Ketua_Unit — sektor sendiri sahaja
+  if (peranan === "Ketua_Unit") {
+    if (row.sektorId != null && userSektorId != null && row.sektorId === userSektorId) return row;
+    return null;
+  }
+
+  // Timbalan_PPD — ikut skop laporanSektorIds dalam profil
+  if (peranan === "Timbalan_PPD") {
+    const userRow = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { laporanSektorIds: true },
+    });
+    const allowedIds = userRow?.laporanSektorIds ?? [];
+    if (row.sektorId != null && allowedIds.includes(row.sektorId)) return row;
+    return null;
+  }
+
+  return null;
 }
 
 export async function getOrCreateOpr(pergerakanId: number) {
@@ -33,6 +59,7 @@ export async function getOrCreateOpr(pergerakanId: number) {
     pergerakanId,
     Number(session.id),
     session.peranan,
+    session.sektorId,
   );
   if (!row) throw new Error("Tiada kebenaran atau rekod tidak dijumpai");
 
@@ -77,6 +104,7 @@ export async function saveOpr(input: unknown) {
     pergerakanId,
     Number(session.id),
     session.peranan,
+    session.sektorId,
   );
   if (!row) return { ok: false as const, error: "Tiada kebenaran" };
 
@@ -124,6 +152,7 @@ export async function markOprTiada(pergerakanId: number): Promise<{ ok: boolean;
     pergerakanId,
     Number(session.id),
     session.peranan,
+    session.sektorId,
   );
   if (!row) return { ok: false, error: "Tiada kebenaran atau rekod tidak dijumpai" };
   if (row.jenis !== "Pergerakan") {
@@ -164,6 +193,7 @@ export async function reopenOprFromTiada(
     pergerakanId,
     Number(session.id),
     session.peranan,
+    session.sektorId,
   );
   if (!row) return { ok: false, error: "Tiada kebenaran atau rekod tidak dijumpai" };
 
@@ -356,6 +386,7 @@ export async function deleteOprPhotoAction(photoId: number, pergerakanId: number
     pergerakanId,
     Number(session.id),
     session.peranan,
+    session.sektorId,
   );
   if (!row) return { ok: false as const, error: "Tiada kebenaran" };
 

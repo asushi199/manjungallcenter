@@ -543,7 +543,7 @@ async function listPergerakanBetweenRaw(opts: {
 }
 
 /** Pergerakan aktif untuk padam pukal — Admin (semua) atau Ketua/Timbalan (ikut skop sektor). */
-export async function listPergerakanForSectorAdmin(): Promise<PergerakanListItem[]> {
+export async function listPergerakanForSectorAdmin(year?: number): Promise<PergerakanListItem[]> {
   const user = await requireSectorPergerakanAdmin();
   const scope = await resolveUserSektorScope(user);
   if (scope.noAccess) return [];
@@ -551,6 +551,10 @@ export async function listPergerakanForSectorAdmin(): Promise<PergerakanListItem
   const conditions = [eq(pergerakan.aktif, true)];
   if (!scope.allSectors) {
     conditions.push(inArray(pergerakan.sektorId, scope.allowedIds));
+  }
+  if (year) {
+    conditions.push(gte(pergerakan.tarikhPergi, new Date(`${year}-01-01T00:00:00+08:00`)));
+    conditions.push(lte(pergerakan.tarikhPergi, new Date(`${year}-12-31T23:59:59+08:00`)));
   }
 
   const rows = await db

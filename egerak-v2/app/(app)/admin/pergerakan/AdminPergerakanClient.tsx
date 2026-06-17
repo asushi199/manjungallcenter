@@ -30,7 +30,13 @@ function defaultOpenYears(): Set<string> {
   return new Set([format(new Date(), "yyyy")]);
 }
 
-export default function AdminPergerakanClient({ items }: { items: Item[] }) {
+type Props = {
+  items: Item[];
+  year: number | "all";
+  currentYear: number;
+};
+
+export default function AdminPergerakanClient({ items, year, currentYear }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -122,6 +128,14 @@ export default function AdminPergerakanClient({ items }: { items: Item[] }) {
     });
   }
 
+  function navigateYear(y: number | "all") {
+    setSelected(new Set());
+    router.push(`/admin/pergerakan?year=${y}`);
+  }
+
+  const prevYear = year === "all" ? currentYear - 1 : year - 1;
+  const nextYear = year === "all" ? currentYear + 1 : year + 1;
+
   return (
     <div className="space-y-3">
       <p className="text-sm text-slate-600 rounded-md bg-amber-50 border border-amber-200 px-3 py-2">
@@ -129,6 +143,42 @@ export default function AdminPergerakanClient({ items }: { items: Item[] }) {
         <strong>batalkan tempahan bilik</strong> yang dipautkan. Laporan OPR siap tidak lagi
         dipaparkan dalam ringkasan.
       </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center rounded-md border border-slate-200 bg-white overflow-hidden">
+          <button
+            type="button"
+            className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50 border-r border-slate-200"
+            onClick={() => navigateYear(prevYear)}
+            aria-label="Tahun sebelum"
+          >
+            ‹
+          </button>
+          <span className="px-3 py-1.5 text-sm font-semibold text-slate-800 min-w-[6rem] text-center">
+            {year === "all" ? "Semua tahun" : year}
+          </span>
+          <button
+            type="button"
+            className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50 border-l border-slate-200 disabled:opacity-40"
+            onClick={() => navigateYear(nextYear)}
+            disabled={year !== "all" && year >= currentYear}
+            aria-label="Tahun seterusnya"
+          >
+            ›
+          </button>
+        </div>
+        <button
+          type="button"
+          className={cn(
+            "px-3 py-1.5 text-sm rounded-md border",
+            year === "all"
+              ? "bg-brand-600 text-white border-brand-600"
+              : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50",
+          )}
+          onClick={() => navigateYear("all")}
+        >
+          Semua
+        </button>
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         <input
           className="input flex-1 min-w-[200px]"
