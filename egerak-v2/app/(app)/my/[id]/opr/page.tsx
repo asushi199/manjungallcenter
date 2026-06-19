@@ -74,6 +74,7 @@ export default async function OprPage({
         profileSektorName={p.sektor?.name ?? "—"}
         initial={{
           sektorOverrideId: o.sektorOverrideId,
+          fokus: o.fokus ?? "",
           maklumatTambahan: o.maklumatTambahan ?? "",
           sasaran: o.sasaran ?? "",
           notaPegawai: o.notaPegawai ?? "",

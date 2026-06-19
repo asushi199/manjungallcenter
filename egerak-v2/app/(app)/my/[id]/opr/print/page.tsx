@@ -54,6 +54,9 @@ export default async function OprPrintPage({ params }: { params: Promise<{ id: s
             <strong>Sektor:</strong> {sektorLabel}
           </p>
           <p>
+            <strong>Fokus:</strong> {o.fokus || "-"}
+          </p>
+          <p>
             <strong>Program:</strong> {p.urusan}
           </p>
           <p>

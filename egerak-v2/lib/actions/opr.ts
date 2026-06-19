@@ -9,6 +9,7 @@ import { requireUser } from "@/lib/rbac";
 import { isFullAdmin, isPenyelia } from "@/lib/roles";
 import { generateOprWithAi, type OprPromptInput } from "@/lib/ai-opr";
 import { buildOprGenerateKey } from "@/lib/opr-generate-lock";
+import { isOprFokus } from "@/lib/opr-fokus";
 import { formatDateTime } from "@/lib/dates";
 import { OPR_MAX_PHOTOS } from "@/lib/opr-photos";
 import { oprPhotoDisplayUrl } from "@/lib/opr-photo-url";
@@ -85,6 +86,7 @@ export async function getOrCreateOpr(pergerakanId: number) {
 const saveSchema = z.object({
   pergerakanId: z.number(),
   sektorOverrideId: z.number().nullable().optional(),
+  fokus: z.string().nullable().optional(),
   maklumatTambahan: z.string().optional(),
   sasaran: z.string().optional(),
   notaPegawai: z.string().optional(),
@@ -113,10 +115,20 @@ export async function saveOpr(input: unknown) {
 
   const sasaran = formatTitleCase(data.sasaran ?? "");
 
+  const fokus = data.fokus?.trim() ? data.fokus.trim() : null;
+  if (fokus !== null && !isOprFokus(fokus)) {
+    return { ok: false as const, error: "Fokus OPR tidak sah" };
+  }
+  const nextStatusForCheck = data.status ?? existing.status;
+  if (nextStatusForCheck === "SIAP" && !fokus) {
+    return { ok: false as const, error: "Sila pilih Fokus OPR sebelum menandakan siap." };
+  }
+
   await db
     .update(opr)
     .set({
       sektorOverrideId: data.sektorOverrideId ?? null,
+      fokus,
       maklumatTambahan: data.maklumatTambahan ?? "",
       sasaran,
       notaPegawai: data.notaPegawai ?? "",
@@ -235,6 +247,9 @@ export async function generateOprDraft(
   const maklumatTambahan = form?.maklumatTambahan ?? o.maklumatTambahan ?? "";
   const sasaran = formatTitleCase(form?.sasaran ?? o.sasaran ?? "");
   const notaPegawai = form?.notaPegawai ?? o.notaPegawai ?? "";
+  if (!notaPegawai.trim()) {
+    throw new Error("Sila isi Dapatan (ringkas) sebelum menjana draf.");
+  }
   const sektorOverrideId =
     form?.sektorOverrideId !== undefined ? form.sektorOverrideId : o.sektorOverrideId;
 

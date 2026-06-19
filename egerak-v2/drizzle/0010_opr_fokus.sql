@@ -1,0 +1,1 @@
+ALTER TABLE "opr" ADD COLUMN IF NOT EXISTS "fokus" text;

@@ -157,6 +157,8 @@ export const opr = pgTable(
     sektorOverrideId: integer("sektor_override_id").references(() => sektors.id, {
       onDelete: "set null",
     }),
+    /** Fokus OPR (klasifikasi wajib, bukan input AI) — untuk Analisis OPR. */
+    fokus: text("fokus"),
     maklumatTambahan: text("maklumat_tambahan").default(""),
     sasaran: text("sasaran").default(""),
     notaPegawai: text("nota_pegawai").default(""),

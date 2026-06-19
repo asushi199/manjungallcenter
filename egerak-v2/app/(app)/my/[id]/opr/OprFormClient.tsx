@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { compressImageForOpr } from "@/lib/client/compress-image";
 import { OPR_MAX_PHOTOS } from "@/lib/opr-photos";
+import { OPR_FOKUS_OPTIONS } from "@/lib/opr-fokus";
 import { oprStatusBadge } from "@/lib/opr-status";
 import { buildOprGenerateKey } from "@/lib/opr-generate-lock";
 import { cn } from "@/lib/cn";
@@ -72,6 +73,7 @@ type Props = {
   profileSektorName: string;
   initial: {
     sektorOverrideId: number | null;
+    fokus: string;
     maklumatTambahan: string;
     sasaran: string;
     notaPegawai: string;
@@ -125,6 +127,10 @@ export default function OprFormClient({
 
   const janaLocked = generatedKey === currentGenerateKey;
   const janaBusy = pending || isGenerating;
+  // Dapatan (ringkas) wajib diisi sebelum boleh Jana draf AI.
+  const dapatanRingkasEmpty = !form.notaPegawai.trim();
+  // Fokus OPR wajib dipilih sebelum boleh Tandakan Siap.
+  const fokusEmpty = !form.fokus.trim();
 
   // Dapatan / Rumusan / Refleksi hanya boleh diubah selepas draf dijana.
   // Draf dianggap wujud jika pernah dijana (ada kunci) atau sudah berisi teks.
@@ -164,6 +170,10 @@ export default function OprFormClient({
   function onSave(markSiap = false) {
     setFeedbackAnchor("form");
     setMsg(null);
+    if (markSiap && fokusEmpty) {
+      setMsg("Gagal: sila pilih Fokus sebelum menandakan siap.");
+      return;
+    }
     startTransition(async () => {
       const res = await saveOpr({
         pergerakanId,
@@ -207,6 +217,11 @@ export default function OprFormClient({
 
   function onGenerate() {
     if (janaBusy || janaLocked || generateInFlightRef.current) return;
+    if (dapatanRingkasEmpty) {
+      setFeedbackAnchor("generate");
+      setMsg("Gagal jana: sila isi Dapatan (ringkas) dahulu.");
+      return;
+    }
 
     generateInFlightRef.current = true;
     setIsGenerating(true);
@@ -347,6 +362,28 @@ export default function OprFormClient({
               <p className="text-xs text-slate-500 mt-1">Mengikut profil pegawai.</p>
             </div>
             <div>
+              <label className="label">
+                Fokus <span className="text-red-600">*</span>
+              </label>
+              <select
+                className="input"
+                value={form.fokus}
+                onChange={(e) => setForm({ ...form, fokus: e.target.value })}
+              >
+                <option value="">— Pilih fokus —</option>
+                {OPR_FOKUS_OPTIONS.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </select>
+              {fokusEmpty ? (
+                <p className="text-xs text-slate-500 mt-1">
+                  Wajib dipilih sebelum menandakan siap.
+                </p>
+              ) : null}
+            </div>
+            <div>
               <label className="label">Maklumat tambahan / objektif ringkas</label>
               <textarea
                 className="input min-h-[80px]"
@@ -364,20 +401,30 @@ export default function OprFormClient({
               />
             </div>
             <div>
-              <label className="label">Dapatan (ringkas)</label>
+              <label className="label">
+                Dapatan (ringkas) <span className="text-red-600">*</span>
+              </label>
               <textarea
                 className="input min-h-[60px]"
                 value={form.notaPegawai}
                 onChange={(e) => setForm({ ...form, notaPegawai: e.target.value })}
+                placeholder="Penemuan sebenar di lapangan — jadi asas draf AI. Wajib diisi sebelum Jana."
               />
+              {dapatanRingkasEmpty ? (
+                <p className="text-xs text-slate-500 mt-1">
+                  Wajib diisi sebelum menjana draf AI.
+                </p>
+              ) : null}
             </div>
             <button
               type="button"
-              className={janaBusy || janaLocked ? "btn-secondary" : "btn-primary"}
-              disabled={janaBusy || janaLocked}
+              className={
+                janaBusy || janaLocked || dapatanRingkasEmpty ? "btn-secondary" : "btn-primary"
+              }
+              disabled={janaBusy || janaLocked || dapatanRingkasEmpty}
               onClick={onGenerate}
               aria-busy={janaBusy}
-              aria-disabled={janaBusy || janaLocked}
+              aria-disabled={janaBusy || janaLocked || dapatanRingkasEmpty}
             >
               {janaBusy
                 ? "Menjana…"
@@ -460,7 +507,7 @@ export default function OprFormClient({
             <button
               type="button"
               className="btn-primary"
-              disabled={pending || isSiap}
+              disabled={pending || isSiap || fokusEmpty}
               onClick={() => onSave(true)}
             >
               {isSiap ? "Sudah Siap" : "Tandakan Siap"}
