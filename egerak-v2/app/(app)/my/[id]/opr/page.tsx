@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getOrCreateOpr, listSektorsForOpr } from "@/lib/actions/opr";
+import { getOrCreateOpr } from "@/lib/actions/opr";
 import { requireUser } from "@/lib/rbac";
 import { formatDateTime } from "@/lib/dates";
 import { oprPhotoDisplayUrl } from "@/lib/opr-photo-url";
@@ -37,7 +37,6 @@ export default async function OprPage({
     notFound();
   }
 
-  const sektors = await listSektorsForOpr();
   const p = data.pergerakan;
   const o = data.opr;
   const statusBadge = oprStatusBadge(o.status);
@@ -50,13 +49,13 @@ export default async function OprPage({
             ← {returnLabel}
           </Link>
           <div className="flex flex-wrap items-center gap-2 mt-1">
-            <h1 className="text-xl font-semibold">OPR — {p.urusan}</h1>
+            <h1 className="text-xl font-semibold">OPR Pelaksanaan Program / Aktiviti</h1>
             {statusBadge ? (
               <span className={`badge ${statusBadge.className}`}>{statusBadge.label}</span>
             ) : null}
           </div>
           <p className="text-sm text-slate-500">
-            {formatDateTime(p.tarikhPergi)} · {p.lokasi || "-"}
+            {p.urusan} · {formatDateTime(p.tarikhPergi)} · {p.lokasi || "-"}
           </p>
         </div>
         <Link
@@ -72,7 +71,7 @@ export default async function OprPage({
         pergerakanId={pergerakanId}
         returnTo={returnTo}
         returnLabel={returnLabel}
-        sektors={sektors.map((s) => ({ id: s.id, code: s.code, name: s.name }))}
+        profileSektorName={p.sektor?.name ?? "—"}
         initial={{
           sektorOverrideId: o.sektorOverrideId,
           maklumatTambahan: o.maklumatTambahan ?? "",

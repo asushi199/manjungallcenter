@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { opr, oprPhotos, pergerakan, sektors, auditLog, users } from "@/lib/schema";
 import { requireUser } from "@/lib/rbac";
-import { isFullAdmin, isKetuaOrTimbalan, isPenyelia } from "@/lib/roles";
+import { isFullAdmin, isPenyelia } from "@/lib/roles";
 import { generateOprWithAi, type OprPromptInput } from "@/lib/ai-opr";
 import { buildOprGenerateKey } from "@/lib/opr-generate-lock";
 import { formatDateTime } from "@/lib/dates";
@@ -409,8 +409,4 @@ export async function deleteOprPhotoAction(photoId: number, pergerakanId: number
   revalidatePath(`/my/${pergerakanId}/opr`);
   revalidatePath(`/my/${pergerakanId}/opr/print`);
   return { ok: true as const };
-}
-
-export async function listSektorsForOpr() {
-  return db.select().from(sektors);
 }

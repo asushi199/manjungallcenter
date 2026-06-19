@@ -68,7 +68,8 @@ type Props = {
   returnTo?: string;
   /** Label untuk butang patah balik. */
   returnLabel?: string;
-  sektors: Array<{ id: number; code: string; name: string }>;
+  /** Sektor mengikut profil pegawai (paparan sahaja, tidak boleh ubah). */
+  profileSektorName: string;
   initial: {
     sektorOverrideId: number | null;
     maklumatTambahan: string;
@@ -95,7 +96,7 @@ export default function OprFormClient({
   pergerakanId,
   returnTo = "/my",
   returnLabel = "Pergerakan Saya",
-  sektors,
+  profileSektorName,
   initial,
   photos: initialPhotos,
   storageEnabled,
@@ -124,6 +125,11 @@ export default function OprFormClient({
 
   const janaLocked = generatedKey === currentGenerateKey;
   const janaBusy = pending || isGenerating;
+
+  // Dapatan / Rumusan / Refleksi hanya boleh diubah selepas draf dijana.
+  // Draf dianggap wujud jika pernah dijana (ada kunci) atau sudah berisi teks.
+  const outputsLocked =
+    !generatedKey && !form.dapatan && !form.rumusan && !form.refleksi;
 
   useEffect(() => {
     setPhotos(initialPhotos);
@@ -162,7 +168,8 @@ export default function OprFormClient({
       const res = await saveOpr({
         pergerakanId,
         ...form,
-        sektorOverrideId: form.sektorOverrideId || null,
+        // Sektor sentiasa ikut profil pegawai — tiada override.
+        sektorOverrideId: null,
         status: markSiap ? "SIAP" : form.status === "SIAP" ? "SIAP" : "DRAFT",
       });
       if (!res.ok) {
@@ -209,7 +216,7 @@ export default function OprFormClient({
     startTransition(async () => {
       try {
         const draft = await generateOprDraft(pergerakanId, {
-          sektorOverrideId: form.sektorOverrideId,
+          sektorOverrideId: null,
           maklumatTambahan: form.maklumatTambahan,
           sasaran: form.sasaran,
           notaPegawai: form.notaPegawai,
@@ -333,24 +340,11 @@ export default function OprFormClient({
         <>
           <div className="card p-4 space-y-3">
             <div>
-              <label className="label">Sektor (override jika perlu)</label>
-              <select
-                className="input"
-                value={form.sektorOverrideId ?? ""}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    sektorOverrideId: e.target.value ? Number(e.target.value) : null,
-                  })
-                }
-              >
-                <option value="">Ikut profil pegawai</option>
-                {sektors.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+              <label className="label">Sektor</label>
+              <div className="input bg-slate-50 text-slate-700 cursor-not-allowed">
+                {profileSektorName}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Mengikut profil pegawai.</p>
             </div>
             <div>
               <label className="label">Maklumat tambahan / objektif ringkas</label>
@@ -370,7 +364,7 @@ export default function OprFormClient({
               />
             </div>
             <div>
-              <label className="label">Nota pegawai (mentah)</label>
+              <label className="label">Dapatan (ringkas)</label>
               <textarea
                 className="input min-h-[60px]"
                 value={form.notaPegawai}
@@ -402,22 +396,31 @@ export default function OprFormClient({
           </div>
 
           <div className="card p-4 space-y-3">
+            {outputsLocked ? (
+              <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                Bahagian ini akan diisi selepas anda tekan <strong>Jana Draf (AI)</strong>. Anda
+                boleh menyuntingnya selepas draf dijana.
+              </p>
+            ) : null}
             <label className="label">Dapatan</label>
             <textarea
-              className="input min-h-[120px]"
+              className="input min-h-[120px] disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
               value={form.dapatan}
+              disabled={outputsLocked}
               onChange={(e) => setForm({ ...form, dapatan: e.target.value })}
             />
             <label className="label">Rumusan</label>
             <textarea
-              className="input min-h-[80px]"
+              className="input min-h-[80px] disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
               value={form.rumusan}
+              disabled={outputsLocked}
               onChange={(e) => setForm({ ...form, rumusan: e.target.value })}
             />
             <label className="label">Refleksi</label>
             <textarea
-              className="input min-h-[100px]"
+              className="input min-h-[100px] disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
               value={form.refleksi}
+              disabled={outputsLocked}
               onChange={(e) => setForm({ ...form, refleksi: e.target.value })}
             />
           </div>
