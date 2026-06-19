@@ -39,15 +39,18 @@ const ACRONYMS = new Set([
   "SK", "SJK", "SJKC", "SJKT", "SMK", "SMJK", "SABK", "SBP", "SBPI", "SMKA",
   "MRSM", "KAFA", "SR", "SM", "SRA",
   // Badan / pejabat
-  "PPD", "PPDM", "JPN", "KPM", "KPT", "BTP", "BPSH", "BPG", "IPG", "IPGM", "IAB", "BPK",
+  "PPD", "PPDM", "JPN", "KPM", "KPT", "BTP", "BPSH", "BPG", "IPG", "IPGM", "IAB", "BPK", "JKR",
   // Teknologi / program
   "USTP", "ICT", "ICTL", "PSS", "VLE", "LMS", "OPR", "KPI", "SISPA", "NILAM",
-  "PBD", "PLC", "HEM", "TMK", "RBT", "PJK", "MBMMBI",
-  // Peperiksaan
-  "UPSR", "PT3", "SPM", "STPM", "STAM", "UASA", "PAT", "PKSR",
-  // Jawatan / unit
+  "PBD", "PLC", "HEM", "TMK", "RBT", "PJK", "MBMMBI", "AI", "RPM", "LADAP",
+  // Peperiksaan / penilaian
+  "UPSR", "PT3", "SPM", "STPM", "STAM", "UASA", "PAT", "PKSR", "PBPPP",
+  // Jawatan / unit / gred staf
   "GB", "PGB", "PK", "PKP", "PKHEM", "PKKK", "GKMP", "SU", "AJK", "YDP", "NYDP",
-  "GPK", "TYT", "KP", "OKU", "PIBG", "RMT",
+  "GPK", "TYT", "KP", "OKU", "PIBG", "RMT", "PT", "PO", "PPP", "PPPS", "PPPLD",
+  "JUSA", "AKP", "PPPB",
+  // Lain-lain
+  "MC", "MCP",
 ]);
 
 /** Singkatan dengan kes khas (jenama rasmi) — dipaparkan mengikut ejaan rasmi. */
@@ -56,6 +59,7 @@ const CANONICAL = new Map<string, string>([
   ["PDP", "PdP"],
   ["PAK21", "PAK21"],
   ["EGERAK", "eGerak"],
+  ["NOTEBOOKLM", "NotebookLM"],
 ]);
 
 function formatWordCore(core: string, isFirstInSegment: boolean): string {
