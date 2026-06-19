@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteOprPhotoAction } from "@/lib/actions/opr";
 import { OPR_MAX_PHOTOS } from "@/lib/opr-photos";
@@ -36,20 +36,21 @@ export default function OprPhotoGallery({
   onUpload,
 }: Props) {
   const router = useRouter();
-  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [, startTransition] = useTransition();
 
   function onDelete(photoId: number) {
-    if (!confirm("Padam gambar ini? (Rekod eGerak sahaja; fail Drive kekal.)")) return;
-    setDeletingId(photoId);
+    if (!confirm("Padam gambar ini? Fail turut dipadam dari Drive.")) return;
+    // Kemas kini optimistik — buang serta-merta supaya pengguna boleh teruskan
+    // tindakan lain tanpa menunggu pemadaman Drive di latar belakang.
+    const prev = photos;
+    onPhotosChange(photos.filter((p) => p.id !== photoId));
     startTransition(async () => {
       const res = await deleteOprPhotoAction(photoId, pergerakanId);
-      setDeletingId(null);
       if (!res.ok) {
+        onPhotosChange(prev); // gulung semula jika gagal
         onDeleteError(res.error);
         return;
       }
-      onPhotosChange(photos.filter((p) => p.id !== photoId));
       router.refresh();
     });
   }
@@ -94,7 +95,7 @@ export default function OprPhotoGallery({
                     type="button"
                     className="absolute -top-2 -right-2 rounded-full bg-red-600 text-white text-xs w-6 h-6 shadow hover:bg-red-700 disabled:opacity-50"
                     title="Padam gambar"
-                    disabled={pending || deletingId === ph.id}
+                    disabled={pending}
                     onClick={() => onDelete(ph.id)}
                   >
                     ×

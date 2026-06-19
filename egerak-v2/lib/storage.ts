@@ -5,8 +5,13 @@
  * - supabase: Supabase Storage
  */
 
-import { uploadOprPhotoViaGas, isGasStorageConfigured } from "@/lib/gas-upload";
+import {
+  uploadOprPhotoViaGas,
+  deleteOprPhotoViaGas,
+  isGasStorageConfigured,
+} from "@/lib/gas-upload";
 import { isDriveStorageConfigured, uploadOprPhotoToDrive } from "@/lib/google-drive";
+import { buildOprPhotoNaming, type OprPhotoMeta } from "@/lib/opr-photos";
 
 export type OprPhotoStorageBackend = "gas" | "drive" | "supabase";
 
@@ -59,6 +64,7 @@ export function getStorageSetupHint(): string {
 async function uploadOprPhotoToSupabase(
   oprId: number,
   file: { name: string; type: string; buffer: Buffer },
+  meta?: OprPhotoMeta,
 ): Promise<{ path: string; publicUrl: string }> {
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -67,8 +73,15 @@ async function uploadOprPhotoToSupabase(
     throw new Error("Supabase Storage belum dikonfigurasi (URL + SERVICE_ROLE_KEY).");
   }
 
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const path = `opr/${oprId}/${Date.now()}_${safeName}`;
+  // Susun mengikut Tahun/Bulan/Sektor bila metadata ada; jika tidak, kekal lama.
+  let path: string;
+  if (meta) {
+    const { fileName, subPath } = buildOprPhotoNaming(meta, file.name);
+    path = `opr/${subPath.join("/")}/${fileName}`;
+  } else {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    path = `opr/${oprId}/${Date.now()}_${safeName}`;
+  }
 
   const res = await fetch(`${base}/storage/v1/object/${bucket}/${path}`, {
     method: "POST",
@@ -92,6 +105,7 @@ async function uploadOprPhotoToSupabase(
 export async function uploadOprPhoto(
   oprId: number,
   file: { name: string; type: string; buffer: Buffer },
+  meta?: OprPhotoMeta,
 ): Promise<{ path: string; publicUrl: string }> {
   const backend = resolveOprPhotoStorage();
   if (!backend) {
@@ -99,11 +113,32 @@ export async function uploadOprPhoto(
   }
 
   if (backend === "gas") {
-    return uploadOprPhotoViaGas(oprId, file);
+    return uploadOprPhotoViaGas(oprId, file, meta);
   }
   if (backend === "drive") {
-    return uploadOprPhotoToDrive(oprId, file);
+    return uploadOprPhotoToDrive(oprId, file, meta);
   }
 
-  return uploadOprPhotoToSupabase(oprId, file);
+  return uploadOprPhotoToSupabase(oprId, file, meta);
+}
+
+/** id Drive daripada storagePath "drive/{fileId}". */
+function driveFileIdFromPath(storagePath: string): string | null {
+  const m = /^drive\/(.+)$/.exec(storagePath);
+  return m ? m[1] : null;
+}
+
+/**
+ * Padam fail di storan selepas rekod DB dipadam — best-effort.
+ * Hanya backend GAS yang menyokong padam jarak jauh buat masa ini;
+ * backend lain dilangkau (rekod DB sudah dipadam).
+ */
+export async function deleteOprPhotoFromStorage(storagePath: string): Promise<boolean> {
+  const backend = resolveOprPhotoStorage();
+  if (backend === "gas") {
+    const fileId = driveFileIdFromPath(storagePath);
+    if (!fileId) return false;
+    return deleteOprPhotoViaGas(fileId);
+  }
+  return false;
 }

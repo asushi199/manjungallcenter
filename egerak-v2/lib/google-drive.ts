@@ -44,6 +44,7 @@ async function getDriveClient() {
 }
 
 import { drivePhotoStoredPublicUrl } from "@/lib/opr-photo-url";
+import { buildOprPhotoNaming, type OprPhotoMeta } from "@/lib/opr-photos";
 
 /** URL untuk <img src> selepas fail dikongsi "anyone with link" */
 export function driveImageViewUrl(fileId: string): string {
@@ -53,6 +54,7 @@ export function driveImageViewUrl(fileId: string): string {
 export async function uploadOprPhotoToDrive(
   oprId: number,
   file: { name: string; type: string; buffer: Buffer },
+  meta?: OprPhotoMeta,
 ): Promise<{ path: string; publicUrl: string; fileId: string }> {
   const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID?.trim();
   if (!folderId) {
@@ -60,8 +62,9 @@ export async function uploadOprPhotoToDrive(
   }
 
   const drive = await getDriveClient();
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const driveName = `opr-${oprId}-${Date.now()}_${safeName}`;
+  const driveName = meta
+    ? buildOprPhotoNaming(meta, file.name).fileName
+    : `opr-${oprId}-${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
   const mimeType = file.type || "application/octet-stream";
 
   const created = await drive.files.create({

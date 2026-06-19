@@ -11,9 +11,14 @@ import { generateOprWithAi, type OprPromptInput } from "@/lib/ai-opr";
 import { buildOprGenerateKey } from "@/lib/opr-generate-lock";
 import { isOprFokus } from "@/lib/opr-fokus";
 import { formatDateTime } from "@/lib/dates";
-import { OPR_MAX_PHOTOS } from "@/lib/opr-photos";
+import { OPR_MAX_PHOTOS, type OprPhotoMeta } from "@/lib/opr-photos";
 import { oprPhotoDisplayUrl } from "@/lib/opr-photo-url";
-import { getStorageSetupHint, isStorageConfigured, uploadOprPhoto } from "@/lib/storage";
+import {
+  getStorageSetupHint,
+  isStorageConfigured,
+  uploadOprPhoto,
+  deleteOprPhotoFromStorage,
+} from "@/lib/storage";
 import { formatTitleCase } from "@/lib/format-display-text";
 
 async function assertPergerakanAccess(
@@ -361,11 +366,19 @@ export async function uploadOprPhotoAction(
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const mimeType = file.type || "image/jpeg";
-  const { path, publicUrl } = await uploadOprPhoto(data.opr.id, {
-    name: file.name,
-    type: mimeType,
-    buffer,
-  });
+  const p = data.pergerakan;
+  const meta: OprPhotoMeta = {
+    oprId: data.opr.id,
+    tarikh: p.tarikhPergi,
+    sektorCode: p.sektor?.code ?? "NA",
+    program: p.urusan ?? "",
+    index: photoCount + 1,
+  };
+  const { path, publicUrl } = await uploadOprPhoto(
+    data.opr.id,
+    { name: file.name, type: mimeType, buffer },
+    meta,
+  );
 
   const [inserted] = await db
     .insert(oprPhotos)
@@ -415,10 +428,14 @@ export async function deleteOprPhotoAction(photoId: number, pergerakanId: number
 
   await db.delete(oprPhotos).where(eq(oprPhotos.id, photoId));
 
+  // Padam fail di storan (best-effort) — rekod DB ialah sumber kebenaran,
+  // jadi kegagalan padam Drive tidak menggagalkan tindakan ini.
+  const storageDeleted = await deleteOprPhotoFromStorage(photo.storagePath);
+
   await db.insert(auditLog).values({
     action: "OPR_PHOTO_DELETE",
     userId: Number(session.id),
-    detail: { pergerakanId, photoId, storagePath: photo.storagePath },
+    detail: { pergerakanId, photoId, storagePath: photo.storagePath, storageDeleted },
   });
 
   revalidatePath(`/my/${pergerakanId}/opr`);
