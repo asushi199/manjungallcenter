@@ -5,7 +5,7 @@ import { alias } from "drizzle-orm/pg-core";
 import { formatInTimeZone } from "date-fns-tz";
 import { db } from "@/lib/db";
 import { withDbTimeout } from "@/lib/db-timeout";
-import type { AnalisisAggregates } from "@/lib/analisis/cluster-programs";
+import type { AnalisisAggregates, FokusAggregates } from "@/lib/analisis/cluster-programs";
 import { resolveLaporanOprPeriod, type LaporanOprPeriod } from "@/lib/laporan-opr-period";
 import { requireAnalisisAccess } from "@/lib/rbac";
 import { applySektorScopeToFilter, resolveUserSektorScope } from "@/lib/sektor-admin-scope";
@@ -16,9 +16,38 @@ export type AnalisisPergerakanResult = {
   period: LaporanOprPeriod;
   pergerakanAggregates: AnalisisAggregates;
   programAggregates: AnalisisAggregates;
+  fokusAggregates: FokusAggregates;
   chartYear: string;
   filterMonth?: string;
 };
+
+const FOKUS_NONE = "Tidak ditetapkan";
+
+function aggregateFokus(
+  rows: Array<{ tarikhPergi: Date; fokus: string | null }>,
+  opts: { year: string; filterMonth?: string; allPeriod?: boolean },
+): FokusAggregates {
+  let filtered = rows;
+  if (opts.filterMonth) {
+    filtered = rows.filter(
+      (r) => formatInTimeZone(r.tarikhPergi, TZ, "yyyy-MM") === opts.filterMonth,
+    );
+  } else if (!opts.allPeriod) {
+    filtered = rows.filter((r) => formatInTimeZone(r.tarikhPergi, TZ, "yyyy") === opts.year);
+  }
+
+  const map = new Map<string, number>();
+  for (const r of filtered) {
+    const key = r.fokus?.trim() ? r.fokus.trim() : FOKUS_NONE;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+
+  const byFokus = [...map.entries()]
+    .map(([fokus, count]) => ({ fokus, count }))
+    .sort((a, b) => b.count - a.count);
+
+  return { total: filtered.length, byFokus };
+}
 
 const sektorPg = alias(sektors, "sektor_pg");
 const sektorOv = alias(sektors, "sektor_ov");
@@ -111,10 +140,10 @@ function emptyAggregates(opts: {
   return aggregateAnalisis([], opts);
 }
 
-function filterByOprSektorScope(
-  rows: AggRow[],
+function filterByOprSektorScope<T extends { sektorId: number | null }>(
+  rows: T[],
   effectiveSektorIds: number[] | undefined,
-): AggRow[] {
+): T[] {
   if (!effectiveSektorIds?.length) return rows;
   return rows.filter((r) => r.sektorId != null && effectiveSektorIds.includes(r.sektorId));
 }
@@ -152,6 +181,7 @@ export async function getAnalisisPergerakanData(sp: {
       period,
       pergerakanAggregates: emptyAggregates(aggOpts),
       programAggregates: emptyAggregates(aggOpts),
+      fokusAggregates: { total: 0, byFokus: [] },
       chartYear,
       filterMonth,
     };
@@ -213,6 +243,7 @@ export async function getAnalisisPergerakanData(sp: {
         oprSektorOverrideId: opr.sektorOverrideId,
         oprSektorCode: sektorOv.code,
         oprSektorName: sektorOv.name,
+        fokus: opr.fokus,
       })
       .from(opr)
       .innerJoin(pergerakan, eq(opr.pergerakanId, pergerakan.id))
@@ -222,25 +253,27 @@ export async function getAnalisisPergerakanData(sp: {
       .where(and(...programConditions)),
   );
 
-  const programRows = filterByOprSektorScope(
-    oprSiapRows.map((r) => {
-      const useOverride = r.oprSektorOverrideId != null;
-      return {
-        tarikhPergi: new Date(r.tarikhPergi),
-        sektorId: useOverride ? r.oprSektorOverrideId : r.sektorId,
-        sektorCode: useOverride ? r.oprSektorCode : r.sektorCode,
-        sektorName: useOverride ? r.oprSektorName : r.sektorName,
-      };
-    }),
-    effectiveSektorIds,
-  );
+  const programRowsFull: Array<AggRow & { fokus: string | null }> = oprSiapRows.map((r) => {
+    const useOverride = r.oprSektorOverrideId != null;
+    return {
+      tarikhPergi: new Date(r.tarikhPergi),
+      sektorId: useOverride ? r.oprSektorOverrideId : r.sektorId,
+      sektorCode: useOverride ? r.oprSektorCode : r.sektorCode,
+      sektorName: useOverride ? r.oprSektorName : r.sektorName,
+      fokus: r.fokus,
+    };
+  });
+
+  const programRows = filterByOprSektorScope(programRowsFull, effectiveSektorIds);
 
   const programAggregates = aggregateAnalisis(programRows, aggOpts);
+  const fokusAggregates = aggregateFokus(programRows, aggOpts);
 
   return {
     period,
     pergerakanAggregates,
     programAggregates,
+    fokusAggregates,
     chartYear,
     filterMonth,
   };

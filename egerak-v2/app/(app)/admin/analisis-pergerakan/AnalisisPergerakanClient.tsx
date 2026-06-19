@@ -20,14 +20,19 @@ import {
 import { sektorStyle } from "@/lib/sektor-colors";
 import SektorFilterDropdown from "@/components/SektorFilterDropdown";
 import type { SektorOption } from "@/components/FilterBar";
-import type { AnalisisAggregates } from "@/lib/analisis/cluster-programs";
+import type { AnalisisAggregates, FokusAggregates } from "@/lib/analisis/cluster-programs";
 import type { LaporanOprRange } from "@/lib/laporan-opr-period";
 import { replaceWithSearchParams } from "@/lib/navigate";
 
 const BRAND = "#b81049";
-/** Jalur atas — bezakan dua jenis analisis */
+/** Jalur atas — bezakan jenis analisis */
 const ACCENT_PERGERAKAN = BRAND;
 const ACCENT_PROGRAM = "#0d9488";
+const ACCENT_FOKUS = "#7c3aed";
+
+/** Warna tetap bagi bar fokus (ikut kedudukan selepas isih). */
+const FOKUS_COLORS = ["#7c3aed", "#0d9488", "#b81049", "#ea580c", "#0369a1", "#65a30d"];
+const FOKUS_NONE_COLOR = "#94a3b8";
 
 const RANGE_OPTIONS: { value: LaporanOprRange; label: string }[] = [
   { value: "year", label: "Tahun" },
@@ -40,6 +45,7 @@ type Props = {
   sektorFilterLocked?: boolean;
   pergerakanAggregates: AnalisisAggregates;
   programAggregates: AnalisisAggregates;
+  fokusAggregates: FokusAggregates;
   current: {
     range: LaporanOprRange;
     month: string;
@@ -226,11 +232,73 @@ function ChartsBlock({
   );
 }
 
+function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
+  const { total, byFokus } = aggregates;
+  if (total === 0) {
+    return (
+      <p className="text-sm text-slate-500 text-center py-6">
+        Tiada OPR siap dalam tempoh ini.
+      </p>
+    );
+  }
+
+  const data = byFokus.map((f, i) => ({
+    name: f.fokus,
+    count: f.count,
+    pct: Math.round((f.count / total) * 100),
+    fill: f.fokus === "Tidak ditetapkan" ? FOKUS_NONE_COLOR : FOKUS_COLORS[i % FOKUS_COLORS.length],
+  }));
+  const top = byFokus[0];
+
+  return (
+    <>
+      <p className="text-xs text-slate-500 text-center">
+        Fokus terbanyak: <strong>{top.fokus}</strong> ({top.count} ·{" "}
+        {Math.round((top.count / total) * 100)}%) daripada {total} OPR siap.
+      </p>
+      <div className="card p-4">
+        <h3 className="text-sm font-semibold text-slate-800 mb-1">Bilangan OPR siap mengikut fokus</h3>
+        <p className="text-xs text-slate-500 mb-4">Tempoh dipilih · disusun terbanyak ke atas</p>
+        <div className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={data}
+              layout="vertical"
+              margin={{ top: 4, right: 48, left: 4, bottom: 4 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+              <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 11 }} />
+              <Tooltip
+                formatter={(value: number, _name, item) => {
+                  const p = item?.payload as { pct?: number } | undefined;
+                  return [`${value} (${p?.pct ?? 0}%)`, "OPR siap"];
+                }}
+              />
+              <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={32}>
+                {data.map((entry) => (
+                  <Cell key={entry.name} fill={entry.fill} />
+                ))}
+                <LabelList
+                  dataKey="count"
+                  position="right"
+                  style={{ fontSize: 11, fill: "#475569" }}
+                />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function AnalisisPergerakanClient({
   sektors,
   sektorFilterLocked = false,
   pergerakanAggregates,
   programAggregates,
+  fokusAggregates,
   current,
 }: Props) {
   const router = useRouter();
@@ -379,6 +447,15 @@ export default function AnalisisPergerakanClient({
             barLabel="Program mengikut sektor"
             barHint="Tempoh dipilih · sektor penghantar OPR siap"
           />
+        </AnalisisCollapsible>
+
+        <AnalisisCollapsible
+          title="Analisis fokus"
+          count={fokusAggregates.total}
+          hint="OPR siap mengikut jenis fokus · lihat fokus paling kerap"
+          accentColor={ACCENT_FOKUS}
+        >
+          <FokusBlock aggregates={fokusAggregates} />
         </AnalisisCollapsible>
       </div>
     </div>

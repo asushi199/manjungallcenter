@@ -136,6 +136,13 @@ export type AnalisisAggregates = {
   bySektor: { sektorId: number | null; code: string; name: string; count: number }[];
 };
 
+/** Agregat OPR siap mengikut Fokus (klasifikasi pelaksanaan program). */
+export type FokusAggregates = {
+  /** Jumlah OPR siap dalam tempoh (termasuk yang tiada fokus). */
+  total: number;
+  byFokus: { fokus: string; count: number }[];
+};
+
 const MONTH_LABELS_MS = [
   "Jan",
   "Feb",

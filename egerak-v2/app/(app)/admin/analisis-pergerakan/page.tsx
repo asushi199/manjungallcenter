@@ -112,6 +112,7 @@ export default async function AnalisisPergerakanPage({
         sektorFilterLocked={isKetua}
         pergerakanAggregates={data.pergerakanAggregates}
         programAggregates={data.programAggregates}
+        fokusAggregates={data.fokusAggregates}
         current={{
           range: data.period.range,
           month: data.period.month,
