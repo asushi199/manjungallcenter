@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/rbac";
 import { formatDateTime } from "@/lib/dates";
 import PpdLogo from "@/components/PpdLogo";
 import { oprPhotoDisplayUrl } from "@/lib/opr-photo-url";
+import { formatTitleCase } from "@/lib/format-display-text";
 import OprRichText from "@/components/OprRichText";
 import PrintToolbar from "./PrintToolbar";
 
@@ -24,7 +25,7 @@ export default async function OprPrintPage({ params }: { params: Promise<{ id: s
 
   const p = data.pergerakan;
   const o = data.opr;
-  const sektorLabel = o.sektorOverride?.name ?? p.sektor?.name ?? "";
+  const sektorLabel = formatTitleCase(o.sektorOverride?.name ?? p.sektor?.name ?? "");
   const photos = (o.photos ?? [])
     .map((ph) => ({ id: ph.id, src: oprPhotoDisplayUrl(ph, 500) }))
     .filter((ph): ph is { id: number; src: string } => !!ph.src);
@@ -45,10 +46,10 @@ export default async function OprPrintPage({ params }: { params: Promise<{ id: s
 
         <section className="opr-print-meta grid grid-cols-2 gap-x-3 gap-y-0.5 text-[8pt] leading-snug mb-2">
           <p>
-            <strong>Nama:</strong> {p.user?.nama}
+            <strong>Nama:</strong> {formatTitleCase(p.user?.nama ?? "")}
           </p>
           <p>
-            <strong>Jawatan:</strong> {p.user?.jawatan}
+            <strong>Jawatan:</strong> {formatTitleCase(p.user?.jawatan ?? "")}
           </p>
           <p>
             <strong>Sektor:</strong> {sektorLabel}
@@ -57,17 +58,17 @@ export default async function OprPrintPage({ params }: { params: Promise<{ id: s
             <strong>Fokus:</strong> {o.fokus || "-"}
           </p>
           <p>
-            <strong>Program:</strong> {p.urusan}
+            <strong>Program:</strong> {formatTitleCase(p.urusan ?? "")}
           </p>
           <p>
-            <strong>Lokasi:</strong> {p.lokasi || "-"}
+            <strong>Lokasi:</strong> {p.lokasi ? formatTitleCase(p.lokasi) : "-"}
           </p>
           <p>
             <strong>Tarikh:</strong> {formatDateTime(p.tarikhPergi)} – {formatDateTime(p.tarikhKembali)}
           </p>
           {o.sasaran ? (
             <p className="col-span-2">
-              <strong>Sasaran:</strong> {o.sasaran}
+              <strong>Sasaran:</strong> {formatTitleCase(o.sasaran)}
             </p>
           ) : null}
         </section>

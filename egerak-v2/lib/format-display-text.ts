@@ -29,6 +29,35 @@ const LOWERCASE_WORDS = new Set([
   "de",
 ]);
 
+/**
+ * Singkatan yang dikekalkan huruf besar walaupun ditaip dalam apa-apa kes.
+ * Tujuan: "PEGAWAI USTP" → "Pegawai USTP", "SK PANGKALAN BAHARU" → "SK Pangkalan Baharu".
+ * Tambah singkatan baharu di sini bila perlu.
+ */
+const ACRONYMS = new Set([
+  // Jenis sekolah
+  "SK", "SJK", "SJKC", "SJKT", "SMK", "SMJK", "SABK", "SBP", "SBPI", "SMKA",
+  "MRSM", "KAFA", "SR", "SM", "SRA",
+  // Badan / pejabat
+  "PPD", "PPDM", "JPN", "KPM", "KPT", "BTP", "BPSH", "BPG", "IPG", "IPGM", "IAB", "BPK",
+  // Teknologi / program
+  "USTP", "ICT", "ICTL", "PSS", "VLE", "LMS", "OPR", "KPI", "SISPA", "NILAM",
+  "PBD", "PLC", "HEM", "TMK", "RBT", "PJK", "MBMMBI",
+  // Peperiksaan
+  "UPSR", "PT3", "SPM", "STPM", "STAM", "UASA", "PAT", "PKSR",
+  // Jawatan / unit
+  "GB", "PGB", "PK", "PKP", "PKHEM", "PKKK", "GKMP", "SU", "AJK", "YDP", "NYDP",
+  "GPK", "TYT", "KP", "OKU", "PIBG", "RMT",
+]);
+
+/** Singkatan dengan kes khas (jenama rasmi) — dipaparkan mengikut ejaan rasmi. */
+const CANONICAL = new Map<string, string>([
+  ["DELIMA", "DELIMa"],
+  ["PDP", "PdP"],
+  ["PAK21", "PAK21"],
+  ["EGERAK", "eGerak"],
+]);
+
 function formatWordCore(core: string, isFirstInSegment: boolean): string {
   if (!core) return core;
   if (core.includes("-")) {
@@ -37,7 +66,12 @@ function formatWordCore(core: string, isFirstInSegment: boolean): string {
       .map((part, i) => formatWordCore(part, isFirstInSegment && i === 0))
       .join("-");
   }
-  if (core.length >= 2 && /^[A-Z0-9]+$/.test(core)) return core;
+  const upper = core.toUpperCase();
+  // Singkatan dikenali — kekalkan huruf besar (atau ejaan rasmi).
+  if (CANONICAL.has(upper)) return CANONICAL.get(upper)!;
+  if (ACRONYMS.has(upper)) return upper;
+  // Kod alfanumerik pendek (cth PT3, KP1, 5S) — kekalkan huruf besar.
+  if (core.length <= 6 && /[0-9]/.test(core) && /^[A-Za-z0-9]+$/.test(core)) return upper;
   const lower = core.toLowerCase();
   if (!isFirstInSegment && LOWERCASE_WORDS.has(lower)) return lower;
   return lower.charAt(0).toUpperCase() + lower.slice(1);
@@ -59,8 +93,9 @@ function formatTitleCaseSegment(segment: string): string {
 }
 
 /**
- * Normalisasi paparan: trim, ruang tunggal, Title Case BM.
- * Kekalkan singkatan sedia ada (PPD, SK) dan perkataan sambung kecil (di, dan, bin).
+ * Normalisasi paparan: trim, ruang tunggal, Title Case BM (setiap perkataan
+ * bermula huruf besar). Singkatan dalam senarai ACRONYMS dikekalkan huruf besar
+ * (USTP, SK, SISPA…); perkataan sambung kecil (di, dan, bin) kekal huruf kecil.
  */
 export function formatTitleCase(input: string): string {
   const trimmed = input.trim().replace(/\s+/g, " ");
