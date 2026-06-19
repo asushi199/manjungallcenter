@@ -141,6 +141,10 @@ export type FokusAggregates = {
   /** Jumlah OPR siap dalam tempoh (termasuk yang tiada fokus). */
   total: number;
   byFokus: { fokus: string; count: number }[];
+  /** Trend bulanan (Jan–Dis): kiraan setiap fokus bagi setiap bulan. */
+  byMonth: { month: string; label: string; counts: Record<string, number> }[];
+  /** Nama fokus yang muncul dalam trend, disusun terbanyak dahulu (siri carta). */
+  fokusKeys: string[];
 };
 
 const MONTH_LABELS_MS = [

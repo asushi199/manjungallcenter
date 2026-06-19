@@ -76,7 +76,7 @@ export default async function AnalisisPergerakanPage({
       <div>
         <h1 className="text-xl font-semibold">Analisis Pergerakan & OPR</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Pilih tab <strong>Pergerakan</strong> atau <strong>OPR</strong>; penapis tempoh & sektor
+          Pilih tab <strong>OPR</strong> atau <strong>Pergerakan</strong>; penapis tempoh & sektor
           dikongsi. <strong>Pergerakan</strong> = satu rekod satu kiraan. <strong>OPR</strong> = satu{" "}
           <strong>OPR siap</strong> satu program (program, fokus…), dikreditkan kepada sektor yang
           menghantar laporan.

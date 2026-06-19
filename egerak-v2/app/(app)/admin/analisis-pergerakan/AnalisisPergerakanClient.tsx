@@ -11,6 +11,7 @@ import {
   CartesianGrid,
   Cell,
   LabelList,
+  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -19,6 +20,7 @@ import {
   YAxis,
 } from "recharts";
 import { sektorStyle } from "@/lib/sektor-colors";
+import { OPR_FOKUS_OPTIONS } from "@/lib/opr-fokus";
 import SektorFilterDropdown from "@/components/SektorFilterDropdown";
 import type { SektorOption } from "@/components/FilterBar";
 import type { AnalisisAggregates, FokusAggregates } from "@/lib/analisis/cluster-programs";
@@ -31,9 +33,15 @@ const ACCENT_PERGERAKAN = BRAND;
 const ACCENT_PROGRAM = "#0d9488";
 const ACCENT_FOKUS = "#7c3aed";
 
-/** Warna tetap bagi bar fokus (ikut kedudukan selepas isih). */
-const FOKUS_COLORS = ["#7c3aed", "#0d9488", "#b81049", "#ea580c", "#0369a1", "#65a30d"];
+/** Warna tetap bagi setiap kategori fokus (konsisten antara carta taburan & trend). */
+const FOKUS_PALETTE = ["#7c3aed", "#0d9488", "#b81049", "#ea580c", "#0369a1", "#65a30d"];
 const FOKUS_NONE_COLOR = "#94a3b8";
+
+function fokusColor(name: string): string {
+  if (name === "Tidak ditetapkan") return FOKUS_NONE_COLOR;
+  const i = (OPR_FOKUS_OPTIONS as readonly string[]).indexOf(name);
+  return i >= 0 ? FOKUS_PALETTE[i % FOKUS_PALETTE.length] : "#64748b";
+}
 
 const RANGE_OPTIONS: { value: LaporanOprRange; label: string }[] = [
   { value: "year", label: "Tahun" },
@@ -234,7 +242,7 @@ function ChartsBlock({
 }
 
 function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
-  const { total, byFokus } = aggregates;
+  const { total, byFokus, fokusKeys } = aggregates;
   if (total === 0) {
     return (
       <p className="text-sm text-slate-500 text-center py-6">
@@ -243,13 +251,14 @@ function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
     );
   }
 
-  const data = byFokus.map((f, i) => ({
+  const data = byFokus.map((f) => ({
     name: f.fokus,
     count: f.count,
     pct: Math.round((f.count / total) * 100),
-    fill: f.fokus === "Tidak ditetapkan" ? FOKUS_NONE_COLOR : FOKUS_COLORS[i % FOKUS_COLORS.length],
+    fill: fokusColor(f.fokus),
   }));
   const top = byFokus[0];
+  const trendData = aggregates.byMonth.map((m) => ({ label: m.label, ...m.counts }));
 
   return (
     <>
@@ -290,6 +299,27 @@ function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
           </ResponsiveContainer>
         </div>
       </div>
+
+      <div className="card p-4">
+        <h3 className="text-sm font-semibold text-slate-800 mb-1">Trend fokus mengikut bulan</h3>
+        <p className="text-xs text-slate-500 mb-4">
+          Setahun penuh (Jan–Dis) · bar bertindan mengikut fokus
+        </p>
+        <div className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={trendData} margin={{ top: 12, right: 16, left: 0, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={32} />
+              <Tooltip />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              {fokusKeys.map((k) => (
+                <Bar key={k} dataKey={k} stackId="fokus" fill={fokusColor(k)} maxBarSize={36} />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
     </>
   );
 }
@@ -305,11 +335,12 @@ export default function AnalisisPergerakanClient({
   const router = useRouter();
   const params = useSearchParams();
   const [isPending, startTransition] = useTransition();
-  const [tab, setTab] = useState<"pergerakan" | "opr">("pergerakan");
+  const [tab, setTab] = useState<"pergerakan" | "opr">("opr");
 
+  // OPR didahulukan (lebih penting); Pergerakan kedua.
   const MAIN_TABS: { key: "pergerakan" | "opr"; label: string; accent: string }[] = [
-    { key: "pergerakan", label: "Pergerakan", accent: ACCENT_PERGERAKAN },
     { key: "opr", label: "OPR", accent: ACCENT_PROGRAM },
+    { key: "pergerakan", label: "Pergerakan", accent: ACCENT_PERGERAKAN },
   ];
 
   function patch(next: Record<string, string | undefined>) {

@@ -23,10 +23,15 @@ export type AnalisisPergerakanResult = {
 
 const FOKUS_NONE = "Tidak ditetapkan";
 
+function fokusKeyOf(fokus: string | null): string {
+  return fokus?.trim() ? fokus.trim() : FOKUS_NONE;
+}
+
 function aggregateFokus(
   rows: Array<{ tarikhPergi: Date; fokus: string | null }>,
   opts: { year: string; filterMonth?: string; allPeriod?: boolean },
 ): FokusAggregates {
+  // Taburan: ikut tempoh dipilih (bulan / tahun / semua).
   let filtered = rows;
   if (opts.filterMonth) {
     filtered = rows.filter(
@@ -36,17 +41,49 @@ function aggregateFokus(
     filtered = rows.filter((r) => formatInTimeZone(r.tarikhPergi, TZ, "yyyy") === opts.year);
   }
 
-  const map = new Map<string, number>();
+  const distMap = new Map<string, number>();
   for (const r of filtered) {
-    const key = r.fokus?.trim() ? r.fokus.trim() : FOKUS_NONE;
-    map.set(key, (map.get(key) ?? 0) + 1);
+    const key = fokusKeyOf(r.fokus);
+    distMap.set(key, (distMap.get(key) ?? 0) + 1);
   }
-
-  const byFokus = [...map.entries()]
+  const byFokus = [...distMap.entries()]
     .map(([fokus, count]) => ({ fokus, count }))
     .sort((a, b) => b.count - a.count);
 
-  return { total: filtered.length, byFokus };
+  // Trend: setahun penuh (atau semua tahun ikut bulan kalendar), seperti carta program.
+  const chartSource = opts.allPeriod
+    ? rows
+    : rows.filter((r) => formatInTimeZone(r.tarikhPergi, TZ, "yyyy") === opts.year);
+
+  const monthFokus = new Map<number, Map<string, number>>();
+  const fokusTotals = new Map<string, number>();
+  for (const r of chartSource) {
+    const m = Number(formatInTimeZone(r.tarikhPergi, TZ, "MM"));
+    if (m < 1 || m > 12) continue;
+    const key = fokusKeyOf(r.fokus);
+    const mm = monthFokus.get(m) ?? new Map<string, number>();
+    mm.set(key, (mm.get(key) ?? 0) + 1);
+    monthFokus.set(m, mm);
+    fokusTotals.set(key, (fokusTotals.get(key) ?? 0) + 1);
+  }
+
+  const fokusKeys = [...fokusTotals.keys()].sort(
+    (a, b) => (fokusTotals.get(b) ?? 0) - (fokusTotals.get(a) ?? 0),
+  );
+
+  const byMonth: FokusAggregates["byMonth"] = [];
+  for (let m = 1; m <= 12; m++) {
+    const mm = monthFokus.get(m);
+    const counts: Record<string, number> = {};
+    for (const k of fokusKeys) counts[k] = mm?.get(k) ?? 0;
+    byMonth.push({
+      month: `${opts.year}-${String(m).padStart(2, "0")}`,
+      label: MONTH_LABELS_MS[m - 1],
+      counts,
+    });
+  }
+
+  return { total: filtered.length, byFokus, byMonth, fokusKeys };
 }
 
 const sektorPg = alias(sektors, "sektor_pg");
@@ -181,7 +218,7 @@ export async function getAnalisisPergerakanData(sp: {
       period,
       pergerakanAggregates: emptyAggregates(aggOpts),
       programAggregates: emptyAggregates(aggOpts),
-      fokusAggregates: { total: 0, byFokus: [] },
+      fokusAggregates: { total: 0, byFokus: [], byMonth: [], fokusKeys: [] },
       chartYear,
       filterMonth,
     };
