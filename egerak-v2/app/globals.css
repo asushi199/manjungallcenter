@@ -50,6 +50,12 @@
     page: bilik-sheet;
   }
 
+  /* OPR — saiz & jidar piawai dokumen Word (A4, jidar 1"). */
+  @page opr-sheet {
+    size: A4 portrait;
+    margin: 1in;
+  }
+
   html,
   body {
     height: auto !important;
@@ -82,12 +88,13 @@
   }
 
   .opr-print {
+    page: opr-sheet;
     width: 100% !important;
     max-width: none !important;
     padding: 0 !important;
     margin: 0 !important;
-    font-size: 8pt;
-    line-height: 1.25;
+    font-size: 9pt;
+    line-height: 1.3;
     page-break-inside: avoid;
     break-inside: avoid-page;
     page-break-after: avoid !important;
@@ -99,7 +106,7 @@
   }
 
   .opr-print-section-title {
-    font-size: 7.5pt;
+    font-size: 9pt;
     font-weight: 700;
     text-transform: uppercase;
     border-bottom: 0.5pt solid #000;
@@ -107,8 +114,8 @@
   }
 
   .opr-print-section-body {
-    font-size: 7.5pt;
-    line-height: 1.2;
+    font-size: 9pt;
+    line-height: 1.3;
   }
 
   .opr-print-rich p + p {
@@ -352,7 +359,8 @@ body.bilik-print-page .app-site-footer {
 }
 
 .opr-print {
-  padding: 1rem;
+  /* Pratonton skrin meniru jidar Word 1" supaya sepadan dengan cetakan. */
+  padding: 1in;
 }
 
 .opr-print-body {
