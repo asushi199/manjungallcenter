@@ -74,11 +74,12 @@ export default async function AnalisisPergerakanPage({
   return (
     <div className="mx-auto max-w-6xl p-4 space-y-4">
       <div>
-        <h1 className="text-xl font-semibold">Analisis Pergerakan & Program</h1>
+        <h1 className="text-xl font-semibold">Analisis Pergerakan & OPR</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Klik setiap bahagian untuk buka carta. <strong>Pergerakan</strong> = satu rekod satu kiraan.
-          <strong> Program</strong> = satu <strong>OPR siap</strong> satu program, dikreditkan kepada
-          sektor yang menghantar laporan tersebut.
+          Pilih tab <strong>Pergerakan</strong> atau <strong>OPR</strong>; penapis tempoh & sektor
+          dikongsi. <strong>Pergerakan</strong> = satu rekod satu kiraan. <strong>OPR</strong> = satu{" "}
+          <strong>OPR siap</strong> satu program (program, fokus…), dikreditkan kepada sektor yang
+          menghantar laporan.
         </p>
         {isKetua && lockedSektorLabel && (
           <p className="mt-2 text-sm text-brand-800 bg-brand-50 border border-brand-200 rounded-md px-3 py-2">

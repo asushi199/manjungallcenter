@@ -1,9 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
+import { cn } from "@/lib/cn";
 import {
   Bar,
   BarChart,
@@ -304,6 +305,12 @@ export default function AnalisisPergerakanClient({
   const router = useRouter();
   const params = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const [tab, setTab] = useState<"pergerakan" | "opr">("pergerakan");
+
+  const MAIN_TABS: { key: "pergerakan" | "opr"; label: string; accent: string }[] = [
+    { key: "pergerakan", label: "Pergerakan", accent: ACCENT_PERGERAKAN },
+    { key: "opr", label: "OPR", accent: ACCENT_PROGRAM },
+  ];
 
   function patch(next: Record<string, string | undefined>) {
     const sp = new URLSearchParams(params?.toString());
@@ -409,55 +416,83 @@ export default function AnalisisPergerakanClient({
         {current.range === "all" && " · Carta bulanan = semua tahun (ikut bulan Jan–Dis)"}
       </p>
 
-      <div className="space-y-3">
-        <AnalisisCollapsible
-          title="Analisis pergerakan"
-          count={pergerakanAggregates.totalRecords}
-          hint="Setiap rekod pergerakan = 1 · ikut sektor pendaftaran"
-          accentColor={ACCENT_PERGERAKAN}
-        >
-          <p className="text-xs text-slate-500 text-center">
-            Tidak termasuk cuti/Bercuti. Tiada penggabungan aktiviti.
-          </p>
-          <ChartsBlock
-            aggregates={pergerakanAggregates}
-            chartYear={current.chartYear}
-            range={current.range}
-            lineLabel="Pergerakan"
-            barLabel="Pergerakan mengikut sektor"
-            barHint="Tempoh dipilih · sektor pendaftaran rekod"
-          />
-        </AnalisisCollapsible>
-
-        <AnalisisCollapsible
-          title="Analisis program (OPR siap)"
-          count={programAggregates.totalRecords}
-          hint="Satu OPR siap = satu program · ikut sektor yang menghantar OPR"
-          accentColor={ACCENT_PROGRAM}
-        >
-          <p className="text-xs text-slate-500 text-center">
-            Hanya OPR berstatus <strong>SIAP</strong>. Sektor = override OPR (jika ada) atau sektor
-            pegawai.
-          </p>
-          <ChartsBlock
-            aggregates={programAggregates}
-            chartYear={current.chartYear}
-            range={current.range}
-            lineLabel="Program"
-            barLabel="Program mengikut sektor"
-            barHint="Tempoh dipilih · sektor penghantar OPR siap"
-          />
-        </AnalisisCollapsible>
-
-        <AnalisisCollapsible
-          title="Analisis fokus"
-          count={fokusAggregates.total}
-          hint="OPR siap mengikut jenis fokus · lihat fokus paling kerap"
-          accentColor={ACCENT_FOKUS}
-        >
-          <FokusBlock aggregates={fokusAggregates} />
-        </AnalisisCollapsible>
+      <div className="flex gap-1 border-b border-slate-200" role="tablist">
+        {MAIN_TABS.map((t) => {
+          const active = tab === t.key;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(t.key)}
+              className={cn(
+                "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+                active
+                  ? "text-slate-900"
+                  : "border-transparent text-slate-500 hover:text-slate-700",
+              )}
+              style={active ? { borderColor: t.accent, color: t.accent } : undefined}
+            >
+              {t.label}
+            </button>
+          );
+        })}
       </div>
+
+      {tab === "pergerakan" ? (
+        <div className="space-y-3">
+          <AnalisisCollapsible
+            title="Analisis pergerakan"
+            count={pergerakanAggregates.totalRecords}
+            hint="Setiap rekod pergerakan = 1 · ikut sektor pendaftaran"
+            accentColor={ACCENT_PERGERAKAN}
+          >
+            <p className="text-xs text-slate-500 text-center">
+              Tidak termasuk cuti/Bercuti. Tiada penggabungan aktiviti.
+            </p>
+            <ChartsBlock
+              aggregates={pergerakanAggregates}
+              chartYear={current.chartYear}
+              range={current.range}
+              lineLabel="Pergerakan"
+              barLabel="Pergerakan mengikut sektor"
+              barHint="Tempoh dipilih · sektor pendaftaran rekod"
+            />
+          </AnalisisCollapsible>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <AnalisisCollapsible
+            title="Analisis program (OPR siap)"
+            count={programAggregates.totalRecords}
+            hint="Satu OPR siap = satu program · ikut sektor yang menghantar OPR"
+            accentColor={ACCENT_PROGRAM}
+          >
+            <p className="text-xs text-slate-500 text-center">
+              Hanya OPR berstatus <strong>SIAP</strong>. Sektor = override OPR (jika ada) atau sektor
+              pegawai.
+            </p>
+            <ChartsBlock
+              aggregates={programAggregates}
+              chartYear={current.chartYear}
+              range={current.range}
+              lineLabel="Program"
+              barLabel="Program mengikut sektor"
+              barHint="Tempoh dipilih · sektor penghantar OPR siap"
+            />
+          </AnalisisCollapsible>
+
+          <AnalisisCollapsible
+            title="Analisis fokus"
+            count={fokusAggregates.total}
+            hint="OPR siap mengikut jenis fokus · lihat fokus paling kerap"
+            accentColor={ACCENT_FOKUS}
+          >
+            <FokusBlock aggregates={fokusAggregates} />
+          </AnalisisCollapsible>
+        </div>
+      )}
     </div>
   );
 }

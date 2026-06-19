@@ -33,7 +33,7 @@ export const LAPORAN_OPR_LINK: AppNavLink = {
 
 export const ANALISIS_PROGRAM_LINK: AppNavLink = {
   href: "/admin/analisis-pergerakan",
-  label: "Analisis Program",
+  label: "Analisis Pergerakan & OPR",
 };
 
 export const IMPORT_RANCANGAN_LINK: AppNavLink = {
