@@ -242,7 +242,7 @@ function ChartsBlock({
 }
 
 function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
-  const { total, byFokus, fokusKeys } = aggregates;
+  const { total, byFokus, fokusKeys, bySektorFokus } = aggregates;
   if (total === 0) {
     return (
       <p className="text-sm text-slate-500 text-center py-6">
@@ -259,6 +259,13 @@ function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
   }));
   const top = byFokus[0];
   const trendData = aggregates.byMonth.map((m) => ({ label: m.label, ...m.counts }));
+  const crossSeries = byFokus.map((f) => f.fokus);
+  const crossData = bySektorFokus.map((s) => ({
+    name: s.name.length > 24 ? `${s.name.slice(0, 22)}…` : s.name,
+    fullName: s.name,
+    ...s.counts,
+  }));
+  const showCross = bySektorFokus.length > 1;
 
   return (
     <>
@@ -320,6 +327,38 @@ function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {showCross && (
+        <div className="card p-4">
+          <h3 className="text-sm font-semibold text-slate-800 mb-1">Fokus mengikut sektor</h3>
+          <p className="text-xs text-slate-500 mb-4">
+            Tempoh dipilih · bar bertindan mengikut fokus
+          </p>
+          <div className="h-[320px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={crossData}
+                layout="vertical"
+                margin={{ top: 4, right: 24, left: 4, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 10 }} />
+                <Tooltip
+                  labelFormatter={(_, payload) => {
+                    const p = payload?.[0]?.payload as { fullName?: string } | undefined;
+                    return p?.fullName ?? "";
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                {crossSeries.map((k) => (
+                  <Bar key={k} dataKey={k} stackId="fokus" fill={fokusColor(k)} maxBarSize={28} />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
     </>
   );
 }

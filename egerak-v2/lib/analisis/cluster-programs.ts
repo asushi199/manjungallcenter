@@ -145,6 +145,14 @@ export type FokusAggregates = {
   byMonth: { month: string; label: string; counts: Record<string, number> }[];
   /** Nama fokus yang muncul dalam trend, disusun terbanyak dahulu (siri carta). */
   fokusKeys: string[];
+  /** Silang Fokus × Sektor: bagi setiap sektor, kiraan mengikut fokus. */
+  bySektorFokus: {
+    sektorId: number | null;
+    code: string;
+    name: string;
+    total: number;
+    counts: Record<string, number>;
+  }[];
 };
 
 const MONTH_LABELS_MS = [

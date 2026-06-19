@@ -28,7 +28,7 @@ function fokusKeyOf(fokus: string | null): string {
 }
 
 function aggregateFokus(
-  rows: Array<{ tarikhPergi: Date; fokus: string | null }>,
+  rows: Array<AggRow & { fokus: string | null }>,
   opts: { year: string; filterMonth?: string; allPeriod?: boolean },
 ): FokusAggregates {
   // Taburan: ikut tempoh dipilih (bulan / tahun / semua).
@@ -49,6 +49,27 @@ function aggregateFokus(
   const byFokus = [...distMap.entries()]
     .map(([fokus, count]) => ({ fokus, count }))
     .sort((a, b) => b.count - a.count);
+
+  // Silang Fokus × Sektor — ikut tempoh dipilih (sama set dgn taburan).
+  const sektorMap = new Map<string, FokusAggregates["bySektorFokus"][number]>();
+  for (const r of filtered) {
+    const sKey = r.sektorId != null ? String(r.sektorId) : "__none__";
+    const fKey = fokusKeyOf(r.fokus);
+    let hit = sektorMap.get(sKey);
+    if (!hit) {
+      hit = {
+        sektorId: r.sektorId,
+        code: r.sektorCode ?? "—",
+        name: r.sektorName ?? "Tidak ditetapkan",
+        total: 0,
+        counts: {},
+      };
+      sektorMap.set(sKey, hit);
+    }
+    hit.counts[fKey] = (hit.counts[fKey] ?? 0) + 1;
+    hit.total += 1;
+  }
+  const bySektorFokus = [...sektorMap.values()].sort((a, b) => b.total - a.total);
 
   // Trend: setahun penuh (atau semua tahun ikut bulan kalendar), seperti carta program.
   const chartSource = opts.allPeriod
@@ -83,7 +104,7 @@ function aggregateFokus(
     });
   }
 
-  return { total: filtered.length, byFokus, byMonth, fokusKeys };
+  return { total: filtered.length, byFokus, byMonth, fokusKeys, bySektorFokus };
 }
 
 const sektorPg = alias(sektors, "sektor_pg");
@@ -218,7 +239,7 @@ export async function getAnalisisPergerakanData(sp: {
       period,
       pergerakanAggregates: emptyAggregates(aggOpts),
       programAggregates: emptyAggregates(aggOpts),
-      fokusAggregates: { total: 0, byFokus: [], byMonth: [], fokusKeys: [] },
+      fokusAggregates: { total: 0, byFokus: [], byMonth: [], fokusKeys: [], bySektorFokus: [] },
       chartYear,
       filterMonth,
     };
