@@ -43,6 +43,21 @@ function fokusColor(name: string): string {
   return i >= 0 ? FOKUS_PALETTE[i % FOKUS_PALETTE.length] : "#64748b";
 }
 
+function csvCell(value: string | number): string {
+  const s = String(value);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function downloadCsv(filename: string, content: string) {
+  const blob = new Blob([`﻿${content}`], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 const RANGE_OPTIONS: { value: LaporanOprRange; label: string }[] = [
   { value: "year", label: "Tahun" },
   { value: "month", label: "Bulan" },
@@ -135,7 +150,7 @@ function AnalisisCollapsible({
       </summary>
       <div className="px-4 pb-4 pt-2 space-y-4 border-t border-slate-100">
         {children}
-        <div className="flex justify-center pt-2 border-t border-slate-100">
+        <div className="flex justify-center pt-2 border-t border-slate-100 print:hidden">
           <button
             type="button"
             className="btn-secondary text-sm px-4 py-2"
@@ -375,12 +390,75 @@ export default function AnalisisPergerakanClient({
   const params = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [tab, setTab] = useState<"pergerakan" | "opr">("opr");
+  const printAreaRef = useRef<HTMLDivElement>(null);
 
   // OPR didahulukan (lebih penting); Pergerakan kedua.
   const MAIN_TABS: { key: "pergerakan" | "opr"; label: string; accent: string }[] = [
     { key: "opr", label: "OPR", accent: ACCENT_PROGRAM },
     { key: "pergerakan", label: "Pergerakan", accent: ACCENT_PERGERAKAN },
   ];
+  const tabLabel = tab === "opr" ? "OPR" : "Pergerakan";
+
+  function onPrint() {
+    // Buka semua seksyen supaya carta bersaiz penuh sebelum cetak.
+    const area = printAreaRef.current;
+    if (area) {
+      area.querySelectorAll("details").forEach((d) => {
+        d.open = true;
+      });
+    }
+    // Beri masa carta (recharts) untuk ukur semula sebelum window.print().
+    setTimeout(() => window.print(), 400);
+  }
+
+  function onCsv() {
+    const lines: string[] = [];
+    const row = (...cells: Array<string | number>) => lines.push(cells.map(csvCell).join(","));
+
+    if (tab === "pergerakan") {
+      row(`Analisis Pergerakan`, current.periodLabel);
+      lines.push("");
+      row("Pergerakan mengikut bulan");
+      row("Bulan", "Bilangan");
+      pergerakanAggregates.byMonth.forEach((m) => row(m.month, m.count));
+      lines.push("");
+      row("Pergerakan mengikut sektor");
+      row("Sektor", "Bilangan");
+      pergerakanAggregates.bySektor.forEach((s) => row(s.name, s.count));
+    } else {
+      row(`Analisis OPR`, current.periodLabel);
+      lines.push("");
+      row("Program mengikut bulan");
+      row("Bulan", "Bilangan");
+      programAggregates.byMonth.forEach((m) => row(m.month, m.count));
+      lines.push("");
+      row("Program mengikut sektor");
+      row("Sektor", "Bilangan");
+      programAggregates.bySektor.forEach((s) => row(s.name, s.count));
+      lines.push("");
+      row("Fokus (taburan)");
+      row("Fokus", "Bilangan", "Peratus");
+      fokusAggregates.byFokus.forEach((f) =>
+        row(f.fokus, f.count, fokusAggregates.total ? `${Math.round((f.count / fokusAggregates.total) * 100)}%` : "0%"),
+      );
+      lines.push("");
+      row("Fokus mengikut bulan");
+      row("Bulan", ...fokusAggregates.fokusKeys);
+      fokusAggregates.byMonth.forEach((m) =>
+        row(m.month, ...fokusAggregates.fokusKeys.map((k) => m.counts[k] ?? 0)),
+      );
+      lines.push("");
+      const crossKeys = fokusAggregates.byFokus.map((f) => f.fokus);
+      row("Fokus mengikut sektor");
+      row("Sektor", ...crossKeys, "Jumlah");
+      fokusAggregates.bySektorFokus.forEach((s) =>
+        row(s.name, ...crossKeys.map((k) => s.counts[k] ?? 0), s.total),
+      );
+    }
+
+    const periodTag = current.range === "month" ? current.month : current.year;
+    downloadCsv(`analisis-${tab}-${periodTag}.csv`, lines.join("\n"));
+  }
 
   function patch(next: Record<string, string | undefined>) {
     const sp = new URLSearchParams(params?.toString());
@@ -395,7 +473,7 @@ export default function AnalisisPergerakanClient({
 
   return (
     <div className="space-y-6">
-      <div className="card p-4 flex flex-wrap gap-4 items-end">
+      <div className="card p-4 flex flex-wrap gap-4 items-end print:hidden">
         {isPending && (
           <p className="text-xs font-medium text-brand-700 w-full" role="status">
             Memuatkan…
@@ -478,7 +556,7 @@ export default function AnalisisPergerakanClient({
         )}
       </div>
 
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-slate-600 print:hidden">
         Tempoh paparan: <strong>{current.periodLabel}</strong>
         {current.range === "month" && (
           <> · Carta bulanan = tahun {current.chartYear} (konteks penuh)</>
@@ -486,7 +564,7 @@ export default function AnalisisPergerakanClient({
         {current.range === "all" && " · Carta bulanan = semua tahun (ikut bulan Jan–Dis)"}
       </p>
 
-      <div className="flex gap-1 border-b border-slate-200" role="tablist">
+      <div className="flex items-center gap-1 border-b border-slate-200 print:hidden" role="tablist">
         {MAIN_TABS.map((t) => {
           const active = tab === t.key;
           return (
@@ -508,9 +586,23 @@ export default function AnalisisPergerakanClient({
             </button>
           );
         })}
+        <div className="ml-auto flex gap-2 pb-1">
+          <button type="button" className="btn-secondary text-sm" onClick={onCsv}>
+            Muat turun CSV
+          </button>
+          <button type="button" className="btn-secondary text-sm" onClick={onPrint}>
+            Cetak / PDF
+          </button>
+        </div>
       </div>
 
-      {tab === "pergerakan" ? (
+      <div ref={printAreaRef} className="analisis-print-area space-y-3">
+        <div className="hidden print:block mb-3">
+          <h2 className="text-base font-bold">Analisis {tabLabel} — PPD Manjung</h2>
+          <p className="text-xs text-slate-600">Tempoh: {current.periodLabel}</p>
+        </div>
+
+        {tab === "pergerakan" ? (
         <div className="space-y-3">
           <AnalisisCollapsible
             title="Analisis pergerakan"
@@ -563,6 +655,7 @@ export default function AnalisisPergerakanClient({
           </AnalisisCollapsible>
         </div>
       )}
+      </div>
     </div>
   );
 }

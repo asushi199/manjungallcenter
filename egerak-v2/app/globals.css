@@ -41,6 +41,18 @@
     margin: 8mm;
   }
 
+  /* Analisis: elak carta terpotong antara muka surat; muat lebih padat. */
+  .analisis-print-area details {
+    border: none !important;
+  }
+  .analisis-print-area .card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .analisis-print-area details > summary {
+    pointer-events: none;
+  }
+
   @page bilik-sheet {
     size: A4 landscape;
     margin: 5mm;
