@@ -79,4 +79,4 @@ Bukan:
 
 - Template rasmi: `public/templates/rancangan-tahunan-kosong.csv` (sudah ISO)
 - Contoh: `public/templates/rancangan-tahunan-contoh.csv`
-- Panduan pegawai: `public/templates/PANDUAN-CSV-RANCANGAN.md`
+- Panduan pegawai: `public/templates/PANDUAN-RANCANGAN-TAHUNAN.md`
