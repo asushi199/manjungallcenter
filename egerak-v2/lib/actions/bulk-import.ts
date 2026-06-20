@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { auditLog, importBatches, pergerakan, sektors, takwimAktiviti, users } from "@/lib/schema";
+import { auditLog, importBatches, sektors, takwimAktiviti } from "@/lib/schema";
 import { requireImportRancanganAccess } from "@/lib/rbac";
 import {
   isSektorIdInScope,
@@ -13,7 +13,6 @@ import {
 import { csvDateUsesAmbiguousSlashFormat, parseCsv, type CsvRow } from "@/lib/csv-parse";
 import {
   resolveBookableRoomCode,
-  syncRoomBookingsFromPergerakan,
   syncRoomBookingsFromTakwimAktiviti,
 } from "@/lib/sync-room-bookings";
 import {
@@ -26,7 +25,6 @@ export type ImportRowResult = {
   status: "OK" | "ERROR" | "SKIPPED";
   message: string;
   takwimAktivitiId?: number;
-  pergerakanId?: number;
   roomBookingCount?: number;
 };
 
@@ -62,21 +60,9 @@ function rowDateRaw(row: CsvRow, keys: string[]): string {
   return "";
 }
 
-async function resolveOwner(username: string | null) {
-  if (!username) return null;
-  const user = await db.query.users.findFirst({
-    where: eq(users.username, username),
-  });
-  return user && user.aktif ? user : null;
-}
-
-function successMessage(input: {
-  hasOwner: boolean;
-  roomBookingCount: number;
-}): string {
+function successMessage(roomBookingCount: number): string {
   const parts = ["Aktiviti Takwim dicipta"];
-  if (input.hasOwner) parts.push("pergerakan pegawai dicipta");
-  if (input.roomBookingCount > 0) parts.push(`${input.roomBookingCount} slot bilik ditempah`);
+  if (roomBookingCount > 0) parts.push(`${roomBookingCount} slot bilik ditempah`);
   return parts.join("; ");
 }
 
@@ -111,16 +97,10 @@ async function processRancanganRow(
     };
   }
 
-  const owner = await resolveOwner(data.ownerUsername);
-  if (data.ownerUsername && !owner) {
-    return {
-      line,
-      status: "ERROR",
-      message: `Pegawai bertanggungjawab tidak dijumpai: ${data.ownerUsername}`,
-    };
-  }
-
   try {
+    // Rancangan diimport sebagai aktiviti master sahaja (tiada pegawai bertanggungjawab).
+    // Pegawai "ambil" aktiviti melalui Daftar Pergerakan; bilik tetap ditempah lebih awal
+    // supaya tidak diduduki orang lain.
     const inserted = await db.transaction(async (tx) => {
       const [aktiviti] = await tx
         .insert(takwimAktiviti)
@@ -131,56 +111,16 @@ async function processRancanganRow(
           tarikhPergi: data.tarikhPergi,
           tarikhKembali: data.tarikhKembali,
           kategori: "rancangan",
-          ownerUserId: owner?.id ?? null,
+          ownerUserId: null,
           importBatchId: batchId,
           createdByUserId: adminUserId,
           aktif: true,
         })
         .returning({ id: takwimAktiviti.id });
 
-      let pergerakanId: number | undefined;
-      if (owner) {
-        const [linked] = await tx
-          .insert(pergerakan)
-          .values({
-            userId: owner.id,
-            sektorId: sektor.id,
-            jenis: "Pergerakan",
-            urusan: data.urusan,
-            lokasi: data.lokasi,
-            tarikhPergi: data.tarikhPergi,
-            tarikhKembali: data.tarikhKembali,
-            source: "bulk",
-            aktif: true,
-            takwimAktivitiId: aktiviti.id,
-            roleDalamTakwim: "owner",
-          })
-          .returning({ id: pergerakan.id });
-        pergerakanId = linked.id;
-
-        await tx
-          .update(takwimAktiviti)
-          .set({ sourcePergerakanId: linked.id, updatedAt: new Date() })
-          .where(eq(takwimAktiviti.id, aktiviti.id));
-      }
-
       let roomBookingCount = 0;
       const roomCode = resolveBookableRoomCode(data.lokasi);
-      if (roomCode && pergerakanId && owner) {
-        const sync = await syncRoomBookingsFromPergerakan(tx, {
-          pergerakanId,
-          takwimAktivitiId: aktiviti.id,
-          roomCode,
-          userId: owner.id,
-          title: data.urusan,
-          pergi: data.tarikhPergi,
-          kembali: data.tarikhKembali,
-          fullDay: data.fullDay,
-          auditUserId: adminUserId,
-        });
-        if (!sync.ok) throw new Error(sync.error);
-        roomBookingCount = sync.count;
-      } else if (roomCode) {
+      if (roomCode) {
         const sync = await syncRoomBookingsFromTakwimAktiviti(tx, {
           takwimAktivitiId: aktiviti.id,
           roomCode,
@@ -195,16 +135,13 @@ async function processRancanganRow(
         roomBookingCount = sync.count;
       }
 
-      return { takwimAktivitiId: aktiviti.id, pergerakanId, roomBookingCount };
+      return { takwimAktivitiId: aktiviti.id, roomBookingCount };
     });
 
     return {
       line,
       status: "OK",
-      message: successMessage({
-        hasOwner: Boolean(owner),
-        roomBookingCount: inserted.roomBookingCount,
-      }),
+      message: successMessage(inserted.roomBookingCount),
       ...inserted,
     };
   } catch (e) {

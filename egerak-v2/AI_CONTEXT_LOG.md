@@ -114,3 +114,71 @@
   boleh padam pergerakan semua sektor** (Penyelia tiada hak padam). Jika
   hak padam perlu dihadkan, kembalikan secara berasingan.
 - `components/LaporanSektorScopePicker.tsx` kini tidak digunakan (dikekalkan).
+
+## 2026-06-20 - Import Rancangan Tanpa Owner; Excel Sektor Dropdown; Buang CSV Lama
+
+### Ringkasan
+
+- Import Rancangan Tahunan dipermudah: **tiada pegawai bertanggungjawab** semasa
+  import (Route A). Setiap baris hanya cipta aktiviti master `takwim_aktiviti`.
+- Bilik (Bilik Budiman / Dewan Bestari) **tetap ditempah lebih awal** semasa import
+  supaya tidak diduduki orang lain — tempahan dipaut pada aktiviti (bukan pegawai).
+- Pegawai "ambil" aktiviti melalui skrin Daftar Pergerakan (Cadangan urusan),
+  lalu cipta pergerakan sendiri + tempah/sertai bilik + isi OPR sendiri.
+
+### Keputusan Produk
+
+- Padanan pegawai melalui nama bebas tidak boleh dipercayai (nama serupa / salah
+  taip) → buang konsep owner semasa import; elak kegagalan pautan pergerakan.
+- Templat Excel: lajur `Pegawai Bertanggungjawab` dibuang; lajur **Sektor jadi
+  senarai juntai-bawah (dropdown)** rujuk sheet "Kod Sektor" → elak kod salah taip.
+- Templat **CSV lama dibuang** (butang + fail) — guna Excel sahaja. Backend masih
+  terima muat naik .csv.
+
+### Perubahan Teknikal
+
+- `lib/rancangan-import.ts`: buang `ownerUsername` dari `NormalizedRancanganRow`
+  & logik normalize; buang lajur owner dari `RANCANGAN_HEADERS`/Contoh/Panduan;
+  tambah `sektorDropdownXml` (OOXML dataValidation list) pada sheet Rancangan.
+- `lib/actions/bulk-import.ts`: `processRancanganRow` cipta aktiviti tanpa owner
+  sahaja; tempahan bilik guna `syncRoomBookingsFromTakwimAktiviti`; buang
+  `resolveOwner` + import `pergerakan`/`users`/`syncRoomBookingsFromPergerakan`.
+- `app/(app)/admin/import/ImportClient.tsx`: buang butang CSV lama; kemas teks.
+- Padam `public/templates/rancangan-tahunan-{kosong,contoh}.csv`.
+- `tests/rancangan-import.test.ts`: kemas kini ujian (tiada owner). 40 ujian lulus;
+  `tsc` & ESLint bersih. Tiada migration baharu diperlukan.
+
+## 2026-06-20 - Pengguna Import Excel; Lajur "Tempah Bilik"; Modul xlsx Dikongsi
+
+### Ringkasan
+
+- Import Pengguna kini sokong **Excel (.xlsx)** dengan **dropdown Sektor & Peranan**,
+  sama seperti import Rancangan. Backend masih terima muat naik .csv.
+- Rancangan: ganti pengesanan bilik secara teks dengan **lajur "Tempah Bilik"**
+  (dropdown: Dewan Bestari / Bilik Budiman) — lokasi lain tetap di lajur Lokasi.
+- Logik baca/tulis XLSX diekstrak ke modul kongsi `lib/xlsx.ts`.
+
+### Keputusan Produk
+
+- Dropdown Sektor/Peranan elak salah taip kod & peranan. Label peranan mesra
+  ("Pegawai PPD", "Ketua Unit") — `mapPerananCsv` kenal kesemuanya.
+- "Tempah Bilik" jadi sumber tunggal & tepat untuk pengesanan tempahan bilik;
+  bilik diutamakan sebagai lokasi aktiviti bila dipilih.
+- Templat CSV pengguna dibuang (Excel jadi utama); muat naik .csv masih diterima.
+
+### Perubahan Teknikal
+
+- `lib/xlsx.ts` (baharu): `buildXlsxWorkbook`, `readWorkbookRows`, `colName`,
+  `dropdownValidation`, `dataValidationsXml`.
+- `lib/rancangan-import.ts`: guna `lib/xlsx`; tambah lajur "Tempah Bilik" +
+  dua dropdown (Sektor rujuk sheet, Tempah Bilik senarai literal); normalize
+  utamakan bilik sebagai lokasi; `readRancanganWorkbookRows` jadi alias.
+- `lib/user-template.ts` (baharu): `buildUserTemplateWorkbook` (dropdown
+  Sektor & Peranan).
+- `app/api/templates/pengguna/route.ts` (baharu): muat turun templat Excel.
+- `lib/actions/bulk-user-import.ts`: ekstrak `importUserRows`; tambah
+  `importUsersXlsx`.
+- `components/AdminUsersImport.tsx`: terima .xlsx; pautan templat Excel.
+- Padam `public/templates/pengguna-{kosong,contoh}.csv`.
+- Ujian baharu: `tests/user-template.test.ts` + kes "Tempah Bilik".
+  43 ujian lulus; `tsc`, ESLint, `next build` bersih. Tiada migration.

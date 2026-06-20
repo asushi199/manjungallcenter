@@ -61,22 +61,6 @@ export default function ImportClient() {
               Muat turun template Excel
             </a>
           </div>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <a
-              href="/templates/rancangan-tahunan-kosong.csv"
-              download="rancangan-tahunan-kosong.csv"
-              className="btn-secondary text-sm"
-            >
-              Template lama CSV
-            </a>
-            <a
-              href="/templates/rancangan-tahunan-contoh.csv"
-              download="rancangan-tahunan-contoh.csv"
-              className="btn-secondary text-sm"
-            >
-              Contoh lama CSV
-            </a>
-          </div>
         </div>
 
         <div>
@@ -90,9 +74,9 @@ export default function ImportClient() {
           />
           <p className="text-xs text-slate-500 mt-2">
             Lajur wajib: <strong>Aktiviti</strong>, <strong>Tarikh Mula</strong>,{" "}
-            <strong>Tarikh Tamat</strong>, <strong>Sektor</strong>.{" "}
-            <strong>Pegawai Bertanggungjawab</strong> boleh dikosongkan. Tarikh rasmi:{" "}
-            <strong>2026-06-14</strong> atau <strong>2026-06-14 08:00</strong>.
+            <strong>Tarikh Tamat</strong>, <strong>Sektor</strong>. Tiada lajur pegawai — pegawai
+            sendiri ambil aktiviti di Daftar Pergerakan. Tarikh rasmi: <strong>2026-06-14</strong>{" "}
+            atau <strong>2026-06-14 08:00</strong>.
           </p>
         </div>
       </div>

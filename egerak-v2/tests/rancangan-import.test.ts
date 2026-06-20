@@ -7,28 +7,25 @@ import {
   readRancanganWorkbookRows,
 } from "../lib/rancangan-import";
 
-test("normalizeRancanganImportRow accepts the simplified Excel headers without an owner", () => {
+test("normalizeRancanganImportRow accepts the simplified Excel headers (no owner column)", () => {
   const row = normalizeRancanganImportRow({
     Aktiviti: "mesyuarat penyelarasan",
     "Tarikh Mula": "2026-06-14",
     "Tarikh Tamat": "2026-06-14",
     Sektor: "USTP",
     Lokasi: "Dewan Bestari",
-    "Pegawai Bertanggungjawab": "",
   });
 
   assert.equal(row.ok, true);
   if (!row.ok) return;
   assert.equal(row.data.urusan, "Mesyuarat Penyelarasan");
   assert.equal(row.data.sektorCode, "USTP");
-  assert.equal(row.data.ownerUsername, null);
   assert.equal(row.data.fullDay, true);
   assert.equal(row.data.tarikhPergi.toISOString(), "2026-06-14T00:00:00.000Z");
 });
 
-test("normalizeRancanganImportRow keeps old CSV owner aliases compatible", () => {
+test("normalizeRancanganImportRow keeps old lowercase CSV aliases compatible", () => {
   const row = normalizeRancanganImportRow({
-    email: "pegawai@moe-dl.edu.my",
     urusan: "taklimat sistem",
     tarikh_pergi: "2026-06-14 08:30",
     tarikh_kembali: "2026-06-14 12:00",
@@ -37,8 +34,40 @@ test("normalizeRancanganImportRow keeps old CSV owner aliases compatible", () =>
 
   assert.equal(row.ok, true);
   if (!row.ok) return;
-  assert.equal(row.data.ownerUsername, "pegawai");
+  assert.equal(row.data.urusan, "Taklimat Sistem");
+  assert.equal(row.data.sektorCode, "USTP");
   assert.equal(row.data.fullDay, false);
+});
+
+test("normalizeRancanganImportRow uses Tempah Bilik as lokasi when set", () => {
+  const row = normalizeRancanganImportRow({
+    Aktiviti: "Bengkel ICT",
+    "Tarikh Mula": "2026-06-14",
+    "Tarikh Tamat": "2026-06-14",
+    Sektor: "USTP",
+    "Tempah Bilik": "Bilik Budiman",
+    Lokasi: "Blok A",
+  });
+
+  assert.equal(row.ok, true);
+  if (!row.ok) return;
+  // Bilik terurus diutamakan sebagai lokasi (pemicu tempahan bilik).
+  assert.equal(row.data.lokasi, "Bilik Budiman");
+});
+
+test("normalizeRancanganImportRow falls back to Lokasi when Tempah Bilik kosong", () => {
+  const row = normalizeRancanganImportRow({
+    Aktiviti: "Lawatan",
+    "Tarikh Mula": "2026-06-14",
+    "Tarikh Tamat": "2026-06-14",
+    Sektor: "USTP",
+    "Tempah Bilik": "",
+    Lokasi: "SK Seri Manjung",
+  });
+
+  assert.equal(row.ok, true);
+  if (!row.ok) return;
+  assert.equal(row.data.lokasi, "SK Seri Manjung");
 });
 
 test("normalizeRancanganImportRow rejects cuti rows for rancangan import", () => {
