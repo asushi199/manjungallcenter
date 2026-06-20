@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import { cn } from "@/lib/cn";
@@ -116,6 +116,39 @@ function toLineData(aggregates: AnalisisAggregates) {
     count: m.count,
     fullMonth: m.month,
   }));
+}
+
+const MONTH_NAMES = [
+  "Jan",
+  "Feb",
+  "Mac",
+  "Apr",
+  "Mei",
+  "Jun",
+  "Jul",
+  "Ogos",
+  "Sep",
+  "Okt",
+  "Nov",
+  "Dis",
+];
+
+/** Pada skrin sempit, papar nombor bulan (1–12) supaya label tidak berhimpit. */
+function monthNumberLabel(value: string): string {
+  const i = MONTH_NAMES.indexOf(value);
+  return i >= 0 ? String(i + 1) : value;
+}
+
+function useIsNarrow(): boolean {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const update = () => setNarrow(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return narrow;
 }
 
 function RankedBars({
@@ -285,6 +318,7 @@ function ChartsBlock({
   barLabel: string;
   barHint: string;
 }) {
+  const compactMonths = useIsNarrow();
   const lineData = toLineData(aggregates);
   const sektorItems = aggregates.bySektor.map((s) => ({
     label: s.name,
@@ -303,7 +337,12 @@ function ChartsBlock({
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={lineData} margin={{ top: 12, right: 16, left: 0, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 11 }}
+                interval={0}
+                tickFormatter={compactMonths ? monthNumberLabel : undefined}
+              />
               <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={32} />
               <Tooltip
                 formatter={(value: number) => [value, lineLabel]}
@@ -337,6 +376,7 @@ function ChartsBlock({
 }
 
 function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
+  const compactMonths = useIsNarrow();
   const { total, byFokus, fokusKeys, bySektorFokus } = aggregates;
   if (total === 0) {
     return (
@@ -382,7 +422,12 @@ function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={trendData} margin={{ top: 18, right: 16, left: 0, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} interval={0} />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11 }}
+                interval={0}
+                tickFormatter={compactMonths ? monthNumberLabel : undefined}
+              />
               <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={32} />
               <Tooltip />
               <Legend wrapperStyle={{ fontSize: 11 }} />
