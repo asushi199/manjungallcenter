@@ -38,8 +38,8 @@ export function buildUserTemplateWorkbook(
       name: "Contoh",
       rows: [
         Array.from(USER_HEADERS),
-        ["ahmad.ali", "Ahmad bin Ali", "Penolong PPD", "PEMBELAJARAN", "Pengguna"],
-        ["ketua.ustp", "En. Kamal", "Ketua Unit", "USTP", "Ketua Unit"],
+        ["900101011111", "Ahmad bin Ali", "Penolong PPD", "PEMBELAJARAN", "Pengguna"],
+        ["850202022222", "Kamal bin Hassan", "Ketua Unit", "USTP", "Ketua Unit"],
       ],
     },
     {
