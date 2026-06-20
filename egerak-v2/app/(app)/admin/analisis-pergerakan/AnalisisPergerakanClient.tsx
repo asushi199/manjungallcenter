@@ -58,6 +58,39 @@ function downloadCsv(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
+const ICON_PROPS = {
+  width: 16,
+  height: 16,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 2,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+  "aria-hidden": true,
+  className: "shrink-0",
+};
+
+function DownloadIcon() {
+  return (
+    <svg {...ICON_PROPS}>
+      <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+      <path d="M7 11l5 5 5-5" />
+      <path d="M12 4v12" />
+    </svg>
+  );
+}
+
+function PrinterIcon() {
+  return (
+    <svg {...ICON_PROPS}>
+      <path d="M6 9V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v5" />
+      <path d="M6 17H5a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-1" />
+      <rect x="7" y="14" width="10" height="7" rx="1" />
+    </svg>
+  );
+}
+
 const RANGE_OPTIONS: { value: LaporanOprRange; label: string }[] = [
   { value: "year", label: "Tahun" },
   { value: "month", label: "Bulan" },
@@ -564,7 +597,10 @@ export default function AnalisisPergerakanClient({
         {current.range === "all" && " · Carta bulanan = semua tahun (ikut bulan Jan–Dis)"}
       </p>
 
-      <div className="flex items-center gap-1 border-b border-slate-200 print:hidden" role="tablist">
+      <div
+        className="flex flex-wrap items-center gap-x-1 gap-y-2 border-b border-slate-200 print:hidden"
+        role="tablist"
+      >
         {MAIN_TABS.map((t) => {
           const active = tab === t.key;
           return (
@@ -587,11 +623,13 @@ export default function AnalisisPergerakanClient({
           );
         })}
         <div className="ml-auto flex gap-2 pb-1">
-          <button type="button" className="btn-secondary text-sm" onClick={onCsv}>
-            Muat turun CSV
+          <button type="button" className="btn-secondary text-sm gap-1.5" onClick={onCsv}>
+            <DownloadIcon />
+            CSV
           </button>
-          <button type="button" className="btn-secondary text-sm" onClick={onPrint}>
-            Cetak / PDF
+          <button type="button" className="btn-primary text-sm gap-1.5" onClick={onPrint}>
+            <PrinterIcon />
+            Cetak PDF
           </button>
         </div>
       </div>
