@@ -8,12 +8,9 @@ import PwaInstallButton from "@/components/PwaInstallButton";
 import HeaderNavDropdown from "@/components/HeaderNavDropdown";
 import MobileNavMenu from "@/components/MobileNavMenu";
 import {
-  adminNavLinksForPeranan,
+  adminMenuLinksForPeranan,
   mainNavLinksForPeranan,
-  roleNavLabelsForPeranan,
-  roleNavLinksForPeranan,
 } from "@/lib/app-nav";
-import { isFullAdmin } from "@/lib/roles";
 
 export default function Navbar() {
   const path = usePathname();
@@ -26,11 +23,7 @@ export default function Navbar() {
   }
 
   const mainLinks = mainNavLinksForPeranan(peranan);
-  const roleLinks = roleNavLinksForPeranan(peranan);
-  const roleLabels = roleNavLabelsForPeranan(peranan);
-  const adminLinks = adminNavLinksForPeranan(peranan);
-  const showAdminDropdown = isFullAdmin(peranan);
-  const showRoleDropdown = roleLinks.length > 0 && roleLabels != null;
+  const adminMenuLinks = adminMenuLinksForPeranan(peranan);
 
   const logoutBtn = (
     <button
@@ -54,10 +47,8 @@ export default function Navbar() {
         </Link>
         <MobileNavMenu
           mainLinks={mainLinks}
-          roleLinks={roleLinks}
-          roleSectionTitle={roleLabels?.mobileSection}
-          adminLinks={adminLinks}
-          showAdminSection={showAdminDropdown}
+          adminLinks={adminMenuLinks}
+          showAdminSection={adminMenuLinks.length > 0}
           userNama={user?.nama}
           userUsername={user?.username}
         />
@@ -73,14 +64,9 @@ export default function Navbar() {
 
         <nav className="flex items-center gap-1 flex-wrap justify-center flex-1 min-w-0">
           <HeaderNavDropdown label="Utama" links={mainLinks} />
-          {showRoleDropdown && roleLabels && (
-            <HeaderNavDropdown
-              label={roleLabels.header}
-              labelShort={roleLabels.headerShort}
-              links={roleLinks}
-            />
+          {adminMenuLinks.length > 0 && (
+            <HeaderNavDropdown label="Admin" links={adminMenuLinks} />
           )}
-          {showAdminDropdown && <HeaderNavDropdown label="Admin" links={adminLinks} />}
         </nav>
 
         <div className="flex items-center gap-2 shrink-0 text-sm">

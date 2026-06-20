@@ -1,11 +1,11 @@
 "use server";
 
-import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { withDbTimeout } from "@/lib/db-timeout";
-import { auditLog, pergerakan, sektors, users } from "@/lib/schema";
+import { auditLog, pergerakan, sektors, takwimAktiviti, users } from "@/lib/schema";
 import { parseLocalInput } from "@/lib/dates";
 import { requireUser } from "@/lib/rbac";
 import { normalizeLaporanSektorIds } from "@/lib/laporan-sektor-scope";
@@ -13,7 +13,7 @@ import { canAddTakwim, type TakwimKategori } from "@/lib/takwim-utils";
 
 export type TakwimItem = {
   id: number;
-  /** 'bulk' = rancangan tahunan (takwim utama); 'web' = pergerakan lain. */
+  /** 'bulk' = rancangan tahunan (takwim utama); 'web' = tambahan / pergerakan lain. */
   source: "web" | "bulk";
   takwimKategori: TakwimKategori;
   jenis: "Pergerakan";
@@ -32,10 +32,6 @@ function monthRangeUtc(month: string): { start: Date; end: Date } | null {
   const start = new Date(`${month}-01T00:00:00+08:00`);
   const end = new Date(`${month}-${String(lastDay).padStart(2, "0")}T23:59:59+08:00`);
   return { start, end };
-}
-
-function normalizeTakwimKategori(value: string | null): TakwimKategori {
-  return value === "tambahan" ? "tambahan" : null;
 }
 
 async function allowedTakwimSektorIds(user: Awaited<ReturnType<typeof requireUser>>) {
@@ -87,23 +83,48 @@ export async function listTakwimForMonth(opts: {
   const range = monthRangeUtc(opts.month);
   if (!range) return [];
 
-  const conditions = [
+  const masterConditions = [
+    eq(takwimAktiviti.aktif, true),
+    lte(takwimAktiviti.tarikhPergi, range.end),
+    gte(takwimAktiviti.tarikhKembali, range.start),
+  ];
+  const otherConditions = [
     eq(pergerakan.aktif, true),
     eq(pergerakan.jenis, "Pergerakan" as const),
+    eq(pergerakan.source, "web" as const),
+    isNull(pergerakan.takwimAktivitiId),
+    isNull(pergerakan.takwimKategori),
     lte(pergerakan.tarikhPergi, range.end),
     gte(pergerakan.tarikhKembali, range.start),
   ];
   if (opts.sektorIds !== "all") {
     if (opts.sektorIds.length === 0) return [];
-    conditions.push(inArray(pergerakan.sektorId, opts.sektorIds));
+    masterConditions.push(inArray(takwimAktiviti.sektorId, opts.sektorIds));
+    otherConditions.push(inArray(pergerakan.sektorId, opts.sektorIds));
   }
 
-  const rows = await withDbTimeout(
+  const masterRows = await withDbTimeout(
+    db
+      .select({
+        id: takwimAktiviti.id,
+        kategori: takwimAktiviti.kategori,
+        urusan: takwimAktiviti.urusan,
+        lokasi: takwimAktiviti.lokasi,
+        sektorCode: sektors.code,
+        sektorName: sektors.name,
+        tarikhPergi: takwimAktiviti.tarikhPergi,
+        tarikhKembali: takwimAktiviti.tarikhKembali,
+      })
+      .from(takwimAktiviti)
+      .leftJoin(sektors, eq(sektors.id, takwimAktiviti.sektorId))
+      .where(and(...masterConditions))
+      .orderBy(asc(takwimAktiviti.tarikhPergi)),
+  );
+
+  const otherRows = await withDbTimeout(
     db
       .select({
         id: pergerakan.id,
-        source: pergerakan.source,
-        takwimKategori: pergerakan.takwimKategori,
         jenis: pergerakan.jenis,
         urusan: pergerakan.urusan,
         lokasi: pergerakan.lokasi,
@@ -114,22 +135,36 @@ export async function listTakwimForMonth(opts: {
       })
       .from(pergerakan)
       .leftJoin(sektors, eq(sektors.id, pergerakan.sektorId))
-      .where(and(...conditions))
+      .where(and(...otherConditions))
       .orderBy(asc(pergerakan.tarikhPergi)),
   );
 
-  return rows.map((r) => ({
-    id: r.id,
-    source: r.source,
-    takwimKategori: normalizeTakwimKategori(r.takwimKategori),
-    jenis: "Pergerakan",
-    urusan: r.urusan,
-    lokasi: r.lokasi,
-    sektorCode: r.sektorCode,
-    sektorName: r.sektorName,
-    tarikhPergi: new Date(r.tarikhPergi),
-    tarikhKembali: new Date(r.tarikhKembali),
-  }));
+  return [
+    ...masterRows.map((r) => ({
+      id: r.id,
+      source: r.kategori === "rancangan" ? ("bulk" as const) : ("web" as const),
+      takwimKategori: r.kategori === "tambahan" ? ("tambahan" as const) : null,
+      jenis: "Pergerakan" as const,
+      urusan: r.urusan,
+      lokasi: r.lokasi,
+      sektorCode: r.sektorCode,
+      sektorName: r.sektorName,
+      tarikhPergi: new Date(r.tarikhPergi),
+      tarikhKembali: new Date(r.tarikhKembali),
+    })),
+    ...otherRows.map((r) => ({
+      id: r.id,
+      source: "web" as const,
+      takwimKategori: null,
+      jenis: "Pergerakan" as const,
+      urusan: r.urusan,
+      lokasi: r.lokasi,
+      sektorCode: r.sektorCode,
+      sektorName: r.sektorName,
+      tarikhPergi: new Date(r.tarikhPergi),
+      tarikhKembali: new Date(r.tarikhKembali),
+    })),
+  ].sort((a, b) => a.tarikhPergi.getTime() - b.tarikhPergi.getTime());
 }
 
 const createTakwimSchema = z
@@ -188,24 +223,22 @@ export async function createTakwimTambahan(input: unknown): Promise<CreateTakwim
   }
 
   const inserted = await db
-    .insert(pergerakan)
+    .insert(takwimAktiviti)
     .values({
-      userId: Number(user.id),
       sektorId: data.sektorId,
-      jenis: "Pergerakan",
       urusan: data.urusan,
       lokasi: data.lokasi,
       tarikhPergi: pergi,
       tarikhKembali: kembali,
-      source: "web",
-      takwimKategori: "tambahan",
+      kategori: "tambahan",
+      createdByUserId: Number(user.id),
     })
-    .returning({ id: pergerakan.id });
+    .returning({ id: takwimAktiviti.id });
 
   await db.insert(auditLog).values({
     action: "CREATE_TAKWIM_TAMBAHAN",
     userId: Number(user.id),
-    detail: { pergerakanId: inserted[0]?.id, sektorId: data.sektorId },
+    detail: { takwimAktivitiId: inserted[0]?.id, sektorId: data.sektorId },
   });
 
   revalidatePath("/takwim");

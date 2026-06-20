@@ -5,10 +5,6 @@ import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/lib/db";
 import { opr, pergerakan, sektors, users } from "@/lib/schema";
 import { requireLaporanOprAccess } from "@/lib/rbac";
-import {
-  intersectSektorIds,
-  normalizeLaporanSektorIds,
-} from "@/lib/laporan-sektor-scope";
 
 const sektorPg = alias(sektors, "sektor_pg");
 const sektorOv = alias(sektors, "sektor_ov");
@@ -29,22 +25,12 @@ export type LaporanOprRow = {
   updatedAt: Date;
 };
 
-export async function getUserLaporanSektorScope(userId: number): Promise<number[]> {
-  const row = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-    columns: { peranan: true, laporanSektorIds: true },
-  });
-  if (!row || row.peranan !== "Timbalan_PPD") return [];
-  return normalizeLaporanSektorIds(row.laporanSektorIds);
-}
-
 export async function listSiapOprLaporan(opts: {
   start?: Date;
   end?: Date;
   sektorIds?: number[];
 }): Promise<LaporanOprRow[]> {
   const sessionUser = await requireLaporanOprAccess();
-  const userId = Number(sessionUser.id);
 
   let effectiveSektorIds = opts.sektorIds;
 
@@ -52,11 +38,8 @@ export async function listSiapOprLaporan(opts: {
     const sid = sessionUser.sektorId != null ? Number(sessionUser.sektorId) : null;
     if (!sid) return [];
     effectiveSektorIds = [sid];
-  } else if (sessionUser.peranan === "Timbalan_PPD") {
-    const scope = await getUserLaporanSektorScope(userId);
-    if (!scope.length) return [];
-    effectiveSektorIds = intersectSektorIds(opts.sektorIds, scope);
   }
+  // Timbalan PPD kini disamakan dengan Penyelia — tiada had sektor (tapis ikut opts.sektorIds).
 
   const conditions = [eq(opr.status, "SIAP"), eq(pergerakan.aktif, true)];
   if (opts.start && opts.end) {

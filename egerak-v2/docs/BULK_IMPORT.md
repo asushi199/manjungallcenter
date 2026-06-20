@@ -1,43 +1,73 @@
-# Import Rancangan Tahunan (CSV)
+# Import Rancangan Tahunan (Excel)
 
-Admin → **Import** → muat naik CSV.
+Admin, Ketua Unit dan Timbalan PPD boleh menggunakan halaman **Admin -> Import** untuk memuat naik Rancangan Tahunan.
 
-## Template untuk pegawai
+## Template rasmi
 
-| Fail | Kegunaan |
+Template utama dimuat turun dari aplikasi:
+
+- `/api/templates/rancangan-tahunan`
+- Nama fail: `rancangan-tahunan.xlsx`
+
+Template Excel mengandungi 4 sheet:
+
+| Sheet | Kegunaan |
 |------|----------|
-| [`public/templates/rancangan-tahunan-kosong.csv`](../public/templates/rancangan-tahunan-kosong.csv) | Header sahaja — edar untuk diisi |
-| [`public/templates/rancangan-tahunan-contoh.csv`](../public/templates/rancangan-tahunan-contoh.csv) | Contoh 5 baris |
-| [`public/templates/PANDUAN-CSV-RANCANGAN.md`](../public/templates/PANDUAN-CSV-RANCANGAN.md) | Panduan BM untuk pegawai |
-| [`DATE-FORMAT-CSV.md`](DATE-FORMAT-CSV.md) | **Format tarikh rasmi** + cara elak Excel |
+| `Rancangan` | Halaman rasmi untuk diisi |
+| `Contoh` | Contoh pengisian |
+| `Panduan` | Arahan ringkas dalam Bahasa Melayu |
+| `Kod Sektor` | Rujukan kod sektor |
 
-Dalam aplikasi (dev/prod): muat turun dari `/templates/rancangan-tahunan-kosong.csv` dan `/templates/rancangan-tahunan-contoh.csv`.
+Fail CSV lama masih disokong sementara melalui:
 
-## Lajur (header baris pertama)
+- `public/templates/rancangan-tahunan-kosong.csv`
+- `public/templates/rancangan-tahunan-contoh.csv`
 
-| Lajur | Wajib | Contoh |
-|-------|-------|--------|
-| `email` | Ya* | `ahmad@moe-dl.edu.my` |
-| `username` | Ya* | `ahmad` (jika tiada email) |
-| `urusan` | Ya | `Mesyuarat Kurikulum` |
-| `tarikh_pergi` | Ya | `2026-06-15 08:00`, `15-06-2026`, atau **`2026-06-15`** (tarikh sahaja) |
-| `tarikh_kembali` | Ya | Sama format. **Tarikh sahaja** pada kedua-dua lajur → sepanjang hari (08:00–17:00, AM+PM setiap hari) |
-| `lokasi` | Tidak | `Dewan Bestari` |
-| `jenis` | Tidak | `Pergerakan Biasa` / `Bercuti` |
-| `sektor` | Tidak | `USTP` atau `PEMBELAJARAN` |
-| `status_import` | Tidak | `OK` / `SKIP` — baris ini dilangkau |
+## Lajur rasmi dalam sheet `Rancangan`
 
-\* Salah satu: `email` (username = bahagian sebelum `@`) atau `username`.
+| Lajur | Wajib | Contoh | Nota |
+|-------|-------|--------|------|
+| `Aktiviti` | Ya | `Mesyuarat Kurikulum` | Nama aktiviti Takwim |
+| `Tarikh Mula` | Ya | `2026-06-15` atau `2026-06-15 08:00` | Tarikh sahaja = sepanjang hari |
+| `Tarikh Tamat` | Ya | `2026-06-15` atau `2026-06-15 17:00` | Mesti sama/selepas tarikh mula |
+| `Sektor` | Ya | `USTP` | Ikut kod dalam sheet `Kod Sektor` |
+| `Lokasi` | Tidak | `Dewan Bestari` | Bilik/Dewan tertentu akan cuba ditempah automatik |
+| `Pegawai Bertanggungjawab` | Tidak | `ahmad@moe-dl.edu.my` atau `ahmad` | Jika kosong, hanya rekod Takwim dicipta |
 
-## Nota
+## Model data import
 
-- Pengguna mesti **sudah wujud** dalam sistem — daftar di **Admin → Pengurusan Pengguna** (satu-satu atau **Import CSV**; username wujud = dikemas kini).
-- Import menulis ke `pergerakan` dengan `source = bulk`.
-- Lokasi **Bilik Budiman** / **Dewan Bestari**: tempahan slot AM/PM automatik (sama seperti borang web); gagal jika slot bertembung.
+- Setiap baris mencipta satu rekod master dalam `takwim_aktiviti`.
+- `kategori = 'rancangan'` untuk import Rancangan Tahunan.
+- Jika `Pegawai Bertanggungjawab` diisi dan pengguna wujud, sistem turut mencipta satu `pergerakan` yang link kepada `takwim_aktiviti`.
+- Jika `Pegawai Bertanggungjawab` kosong, aktiviti hanya muncul di `/takwim` dan tidak muncul dalam `Pergerakan Saya` mana-mana pegawai.
+- Baris `Bercuti` tidak diterima sebagai Rancangan Tahunan.
 
-## Contoh CSV
+## Tempahan bilik/dewan automatik
 
-```csv
-email,urusan,lokasi,jenis,tarikh_pergi,tarikh_kembali,sektor
-ahmad@moe-dl.edu.my,Program NILAM,PPD Manjung,Pergerakan,2026-06-01 08:00,2026-06-01 17:00,PEMBELAJARAN
-```
+Jika `Lokasi` mengandungi **Bilik Budiman** atau **Dewan Bestari**, sistem akan cuba mencipta tempahan bilik:
+
+- Ada pegawai bertanggungjawab: booking dikaitkan kepada `pergerakan` dan `takwim_aktiviti`.
+- Tiada pegawai bertanggungjawab: booking dikaitkan kepada `takwim_aktiviti`, dengan pengguna import sebagai pemilik booking.
+- Jika slot bertembung, baris import gagal dan mesej ralat dipaparkan.
+
+## Keputusan import
+
+Paparan keputusan kekal dalam bentuk:
+
+- `OK`
+- `Ralat`
+- `Langkau`
+
+Mesej OK menerangkan tindakan yang berlaku, contohnya:
+
+- `Aktiviti Takwim dicipta`
+- `Aktiviti Takwim dicipta; pergerakan pegawai dicipta`
+- `Aktiviti Takwim dicipta; pergerakan pegawai dicipta; 2 slot bilik ditempah`
+
+## Nota migrasi
+
+Migration `drizzle/0012_takwim_aktiviti.sql` backfill rekod lama:
+
+- `pergerakan.source = 'bulk'` menjadi `takwim_aktiviti.kategori = 'rancangan'`
+- `pergerakan.takwim_kategori = 'tambahan'` menjadi `takwim_aktiviti.kategori = 'tambahan'`
+- `pergerakan.takwim_aktiviti_id` dan `room_bookings.takwim_aktiviti_id` diisi untuk rekod berkaitan

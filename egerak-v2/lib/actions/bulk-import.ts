@@ -3,33 +3,31 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { pergerakan, users, sektors, importBatches, auditLog } from "@/lib/schema";
+import { auditLog, importBatches, pergerakan, sektors, takwimAktiviti, users } from "@/lib/schema";
 import { requireImportRancanganAccess } from "@/lib/rbac";
 import {
   isSektorIdInScope,
   resolveUserSektorScope,
   type SektorScope,
 } from "@/lib/sektor-admin-scope";
-import {
-  parseCsv,
-  parseCsvDateRange,
-  csvDateUsesAmbiguousSlashFormat,
-  resolveUsername,
-  mapJenis,
-  normalizeSektorCode,
-  type CsvRow,
-} from "@/lib/csv-parse";
+import { csvDateUsesAmbiguousSlashFormat, parseCsv, type CsvRow } from "@/lib/csv-parse";
 import {
   resolveBookableRoomCode,
   syncRoomBookingsFromPergerakan,
+  syncRoomBookingsFromTakwimAktiviti,
 } from "@/lib/sync-room-bookings";
-import { formatTitleCase } from "@/lib/format-display-text";
+import {
+  normalizeRancanganImportRow,
+  readRancanganWorkbookRows,
+} from "@/lib/rancangan-import";
 
 export type ImportRowResult = {
   line: number;
   status: "OK" | "ERROR" | "SKIPPED";
   message: string;
+  takwimAktivitiId?: number;
   pergerakanId?: number;
+  roomBookingCount?: number;
 };
 
 export type BulkImportResult = {
@@ -47,123 +45,183 @@ function shouldSkipRow(row: CsvRow): boolean {
   return st === "OK" || st === "SKIP" || st === "SKIPPED";
 }
 
-async function processRow(
+function rowDateRaw(row: CsvRow, keys: string[]): string {
+  const normalized = new Map(
+    Object.entries(row).map(([k, v]) => [
+      k
+        .trim()
+        .toLowerCase()
+        .replace(/[\s_-]+/g, ""),
+      v,
+    ]),
+  );
+  for (const key of keys) {
+    const v = normalized.get(key.toLowerCase().replace(/[\s_-]+/g, ""));
+    if (v) return v;
+  }
+  return "";
+}
+
+async function resolveOwner(username: string | null) {
+  if (!username) return null;
+  const user = await db.query.users.findFirst({
+    where: eq(users.username, username),
+  });
+  return user && user.aktif ? user : null;
+}
+
+function successMessage(input: {
+  hasOwner: boolean;
+  roomBookingCount: number;
+}): string {
+  const parts = ["Aktiviti Takwim dicipta"];
+  if (input.hasOwner) parts.push("pergerakan pegawai dicipta");
+  if (input.roomBookingCount > 0) parts.push(`${input.roomBookingCount} slot bilik ditempah`);
+  return parts.join("; ");
+}
+
+async function processRancanganRow(
   row: CsvRow,
   line: number,
   sektorByCode: Map<string, { id: number }>,
   scope: SektorScope,
+  batchId: number,
+  adminUserId: number,
 ): Promise<ImportRowResult> {
   if (shouldSkipRow(row)) {
     return { line, status: "SKIPPED", message: "Sudah diimport / dilangkau" };
   }
 
-  const username = resolveUsername(row);
-  if (!username) {
-    return { line, status: "ERROR", message: "Tiada email atau username" };
+  const normalized = normalizeRancanganImportRow(row);
+  if (!normalized.ok) {
+    return { line, status: "ERROR", message: normalized.error };
+  }
+  const data = normalized.data;
+
+  const sektor = sektorByCode.get(data.sektorCode);
+  if (!sektor) {
+    return { line, status: "ERROR", message: `Kod sektor tidak dijumpai: ${data.sektorCode}` };
   }
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.username, username),
-  });
-  if (!user || !user.aktif) {
-    const emailHint = (row.email ?? row["e-mel"] ?? "").trim();
-    const hint = emailHint
-      ? `${username} (e-mel: ${emailHint})`
-      : username || "(kosong)";
+  if (!scope.allSectors && !isSektorIdInScope(sektor.id, scope)) {
     return {
       line,
       status: "ERROR",
-      message: `Pengguna tidak dijumpai: ${hint}. Daftar di Admin → Pengguna dahulu.`,
+      message: "Sektor rekod di luar skop anda.",
     };
   }
 
-  const urusan = formatTitleCase(row.urusan ?? "");
-  const lokasi = formatTitleCase(row.lokasi ?? "");
-  if (!urusan) {
-    return { line, status: "ERROR", message: "Urusan kosong" };
-  }
-
-  const range = parseCsvDateRange(
-    row.tarikh_pergi ?? row.tarikh_pergi_raw ?? "",
-    row.tarikh_kembali ?? "",
-  );
-  if (!range) {
-    return { line, status: "ERROR", message: "Tarikh pergi/kembali tidak sah" };
-  }
-  const { pergi, kembali, fullDay } = range;
-  if (kembali.getTime() < pergi.getTime()) {
-    return { line, status: "ERROR", message: "Tarikh kembali sebelum tarikh pergi" };
-  }
-
-  const sektorCode = normalizeSektorCode(row.sektor ?? "");
-  const sektor = sektorCode ? sektorByCode.get(sektorCode) : null;
-  const effectiveSektorId = sektor?.id ?? user.sektorId ?? null;
-
-  if (!scope.allSectors && !isSektorIdInScope(effectiveSektorId, scope)) {
+  const owner = await resolveOwner(data.ownerUsername);
+  if (data.ownerUsername && !owner) {
     return {
       line,
       status: "ERROR",
-      message: "Sektor rekod di luar skop anda (semak lajur sektor atau profil pegawai).",
+      message: `Pegawai bertanggungjawab tidak dijumpai: ${data.ownerUsername}`,
     };
   }
-
-  const jenis = mapJenis(row.jenis ?? "");
-  const roomCode = jenis === "Pergerakan" ? resolveBookableRoomCode(lokasi) : null;
 
   try {
     const inserted = await db.transaction(async (tx) => {
-      const [row] = await tx
-        .insert(pergerakan)
+      const [aktiviti] = await tx
+        .insert(takwimAktiviti)
         .values({
-          userId: user.id,
-          sektorId: effectiveSektorId,
-          jenis,
-          urusan,
-          lokasi,
-          tarikhPergi: pergi,
-          tarikhKembali: kembali,
-          source: "bulk",
+          sektorId: sektor.id,
+          urusan: data.urusan,
+          lokasi: data.lokasi,
+          tarikhPergi: data.tarikhPergi,
+          tarikhKembali: data.tarikhKembali,
+          kategori: "rancangan",
+          ownerUserId: owner?.id ?? null,
+          importBatchId: batchId,
+          createdByUserId: adminUserId,
           aktif: true,
         })
-        .returning({ id: pergerakan.id });
+        .returning({ id: takwimAktiviti.id });
 
-      if (roomCode) {
-        const sync = await syncRoomBookingsFromPergerakan(tx, {
-          pergerakanId: row.id,
-          roomCode,
-          userId: user.id,
-          title: urusan,
-          pergi,
-          kembali,
-          fullDay,
-          auditUserId: user.id,
-        });
-        if (!sync.ok) throw new Error(sync.error);
+      let pergerakanId: number | undefined;
+      if (owner) {
+        const [linked] = await tx
+          .insert(pergerakan)
+          .values({
+            userId: owner.id,
+            sektorId: sektor.id,
+            jenis: "Pergerakan",
+            urusan: data.urusan,
+            lokasi: data.lokasi,
+            tarikhPergi: data.tarikhPergi,
+            tarikhKembali: data.tarikhKembali,
+            source: "bulk",
+            aktif: true,
+            takwimAktivitiId: aktiviti.id,
+            roleDalamTakwim: "owner",
+          })
+          .returning({ id: pergerakan.id });
+        pergerakanId = linked.id;
+
+        await tx
+          .update(takwimAktiviti)
+          .set({ sourcePergerakanId: linked.id, updatedAt: new Date() })
+          .where(eq(takwimAktiviti.id, aktiviti.id));
       }
 
-      return row;
+      let roomBookingCount = 0;
+      const roomCode = resolveBookableRoomCode(data.lokasi);
+      if (roomCode && pergerakanId && owner) {
+        const sync = await syncRoomBookingsFromPergerakan(tx, {
+          pergerakanId,
+          takwimAktivitiId: aktiviti.id,
+          roomCode,
+          userId: owner.id,
+          title: data.urusan,
+          pergi: data.tarikhPergi,
+          kembali: data.tarikhKembali,
+          fullDay: data.fullDay,
+          auditUserId: adminUserId,
+        });
+        if (!sync.ok) throw new Error(sync.error);
+        roomBookingCount = sync.count;
+      } else if (roomCode) {
+        const sync = await syncRoomBookingsFromTakwimAktiviti(tx, {
+          takwimAktivitiId: aktiviti.id,
+          roomCode,
+          userId: adminUserId,
+          title: data.urusan,
+          pergi: data.tarikhPergi,
+          kembali: data.tarikhKembali,
+          fullDay: data.fullDay,
+          auditUserId: adminUserId,
+        });
+        if (!sync.ok) throw new Error(sync.error);
+        roomBookingCount = sync.count;
+      }
+
+      return { takwimAktivitiId: aktiviti.id, pergerakanId, roomBookingCount };
     });
 
-    return { line, status: "OK", message: "Berjaya", pergerakanId: inserted.id };
+    return {
+      line,
+      status: "OK",
+      message: successMessage({
+        hasOwner: Boolean(owner),
+        roomBookingCount: inserted.roomBookingCount,
+      }),
+      ...inserted,
+    };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Ralat tempahan bilik";
-    if (/invalid time/i.test(msg)) {
-      return {
-        line,
-        status: "ERROR",
-        message:
-          "Tarikh tidak sah (contoh: 6/14/2026 = 14 Jun). Gunakan format h/b/tahun atau yyyy-mm-dd.",
-      };
-    }
-    return { line, status: "ERROR", message: msg };
+    return {
+      line,
+      status: "ERROR",
+      message: e instanceof Error ? e.message : "Ralat import rancangan",
+    };
   }
 }
 
-export async function importRancanganCsv(
-  csvText: string,
-  filename?: string,
+async function importRancanganRows(
+  rows: CsvRow[],
+  filename: string,
 ): Promise<BulkImportResult> {
   const admin = await requireImportRancanganAccess();
+  const adminUserId = Number(admin.id);
   const scope = await resolveUserSektorScope(admin);
   if (scope.noAccess) {
     return {
@@ -181,7 +239,16 @@ export async function importRancanganCsv(
       dateFormatWarnings: [],
     };
   }
-  const rows = parseCsv(csvText);
+
+  const [batch] = await db
+    .insert(importBatches)
+    .values({
+      adminUserId,
+      filename,
+      stats: { ok: 0, error: 0, skipped: 0 },
+    })
+    .returning({ id: importBatches.id });
+
   const sektorsList = await db.select().from(sektors);
   const sektorByCode = new Map(sektorsList.map((s) => [s.code, { id: s.id }]));
 
@@ -192,48 +259,53 @@ export async function importRancanganCsv(
   let skipped = 0;
 
   for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
     const line = i + 2;
-    const pergiRaw = row.tarikh_pergi ?? row.tarikh_pergi_raw ?? "";
-    const kembaliRaw = row.tarikh_kembali ?? "";
+    const row = rows[i];
+    const pergiRaw = rowDateRaw(row, ["Tarikh Mula", "tarikh_pergi"]);
+    const kembaliRaw = rowDateRaw(row, ["Tarikh Tamat", "tarikh_kembali"]);
     if (csvDateUsesAmbiguousSlashFormat(pergiRaw) || csvDateUsesAmbiguousSlashFormat(kembaliRaw)) {
       dateFormatWarnings.push(
-        `Baris ${line}: tarikh format Excel (contoh 6/14/2026). Cadangan: 2026-06-14 — rujuk panduan format ISO.`,
+        `Baris ${line}: tarikh format Excel dikesan. Cadangan: guna 2026-06-14 atau 2026-06-14 08:00.`,
       );
     }
-    try {
-      const r = await processRow(row, line, sektorByCode, scope);
-      results.push(r);
-      if (r.status === "OK") ok++;
-      else if (r.status === "ERROR") error++;
-      else skipped++;
-    } catch (e) {
-      error++;
-      results.push({
-        line: i + 2,
-        status: "ERROR",
-        message: e instanceof Error ? e.message : "Ralat tidak diketahui",
-      });
-    }
+
+    const result = await processRancanganRow(row, line, sektorByCode, scope, batch.id, adminUserId);
+    results.push(result);
+    if (result.status === "OK") ok++;
+    else if (result.status === "ERROR") error++;
+    else skipped++;
   }
 
-  const [batch] = await db
-    .insert(importBatches)
-    .values({
-      adminUserId: Number(admin.id),
-      filename: filename ?? "upload.csv",
-      stats: { ok, error, skipped },
-    })
-    .returning({ id: importBatches.id });
+  await db
+    .update(importBatches)
+    .set({ stats: { ok, error, skipped } })
+    .where(eq(importBatches.id, batch.id));
 
   await db.insert(auditLog).values({
-    action: "BULK_IMPORT",
-    userId: Number(admin.id),
+    action: "BULK_IMPORT_RANCANGAN",
+    userId: adminUserId,
     detail: { batchId: batch.id, ok, error, skipped },
   });
 
   revalidatePath("/dashboard");
+  revalidatePath("/takwim");
   revalidatePath("/admin/import");
 
   return { ok, error, skipped, batchId: batch.id, rows: results, dateFormatWarnings };
+}
+
+export async function importRancanganCsv(
+  csvText: string,
+  filename?: string,
+): Promise<BulkImportResult> {
+  return importRancanganRows(parseCsv(csvText), filename ?? "upload.csv");
+}
+
+export async function importRancanganXlsx(
+  workbookBase64: string,
+  filename?: string,
+): Promise<BulkImportResult> {
+  const buffer = Buffer.from(workbookBase64, "base64");
+  const parsed = readRancanganWorkbookRows(buffer);
+  return importRancanganRows(parsed.rows, filename ?? "rancangan-tahunan.xlsx");
 }

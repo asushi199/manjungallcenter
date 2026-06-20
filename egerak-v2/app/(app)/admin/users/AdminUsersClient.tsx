@@ -8,12 +8,10 @@ import {
   adminSetAktif,
   adminUpdateUser,
 } from "@/lib/actions/users";
-import LaporanSektorScopePicker from "@/components/LaporanSektorScopePicker";
 import {
   PERANAN_SELECT_OPTIONS,
   PERANAN_LABELS,
   perananBadgeClass,
-  perananUsesLaporanSektorScope,
   type UserPeranan,
 } from "@/lib/roles";
 import { filterSektorsForPeranan, isPenyeliaOnlySektorCode } from "@/lib/sektors";
@@ -58,7 +56,6 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
     jawatan: "",
     sektorId: "" as string | number,
     peranan: "Pengguna" as UserPeranan,
-    laporanSektorIds: [] as number[],
   });
 
   const [editing, setEditing] = useState<Row | null>(null);
@@ -68,7 +65,6 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
     jawatan: "",
     sektorId: "" as string | number,
     peranan: "Pengguna" as UserPeranan,
-    laporanSektorIds: [] as number[],
   });
 
   const createSektors = useMemo(
@@ -87,9 +83,7 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
       const res = await adminCreateUser({
         ...form,
         sektorId: form.sektorId === "" ? null : Number(form.sektorId),
-        laporanSektorIds: perananUsesLaporanSektorScope(form.peranan)
-          ? form.laporanSektorIds
-          : [],
+        laporanSektorIds: [],
       });
       if (!res.ok) {
         setErr(res.error);
@@ -102,7 +96,6 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
         jawatan: "",
         sektorId: "",
         peranan: "Pengguna",
-        laporanSektorIds: [],
       });
       router.refresh();
     });
@@ -129,7 +122,6 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
       jawatan: u.jawatan,
       sektorId: u.sektorId ?? "",
       peranan: u.peranan,
-      laporanSektorIds: u.laporanSektorIds ?? [],
     });
     setErr(null);
   }
@@ -146,9 +138,7 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
         jawatan: editForm.jawatan,
         sektorId: editForm.sektorId === "" ? null : Number(editForm.sektorId),
         peranan: editForm.peranan,
-        laporanSektorIds: perananUsesLaporanSektorScope(editForm.peranan)
-          ? editForm.laporanSektorIds
-          : [],
+        laporanSektorIds: [],
       });
       if (!res.ok) {
         setErr(res.error);
@@ -265,9 +255,6 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
                     ...editForm,
                     peranan,
                     sektorId: clearPenyeliaSektorIfNeeded(peranan, editForm.sektorId, sektors),
-                    laporanSektorIds: perananUsesLaporanSektorScope(peranan)
-                      ? editForm.laporanSektorIds
-                      : [],
                   });
                 }}
               >
@@ -279,19 +266,6 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
               </select>
               <p className="text-xs text-slate-500 mt-1">{PERANAN_LABELS[editForm.peranan]}</p>
             </div>
-            {perananUsesLaporanSektorScope(editForm.peranan) && (
-              <div className="sm:col-span-2">
-                <label className="label">Sektor Laporan OPR (Timbalan)</label>
-                <LaporanSektorScopePicker
-                  sektors={sektors}
-                  selectedIds={editForm.laporanSektorIds}
-                  onChange={(laporanSektorIds) =>
-                    setEditForm({ ...editForm, laporanSektorIds })
-                  }
-                  disabled={pending}
-                />
-              </div>
-            )}
             {err && (
               <div className="sm:col-span-2 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">
                 {err}
@@ -472,7 +446,7 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
             </select>
             {form.peranan === "Penyelia" && (
               <p className="text-xs text-slate-500 mt-1">
-                Untuk Ketua PPD / pentadbiran, pilih <strong>Pegawai PPD</strong>.
+                Untuk Ketua PPD / pentadbiran, pilih <strong>sektor Pegawai PPD</strong>.
               </p>
             )}
           </div>
@@ -487,9 +461,6 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
                   ...form,
                   peranan,
                   sektorId: clearPenyeliaSektorIfNeeded(peranan, form.sektorId, sektors),
-                  laporanSektorIds: perananUsesLaporanSektorScope(peranan)
-                    ? form.laporanSektorIds
-                    : [],
                 });
               }}
             >
@@ -501,17 +472,6 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
             </select>
             <p className="text-xs text-slate-500 mt-1">{PERANAN_LABELS[form.peranan]}</p>
           </div>
-          {perananUsesLaporanSektorScope(form.peranan) && (
-            <div>
-              <label className="label">Sektor Laporan OPR (Timbalan)</label>
-              <LaporanSektorScopePicker
-                sektors={sektors}
-                selectedIds={form.laporanSektorIds}
-                onChange={(laporanSektorIds) => setForm({ ...form, laporanSektorIds })}
-                disabled={pending}
-              />
-            </div>
-          )}
           {err && (
             <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">
               {err}

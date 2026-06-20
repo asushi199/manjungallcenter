@@ -1,6 +1,5 @@
-import { eq } from "drizzle-orm";
 import type { SessionUser } from "@/lib/rbac";
-import { intersectSektorIds, normalizeLaporanSektorIds } from "@/lib/laporan-sektor-scope";
+import { intersectSektorIds } from "@/lib/laporan-sektor-scope";
 import { isFullAdmin } from "@/lib/roles";
 
 export type SektorScope = {
@@ -13,7 +12,8 @@ export type SektorScope = {
 export async function resolveUserSektorScope(user: SessionUser): Promise<SektorScope> {
   const peranan = user.peranan;
 
-  if (isFullAdmin(peranan) || peranan === "Penyelia") {
+  // Timbalan PPD kini disamakan dengan Penyelia — lihat semua sektor.
+  if (isFullAdmin(peranan) || peranan === "Penyelia" || peranan === "Timbalan_PPD") {
     return { allSectors: true, allowedIds: [], noAccess: false };
   }
 
@@ -23,22 +23,6 @@ export async function resolveUserSektorScope(user: SessionUser): Promise<SektorS
       return { allSectors: false, allowedIds: [], noAccess: true };
     }
     return { allSectors: false, allowedIds: [sid], noAccess: false };
-  }
-
-  if (peranan === "Timbalan_PPD") {
-    const [{ db }, { users }] = await Promise.all([
-      import("@/lib/db"),
-      import("@/lib/schema"),
-    ]);
-    const row = await db.query.users.findFirst({
-      where: eq(users.id, Number(user.id)),
-      columns: { laporanSektorIds: true },
-    });
-    const ids = normalizeLaporanSektorIds(row?.laporanSektorIds);
-    if (!ids.length) {
-      return { allSectors: false, allowedIds: [], noAccess: true };
-    }
-    return { allSectors: false, allowedIds: ids, noAccess: false };
   }
 
   return { allSectors: false, allowedIds: [], noAccess: true };
