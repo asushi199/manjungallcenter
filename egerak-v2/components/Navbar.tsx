@@ -40,7 +40,7 @@ export default function Navbar() {
     <header className="bg-brand-700 text-white shadow sticky top-0 z-40">
       <div className="mx-auto max-w-7xl md:hidden flex items-center gap-2 px-3 py-2.5 min-h-[3.25rem]">
         <Link href="/dashboard" className="flex items-center gap-2 min-w-0 flex-1">
-          <PpdLogo width={40} className="shrink-0 object-contain" />
+          <PpdLogo width={44} className="shrink-0 object-contain" />
           <span className="min-w-0 leading-tight">
             <span className="block font-bold text-[15px] tracking-tight">{APP_SHORT_NAME}</span>
             <span className="block text-[11px] font-semibold text-white/90">PPD Manjung</span>
@@ -57,7 +57,7 @@ export default function Navbar() {
 
       <div className="mx-auto max-w-7xl hidden md:flex items-center justify-between gap-3 px-4 py-2.5">
         <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
-          <PpdLogo width={46} className="shrink-0 object-contain" />
+          <PpdLogo width={72} className="shrink-0 object-contain" />
           <span className="text-lg font-bold leading-tight whitespace-nowrap">
             {APP_SHORT_NAME} <span className="font-normal opacity-90">PPD Manjung</span>
           </span>
