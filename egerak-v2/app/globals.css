@@ -61,16 +61,15 @@
     margin: 8mm;
   }
 
-  /* Analisis: elak carta terpotong antara muka surat; muat lebih padat. */
-  .analisis-print-area details {
-    border: none !important;
+  /* Analisis: paksa cetak warna bar/cip/jalur & jaga carta tidak terpotong. */
+  .analisis-print-area,
+  .analisis-print-area * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   .analisis-print-area .card {
     break-inside: avoid;
     page-break-inside: avoid;
-  }
-  .analisis-print-area details > summary {
-    pointer-events: none;
   }
 
   @page bilik-sheet {
@@ -95,13 +94,15 @@
     background: white !important;
   }
 
-  /* Sembunyikan navigasi laman & toolbar cetak */
+  /* Sembunyikan navigasi laman & footer ketika cetak.
+     (Kelas Tailwind print:hidden dikendalikan sendiri oleh Tailwind —
+     jangan senaraikan di sini; selektor tidak sah membatalkan keseluruhan
+     peraturan dan menyebabkan header/footer tidak tersembunyi.) */
   #egerak-app-shell > header,
   #egerak-app-shell > footer,
   header,
   footer,
-  .app-site-footer,
-  .print\\:hidden {
+  .app-site-footer {
     display: none !important;
   }
 
