@@ -9,6 +9,26 @@
   }
 }
 
+@keyframes rankbar-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.rankbar-fill {
+  transform-origin: left center;
+  animation: rankbar-grow 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rankbar-fill {
+    animation: none;
+  }
+}
+
 @layer components {
   .btn {
     @apply inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed;

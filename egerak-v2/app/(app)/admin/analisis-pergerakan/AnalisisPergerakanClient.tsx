@@ -1,15 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import { cn } from "@/lib/cn";
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
-  Cell,
   LabelList,
   Legend,
   Line,
@@ -121,20 +118,129 @@ function toLineData(aggregates: AnalisisAggregates) {
   }));
 }
 
-function toBarData(aggregates: AnalisisAggregates) {
-  return aggregates.bySektor.map((s) => {
-    const code = s.code === "—" ? null : s.code;
-    return {
-      name: s.name.length > 28 ? `${s.name.slice(0, 26)}…` : s.name,
-      fullName: s.name,
-      count: s.count,
-      code,
-      fill: sektorStyle(code).chip,
-    };
-  });
+function RankedBars({
+  items,
+  total,
+  emptyText = "Tiada data dalam tempoh ini.",
+}: {
+  items: { label: string; count: number; color: string }[];
+  total?: number;
+  emptyText?: string;
+}) {
+  if (items.length === 0) {
+    return <p className="text-sm text-slate-500 text-center py-6">{emptyText}</p>;
+  }
+  const sum = total ?? items.reduce((s, i) => s + i.count, 0);
+  const max = Math.max(1, ...items.map((i) => i.count));
+
+  return (
+    <div className="space-y-2.5">
+      {items.map((it) => {
+        const pct = sum ? Math.round((it.count / sum) * 100) : 0;
+        const fillPct = Math.round((it.count / max) * 100);
+        return (
+          <div key={it.label}>
+            <div className="flex items-baseline justify-between gap-2 mb-1">
+              <span className="flex items-center gap-1.5 text-sm text-slate-700 min-w-0">
+                <span
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: it.color }}
+                  aria-hidden
+                />
+                <span className="truncate" title={it.label}>
+                  {it.label}
+                </span>
+              </span>
+              <span className="shrink-0 tabular-nums text-sm text-slate-800">
+                <span className="font-semibold">{it.count}</span>{" "}
+                <span className="text-slate-400 text-xs">{pct}%</span>
+              </span>
+            </div>
+            <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
+              <div
+                key={`${it.label}:${it.count}`}
+                className="rankbar-fill h-full rounded-full"
+                style={{ width: `${fillPct}%`, backgroundColor: it.color }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
-function AnalisisCollapsible({
+function StackedRankedBars({
+  rows,
+  series,
+}: {
+  rows: { label: string; total: number; counts: Record<string, number> }[];
+  series: { key: string; color: string }[];
+}) {
+  if (rows.length === 0) {
+    return <p className="text-sm text-slate-500 text-center py-6">Tiada data dalam tempoh ini.</p>;
+  }
+  const maxTotal = Math.max(1, ...rows.map((r) => r.total));
+
+  return (
+    <div className="space-y-4">
+      {rows.map((r) => {
+        const widthPct = Math.round((r.total / maxTotal) * 100);
+        // Cip: hanya fokus yang wujud, disusun terbanyak dahulu dalam sektor ini.
+        const present = series
+          .filter((s) => (r.counts[s.key] ?? 0) > 0)
+          .sort((a, b) => (r.counts[b.key] ?? 0) - (r.counts[a.key] ?? 0));
+        return (
+          <div key={r.label}>
+            <div className="flex items-baseline justify-between gap-2 mb-1">
+              <span className="text-sm text-slate-700 truncate" title={r.label}>
+                {r.label}
+              </span>
+              <span className="shrink-0 text-sm font-semibold tabular-nums text-slate-800">
+                {r.total}
+              </span>
+            </div>
+            <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
+              <div
+                key={`${r.label}:${r.total}`}
+                className="rankbar-fill h-full flex overflow-hidden rounded-full"
+                style={{ width: `${widthPct}%` }}
+              >
+                {present.map((s) => (
+                  <span
+                    key={s.key}
+                    title={`${s.key}: ${r.counts[s.key]}`}
+                    style={{
+                      width: `${((r.counts[s.key] ?? 0) / r.total) * 100}%`,
+                      backgroundColor: s.color,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {present.map((s) => (
+                <span
+                  key={s.key}
+                  className="inline-flex items-center gap-1.5 text-xs text-slate-600 bg-slate-50 rounded-md px-2 py-0.5 tabular-nums"
+                >
+                  <span
+                    className="w-2 h-2 rounded-sm shrink-0"
+                    style={{ backgroundColor: s.color }}
+                    aria-hidden
+                  />
+                  {s.key} <span className="font-semibold text-slate-800">{r.counts[s.key]}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function AnalisisSection({
   title,
   count,
   hint,
@@ -147,53 +253,19 @@ function AnalisisCollapsible({
   accentColor: string;
   children: ReactNode;
 }) {
-  const shellRef = useRef<HTMLDivElement>(null);
-  const detailsRef = useRef<HTMLDetailsElement>(null);
-
-  function closeSection() {
-    const el = detailsRef.current;
-    if (!el) return;
-    el.open = false;
-    shellRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }
-
   return (
-    <div
-      ref={shellRef}
-      className="rounded-lg border border-slate-200 bg-white overflow-hidden"
-    >
+    <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
       <div className="h-1.5 w-full" style={{ backgroundColor: accentColor }} aria-hidden />
-      <details ref={detailsRef} className="group">
-      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
-        <span className="text-slate-400 text-xs w-4 shrink-0 group-open:rotate-90 transition-transform">
-          ▶
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
-            <span
-              className="text-lg font-bold tabular-nums"
-              style={{ color: accentColor }}
-            >
-              {count}
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mt-0.5">{hint}</p>
+      <div className="px-4 pt-3">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
+          <span className="text-2xl font-bold tabular-nums" style={{ color: accentColor }}>
+            {count}
+          </span>
         </div>
-      </summary>
-      <div className="px-4 pb-4 pt-2 space-y-4 border-t border-slate-100">
-        {children}
-        <div className="flex justify-center pt-2 border-t border-slate-100 print:hidden">
-          <button
-            type="button"
-            className="btn-secondary text-sm px-4 py-2"
-            onClick={closeSection}
-          >
-            Tutup ▴
-          </button>
-        </div>
+        <p className="text-xs text-slate-500 mt-0.5">{hint}</p>
       </div>
-      </details>
+      <div className="px-4 pb-4 pt-3 space-y-4">{children}</div>
     </div>
   );
 }
@@ -214,7 +286,11 @@ function ChartsBlock({
   barHint: string;
 }) {
   const lineData = toLineData(aggregates);
-  const barData = toBarData(aggregates);
+  const sektorItems = aggregates.bySektor.map((s) => ({
+    label: s.name,
+    count: s.count,
+    color: sektorStyle(s.code === "—" ? null : s.code).chip,
+  }));
 
   return (
     <div className="grid lg:grid-cols-2 gap-4">
@@ -227,7 +303,7 @@ function ChartsBlock({
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={lineData} margin={{ top: 12, right: 16, left: 0, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} />
               <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={32} />
               <Tooltip
                 formatter={(value: number) => [value, lineLabel]}
@@ -254,36 +330,7 @@ function ChartsBlock({
       <div className="card p-4">
         <h3 className="text-sm font-semibold text-slate-800 mb-1">{barLabel}</h3>
         <p className="text-xs text-slate-500 mb-4">{barHint}</p>
-        <div className="h-[260px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={barData}
-              layout="vertical"
-              margin={{ top: 4, right: 24, left: 4, bottom: 4 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
-              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-              <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 10 }} />
-              <Tooltip
-                formatter={(value: number) => [value, barLabel]}
-                labelFormatter={(_, payload) => {
-                  const p = payload?.[0]?.payload as { fullName?: string } | undefined;
-                  return p?.fullName ?? "";
-                }}
-              />
-              <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={28}>
-                {barData.map((entry) => (
-                  <Cell key={entry.code ?? entry.name} fill={entry.fill} />
-                ))}
-                <LabelList
-                  dataKey="count"
-                  position="right"
-                  style={{ fontSize: 10, fill: "#475569" }}
-                />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <RankedBars items={sektorItems} />
       </div>
     </div>
   );
@@ -299,19 +346,18 @@ function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
     );
   }
 
-  const data = byFokus.map((f) => ({
-    name: f.fokus,
+  const fokusItems = byFokus.map((f) => ({
+    label: f.fokus,
     count: f.count,
-    pct: Math.round((f.count / total) * 100),
-    fill: fokusColor(f.fokus),
+    color: fokusColor(f.fokus),
   }));
   const top = byFokus[0];
   const trendData = aggregates.byMonth.map((m) => ({ label: m.label, ...m.counts }));
-  const crossSeries = byFokus.map((f) => f.fokus);
-  const crossData = bySektorFokus.map((s) => ({
-    name: s.name.length > 24 ? `${s.name.slice(0, 22)}…` : s.name,
-    fullName: s.name,
-    ...s.counts,
+  const crossSeriesObjs = byFokus.map((f) => ({ key: f.fokus, color: fokusColor(f.fokus) }));
+  const crossRows = bySektorFokus.map((s) => ({
+    label: s.name,
+    total: s.total,
+    counts: s.counts,
   }));
   const showCross = bySektorFokus.length > 1;
 
@@ -324,54 +370,54 @@ function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
       <div className="card p-4">
         <h3 className="text-sm font-semibold text-slate-800 mb-1">Bilangan OPR siap mengikut fokus</h3>
         <p className="text-xs text-slate-500 mb-4">Tempoh dipilih · disusun terbanyak ke atas</p>
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={data}
-              layout="vertical"
-              margin={{ top: 4, right: 48, left: 4, bottom: 4 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
-              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-              <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 11 }} />
-              <Tooltip
-                formatter={(value: number, _name, item) => {
-                  const p = item?.payload as { pct?: number } | undefined;
-                  return [`${value} (${p?.pct ?? 0}%)`, "OPR siap"];
-                }}
-              />
-              <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={32}>
-                {data.map((entry) => (
-                  <Cell key={entry.name} fill={entry.fill} />
-                ))}
-                <LabelList
-                  dataKey="count"
-                  position="right"
-                  style={{ fontSize: 11, fill: "#475569" }}
-                />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <RankedBars items={fokusItems} total={total} />
       </div>
 
       <div className="card p-4">
         <h3 className="text-sm font-semibold text-slate-800 mb-1">Trend fokus mengikut bulan</h3>
         <p className="text-xs text-slate-500 mb-4">
-          Setahun penuh (Jan–Dis) · bar bertindan mengikut fokus
+          Setahun penuh (Jan–Dis) · satu garisan setiap fokus
         </p>
-        <div className="h-[300px] w-full">
+        <div className="h-[280px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={trendData} margin={{ top: 12, right: 16, left: 0, bottom: 4 }}>
+            <LineChart data={trendData} margin={{ top: 18, right: 16, left: 0, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} interval={0} />
               <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={32} />
               <Tooltip />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               {fokusKeys.map((k) => (
-                <Bar key={k} dataKey={k} stackId="fokus" fill={fokusColor(k)} maxBarSize={36} />
+                <Line
+                  key={k}
+                  type="monotone"
+                  dataKey={k}
+                  stroke={fokusColor(k)}
+                  strokeWidth={2}
+                  dot={{ r: 2.5 }}
+                  activeDot={{ r: 5 }}
+                >
+                  <LabelList
+                    dataKey={k}
+                    content={(props) => {
+                      const v = Number(props.value);
+                      if (!v) return null;
+                      return (
+                        <text
+                          x={Number(props.x)}
+                          y={Number(props.y) - 6}
+                          textAnchor="middle"
+                          fontSize={10}
+                          fontWeight={600}
+                          fill={fokusColor(k)}
+                        >
+                          {v}
+                        </text>
+                      );
+                    }}
+                  />
+                </Line>
               ))}
-            </BarChart>
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
@@ -382,29 +428,7 @@ function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
           <p className="text-xs text-slate-500 mb-4">
             Tempoh dipilih · bar bertindan mengikut fokus
           </p>
-          <div className="h-[320px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={crossData}
-                layout="vertical"
-                margin={{ top: 4, right: 24, left: 4, bottom: 4 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
-                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 10 }} />
-                <Tooltip
-                  labelFormatter={(_, payload) => {
-                    const p = payload?.[0]?.payload as { fullName?: string } | undefined;
-                    return p?.fullName ?? "";
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                {crossSeries.map((k) => (
-                  <Bar key={k} dataKey={k} stackId="fokus" fill={fokusColor(k)} maxBarSize={28} />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <StackedRankedBars rows={crossRows} series={crossSeriesObjs} />
         </div>
       )}
     </>
@@ -423,7 +447,6 @@ export default function AnalisisPergerakanClient({
   const params = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [tab, setTab] = useState<"pergerakan" | "opr">("opr");
-  const printAreaRef = useRef<HTMLDivElement>(null);
 
   // OPR didahulukan (lebih penting); Pergerakan kedua.
   const MAIN_TABS: { key: "pergerakan" | "opr"; label: string; accent: string }[] = [
@@ -433,15 +456,9 @@ export default function AnalisisPergerakanClient({
   const tabLabel = tab === "opr" ? "OPR" : "Pergerakan";
 
   function onPrint() {
-    // Buka semua seksyen supaya carta bersaiz penuh sebelum cetak.
-    const area = printAreaRef.current;
-    if (area) {
-      area.querySelectorAll("details").forEach((d) => {
-        d.open = true;
-      });
-    }
-    // Beri masa carta (recharts) untuk ukur semula sebelum window.print().
-    setTimeout(() => window.print(), 400);
+    // Seksyen sentiasa terbuka — carta sudah bersaiz penuh; beri sedikit masa
+    // untuk recharts ukur semula sebelum dialog cetak.
+    setTimeout(() => window.print(), 100);
   }
 
   function onCsv() {
@@ -597,10 +614,7 @@ export default function AnalisisPergerakanClient({
         {current.range === "all" && " · Carta bulanan = semua tahun (ikut bulan Jan–Dis)"}
       </p>
 
-      <div
-        className="flex flex-wrap items-center gap-x-1 gap-y-2 border-b border-slate-200 print:hidden"
-        role="tablist"
-      >
+      <div className="flex items-center gap-1 border-b border-slate-200 print:hidden" role="tablist">
         {MAIN_TABS.map((t) => {
           const active = tab === t.key;
           return (
@@ -623,18 +637,30 @@ export default function AnalisisPergerakanClient({
           );
         })}
         <div className="ml-auto flex gap-2 pb-1">
-          <button type="button" className="btn-secondary text-sm gap-1.5" onClick={onCsv}>
+          <button
+            type="button"
+            className="btn-secondary text-sm gap-1.5"
+            onClick={onCsv}
+            title="Muat turun CSV"
+            aria-label="Muat turun CSV"
+          >
             <DownloadIcon />
-            CSV
+            <span className="hidden sm:inline">CSV</span>
           </button>
-          <button type="button" className="btn-primary text-sm gap-1.5" onClick={onPrint}>
+          <button
+            type="button"
+            className="btn-primary text-sm gap-1.5"
+            onClick={onPrint}
+            title="Cetak / PDF"
+            aria-label="Cetak / PDF"
+          >
             <PrinterIcon />
-            Cetak PDF
+            <span className="hidden sm:inline">Cetak PDF</span>
           </button>
         </div>
       </div>
 
-      <div ref={printAreaRef} className="analisis-print-area space-y-3">
+      <div className="analisis-print-area space-y-3">
         <div className="hidden print:block mb-3">
           <h2 className="text-base font-bold">Analisis {tabLabel} — PPD Manjung</h2>
           <p className="text-xs text-slate-600">Tempoh: {current.periodLabel}</p>
@@ -642,7 +668,7 @@ export default function AnalisisPergerakanClient({
 
         {tab === "pergerakan" ? (
         <div className="space-y-3">
-          <AnalisisCollapsible
+          <AnalisisSection
             title="Analisis pergerakan"
             count={pergerakanAggregates.totalRecords}
             hint="Setiap rekod pergerakan = 1 · ikut sektor pendaftaran"
@@ -659,11 +685,20 @@ export default function AnalisisPergerakanClient({
               barLabel="Pergerakan mengikut sektor"
               barHint="Tempoh dipilih · sektor pendaftaran rekod"
             />
-          </AnalisisCollapsible>
+          </AnalisisSection>
         </div>
       ) : (
         <div className="space-y-3">
-          <AnalisisCollapsible
+          <AnalisisSection
+            title="Analisis fokus"
+            count={fokusAggregates.total}
+            hint="OPR siap mengikut jenis fokus · lihat fokus paling kerap"
+            accentColor={ACCENT_FOKUS}
+          >
+            <FokusBlock aggregates={fokusAggregates} />
+          </AnalisisSection>
+
+          <AnalisisSection
             title="Analisis program (OPR siap)"
             count={programAggregates.totalRecords}
             hint="Satu OPR siap = satu program · ikut sektor yang menghantar OPR"
@@ -681,16 +716,7 @@ export default function AnalisisPergerakanClient({
               barLabel="Program mengikut sektor"
               barHint="Tempoh dipilih · sektor penghantar OPR siap"
             />
-          </AnalisisCollapsible>
-
-          <AnalisisCollapsible
-            title="Analisis fokus"
-            count={fokusAggregates.total}
-            hint="OPR siap mengikut jenis fokus · lihat fokus paling kerap"
-            accentColor={ACCENT_FOKUS}
-          >
-            <FokusBlock aggregates={fokusAggregates} />
-          </AnalisisCollapsible>
+          </AnalisisSection>
         </div>
       )}
       </div>
