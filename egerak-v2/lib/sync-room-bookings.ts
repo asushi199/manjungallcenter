@@ -215,11 +215,32 @@ export async function previewRoomBookingsForPergerakan(
 
 export type SyncRoomResult = { ok: true; count: number } | { ok: false; error: string };
 
+export function buildRoomBookingInsertRows(input: {
+  roomId: number;
+  slots: RoomSlot[];
+  userId: number;
+  title: string;
+  pergerakanId: number | null;
+  takwimAktivitiId?: number | null;
+}) {
+  return input.slots.map((s) => ({
+    roomId: input.roomId,
+    tarikh: s.tarikh,
+    slot: s.slot,
+    userId: input.userId,
+    pergerakanId: input.pergerakanId,
+    takwimAktivitiId: input.takwimAktivitiId ?? null,
+    title: formatTitleCase(input.title).slice(0, 200),
+    status: "BOOKED" as const,
+  }));
+}
+
 /** Cipta tempahan bilik/dewan berkaitan pergerakan; gagal jika slot bertembung. */
 export async function syncRoomBookingsFromPergerakan(
   tx: Db,
   input: {
     pergerakanId: number;
+    takwimAktivitiId?: number | null;
     roomCode: "BILIK_BUDIMAN" | "DEWAN_BESTARI";
     userId: number;
     title: string;
@@ -256,15 +277,14 @@ export async function syncRoomBookingsFromPergerakan(
   const slots = preview.neededSlots;
 
   await tx.insert(roomBookings).values(
-    slots.map((s) => ({
+    buildRoomBookingInsertRows({
       roomId: room.id,
-      tarikh: s.tarikh,
-      slot: s.slot,
+      slots,
       userId: input.userId,
       pergerakanId: input.pergerakanId,
-      title: formatTitleCase(input.title).slice(0, 200),
-      status: "BOOKED" as const,
-    })),
+      takwimAktivitiId: input.takwimAktivitiId ?? null,
+      title: input.title,
+    }),
   );
 
   await tx.insert(auditLog).values({
@@ -272,6 +292,70 @@ export async function syncRoomBookingsFromPergerakan(
     userId: input.auditUserId,
     detail: {
       pergerakanId: input.pergerakanId,
+      takwimAktivitiId: input.takwimAktivitiId ?? null,
+      roomCode: input.roomCode,
+      slots,
+    },
+  });
+
+  return { ok: true, count: slots.length };
+}
+
+/** Cipta tempahan bilik/dewan berkaitan aktiviti Takwim tanpa perlu pergerakan pegawai. */
+export async function syncRoomBookingsFromTakwimAktiviti(
+  tx: Db,
+  input: {
+    takwimAktivitiId: number;
+    roomCode: "BILIK_BUDIMAN" | "DEWAN_BESTARI";
+    userId: number;
+    title: string;
+    pergi: Date;
+    kembali: Date;
+    fullDay?: boolean;
+    auditUserId: number;
+  },
+): Promise<SyncRoomResult> {
+  const room = await tx.query.rooms.findFirst({
+    where: eq(rooms.code, input.roomCode),
+  });
+  if (!room) {
+    return {
+      ok: false,
+      error: "Bilik/dewan tidak dijumpai dalam sistem. Jalankan npm run db:seed.",
+    };
+  }
+
+  const preview = await previewRoomBookingsForPergerakan(tx, {
+    roomCode: input.roomCode,
+    pergi: input.pergi,
+    kembali: input.kembali,
+    fullDay: input.fullDay,
+  });
+
+  if (!preview.canBook) {
+    return {
+      ok: false,
+      error: preview.summary ?? `Tempahan gagal 鈥?${room.name}.`,
+    };
+  }
+
+  const slots = preview.neededSlots;
+  await tx.insert(roomBookings).values(
+    buildRoomBookingInsertRows({
+      roomId: room.id,
+      slots,
+      userId: input.userId,
+      pergerakanId: null,
+      takwimAktivitiId: input.takwimAktivitiId,
+      title: input.title,
+    }),
+  );
+
+  await tx.insert(auditLog).values({
+    action: "ROOM_BOOK_FROM_TAKWIM",
+    userId: input.auditUserId,
+    detail: {
+      takwimAktivitiId: input.takwimAktivitiId,
       roomCode: input.roomCode,
       slots,
     },

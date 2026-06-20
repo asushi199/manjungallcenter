@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { parseLocalInput } from "../lib/dates";
 import {
+  buildRoomBookingInsertRows,
   computeRoomSlotsForRange,
   resolveBookableRoomCode,
   summarizeRoomConflicts,
@@ -64,4 +65,28 @@ test("summarizeRoomConflicts groups both slots as a full-day conflict", () => {
     ),
     ["14-06-2026: sepanjang hari penuh (Bilik Budiman — Pagi & Petang sudah ditempah)"],
   );
+});
+
+test("buildRoomBookingInsertRows can link bookings to a takwim activity without pergerakan", () => {
+  const rows = buildRoomBookingInsertRows({
+    roomId: 3,
+    slots: [{ tarikh: "2026-06-14", slot: "AM" }],
+    userId: 9,
+    title: "Mesyuarat rancangan",
+    pergerakanId: null,
+    takwimAktivitiId: 22,
+  });
+
+  assert.deepEqual(rows, [
+    {
+      roomId: 3,
+      tarikh: "2026-06-14",
+      slot: "AM",
+      userId: 9,
+      pergerakanId: null,
+      takwimAktivitiId: 22,
+      title: "Mesyuarat Rancangan",
+      status: "BOOKED",
+    },
+  ]);
 });

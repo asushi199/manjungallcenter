@@ -37,3 +37,28 @@
 ### Nota Lanjutan
 
 - Untuk fasa akan datang, jika rancangan tahunan perlu wujud tanpa pegawai bertanggungjawab, model yang lebih sesuai ialah jadual master seperti `takwim_aktiviti`, kemudian `pergerakan` boleh link kepada aktiviti tersebut.
+
+## 2026-06-20 - Rancangan Tahunan Sebagai Aktiviti Takwim Master
+
+### Ringkasan
+
+- Import Rancangan Tahunan dinaik taraf daripada "cipta banyak pergerakan pegawai" kepada "cipta aktiviti master Takwim".
+- Jadual master baharu ialah `takwim_aktiviti`.
+- `pergerakan.takwim_aktiviti_id` digunakan untuk link pegawai bertanggungjawab atau peserta pada masa depan.
+- `room_bookings.takwim_aktiviti_id` digunakan supaya tempahan bilik boleh wujud walaupun aktiviti belum ada pegawai bertanggungjawab.
+
+### Keputusan Produk
+
+- Setiap baris import mewakili satu aktiviti Takwim, bukan semestinya satu pergerakan individu.
+- `Pegawai Bertanggungjawab` dalam template Excel boleh dikosongkan.
+- Aktiviti tanpa pegawai bertanggungjawab hanya muncul di `/takwim`, bukan di `Pergerakan Saya`.
+- Aktiviti dengan pegawai bertanggungjawab akan muncul di `/takwim` dan juga mencipta linked `pergerakan` untuk pegawai tersebut.
+- `Bercuti` tidak dianggap aktiviti Takwim dan tidak diterima dalam import Rancangan Tahunan.
+
+### Perubahan Teknikal
+
+- Menambah migration `drizzle/0012_takwim_aktiviti.sql`.
+- Menambah generator template Excel `/api/templates/rancangan-tahunan`.
+- Template rasmi mengandungi sheet `Rancangan`, `Contoh`, `Panduan` dan `Kod Sektor`.
+- `/takwim` membaca `takwim_aktiviti` sebagai sumber utama, dan hanya memaparkan `Lain-lain` daripada `pergerakan` biasa yang belum link kepada aktiviti Takwim.
+- `Tambah Takwim` menulis terus ke `takwim_aktiviti(kategori = 'tambahan')`.

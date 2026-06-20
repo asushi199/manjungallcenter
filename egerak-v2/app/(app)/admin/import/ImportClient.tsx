@@ -1,7 +1,18 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { importRancanganCsv, type BulkImportResult } from "@/lib/actions/bulk-import";
+import {
+  importRancanganCsv,
+  importRancanganXlsx,
+  type BulkImportResult,
+} from "@/lib/actions/bulk-import";
+
+function isXlsxFile(file: File): boolean {
+  return (
+    file.name.toLowerCase().endsWith(".xlsx") ||
+    file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  );
+}
 
 export default function ImportClient() {
   const [pending, startTransition] = useTransition();
@@ -11,21 +22,28 @@ export default function ImportClient() {
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+
     setError(null);
     setResult(null);
+
     const reader = new FileReader();
+    const xlsx = isXlsxFile(file);
     reader.onload = () => {
-      const text = String(reader.result ?? "");
       startTransition(async () => {
         try {
-          const r = await importRancanganCsv(text, file.name);
-          setResult(r);
+          const raw = String(reader.result ?? "");
+          const imported = xlsx
+            ? await importRancanganXlsx(raw.split(",")[1] ?? "", file.name)
+            : await importRancanganCsv(raw, file.name);
+          setResult(imported);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Import gagal");
         }
       });
     };
-    reader.readAsText(file, "utf-8");
+
+    if (xlsx) reader.readAsDataURL(file);
+    else reader.readAsText(file, "utf-8");
     e.target.value = "";
   }
 
@@ -33,21 +51,14 @@ export default function ImportClient() {
     <div className="space-y-4">
       <div className="card p-4 space-y-3">
         <div>
-          <div className="label">Template CSV (untuk edar pegawai)</div>
+          <div className="label">Template rasmi Excel (untuk edar pegawai)</div>
           <div className="flex flex-wrap gap-2">
             <a
-              href="/templates/rancangan-tahunan-kosong.csv"
-              download="rancangan-tahunan-kosong.csv"
-              className="btn-secondary text-sm"
+              href="/api/templates/rancangan-tahunan"
+              download="rancangan-tahunan.xlsx"
+              className="btn-primary text-sm"
             >
-              Muat turun — kosong
-            </a>
-            <a
-              href="/templates/rancangan-tahunan-contoh.csv"
-              download="rancangan-tahunan-contoh.csv"
-              className="btn-secondary text-sm"
-            >
-              Muat turun — dengan contoh
+              Muat turun template Excel
             </a>
             <a
               href="/templates/PANDUAN-CSV-RANCANGAN.md"
@@ -55,29 +66,46 @@ export default function ImportClient() {
               rel="noopener noreferrer"
               className="btn-secondary text-sm"
             >
-              Panduan isi (BM)
+              Panduan import
+            </a>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <a
+              href="/templates/rancangan-tahunan-kosong.csv"
+              download="rancangan-tahunan-kosong.csv"
+              className="btn-secondary text-sm"
+            >
+              Template lama CSV
+            </a>
+            <a
+              href="/templates/rancangan-tahunan-contoh.csv"
+              download="rancangan-tahunan-contoh.csv"
+              className="btn-secondary text-sm"
+            >
+              Contoh lama CSV
             </a>
           </div>
         </div>
+
         <div>
-          <label className="label">Fail CSV untuk import</label>
+          <label className="label">Fail Excel / CSV untuk import</label>
           <input
             type="file"
-            accept=".csv,text/csv"
+            accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             className="input"
             disabled={pending}
             onChange={onFile}
           />
           <p className="text-xs text-slate-500 mt-2">
-            Lajur wajib: <strong>email</strong> (atau <strong>username</strong>), <strong>urusan</strong>,{" "}
-            <strong>tarikh_pergi</strong>, <strong>tarikh_kembali</strong>. Tarikh rasmi:{" "}
-            <strong>2026-06-14</strong> atau <strong>2026-06-14 08:00</strong> (bukan 6/14/2026). Rujuk
-            panduan muat turun.
+            Lajur wajib: <strong>Aktiviti</strong>, <strong>Tarikh Mula</strong>,{" "}
+            <strong>Tarikh Tamat</strong>, <strong>Sektor</strong>.{" "}
+            <strong>Pegawai Bertanggungjawab</strong> boleh dikosongkan. Tarikh rasmi:{" "}
+            <strong>2026-06-14</strong> atau <strong>2026-06-14 08:00</strong>.
           </p>
         </div>
       </div>
 
-      {pending && <p className="text-sm text-brand-700">Memproses import…</p>}
+      {pending && <p className="text-sm text-brand-700">Memproses import...</p>}
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">
           {error}
@@ -95,11 +123,11 @@ export default function ImportClient() {
                 ))}
               </ul>
               <p className="text-xs mt-1">
-                Minta pegawai guna <strong>yyyy-mm-dd</strong> dan format lajur tarikh sebagai Teks
-                dalam Excel.
+                Minta pegawai guna <strong>yyyy-mm-dd</strong> dan format lajur tarikh sebagai teks.
               </p>
             </div>
           )}
+
           <div className="card p-4 grid grid-cols-3 gap-2 text-center">
             <div className="rounded-md bg-emerald-50 text-emerald-800 py-2">
               <div className="text-xs">OK</div>

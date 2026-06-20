@@ -10,6 +10,7 @@ import {
   index,
   uniqueIndex,
   date,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -84,6 +85,10 @@ export const pergerakan = pgTable(
     source: sourceEnum("source").notNull().default("web"),
     /** null = biasa; "tambahan" = aktiviti Takwim yang ditambah selepas rancangan tahunan. */
     takwimKategori: text("takwim_kategori"),
+    takwimAktivitiId: integer("takwim_aktiviti_id").references(() => takwimAktiviti.id, {
+      onDelete: "set null",
+    }),
+    roleDalamTakwim: text("role_dalam_takwim"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
@@ -93,6 +98,7 @@ export const pergerakan = pgTable(
     userAktifIdx: index("pergerakan_user_aktif_idx").on(t.userId, t.aktif),
     sektorIdx: index("pergerakan_sektor_idx").on(t.sektorId),
     takwimKategoriIdx: index("pergerakan_takwim_kategori_idx").on(t.takwimKategori),
+    takwimAktivitiIdx: index("pergerakan_takwim_aktiviti_idx").on(t.takwimAktivitiId),
     aktifRangeIdx: index("pergerakan_aktif_range_idx")
       .on(t.aktif, t.tarikhKembali, t.tarikhPergi)
       .where(sql`${t.aktif} = true`),
@@ -106,6 +112,45 @@ export const importBatches = pgTable("import_batches", {
   stats: jsonb("stats").$type<{ ok: number; error: number; skipped: number }>(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const takwimAktiviti = pgTable(
+  "takwim_aktiviti",
+  {
+    id: serial("id").primaryKey(),
+    sektorId: integer("sektor_id").references(() => sektors.id, { onDelete: "set null" }),
+    urusan: text("urusan").notNull(),
+    lokasi: text("lokasi").notNull().default(""),
+    tarikhPergi: timestamp("tarikh_pergi", { withTimezone: true }).notNull(),
+    tarikhKembali: timestamp("tarikh_kembali", { withTimezone: true }).notNull(),
+    kategori: text("kategori").notNull().default("rancangan"),
+    ownerUserId: integer("owner_user_id").references(() => users.id, { onDelete: "set null" }),
+    importBatchId: integer("import_batch_id").references(() => importBatches.id, {
+      onDelete: "set null",
+    }),
+    createdByUserId: integer("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    aktif: boolean("aktif").notNull().default(true),
+    sourcePergerakanId: integer("source_pergerakan_id").references(
+      (): AnyPgColumn => pergerakan.id,
+      {
+        onDelete: "set null",
+      },
+    ),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    sektorIdx: index("takwim_aktiviti_sektor_idx").on(t.sektorId),
+    ownerIdx: index("takwim_aktiviti_owner_idx").on(t.ownerUserId),
+    aktifRangeIdx: index("takwim_aktiviti_aktif_range_idx")
+      .on(t.aktif, t.tarikhKembali, t.tarikhPergi)
+      .where(sql`${t.aktif} = true`),
+    sourcePergerakanIdx: uniqueIndex("takwim_aktiviti_source_pergerakan_idx").on(
+      t.sourcePergerakanId,
+    ),
+  }),
+);
 
 export const rooms = pgTable(
   "rooms",
@@ -135,6 +180,9 @@ export const roomBookings = pgTable(
     pergerakanId: integer("pergerakan_id").references(() => pergerakan.id, {
       onDelete: "set null",
     }),
+    takwimAktivitiId: integer("takwim_aktiviti_id").references(() => takwimAktiviti.id, {
+      onDelete: "set null",
+    }),
     title: text("title").notNull(),
     status: bookingStatus("status").notNull().default("BOOKED"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -143,6 +191,7 @@ export const roomBookings = pgTable(
   (t) => ({
     roomDateIdx: index("room_bookings_room_date_idx").on(t.roomId, t.tarikh),
     userIdx: index("room_bookings_user_idx").on(t.userId),
+    takwimAktivitiIdx: index("room_bookings_takwim_aktiviti_idx").on(t.takwimAktivitiId),
     activeUnique: uniqueIndex("room_bookings_active_unique")
       .on(t.roomId, t.tarikh, t.slot)
       .where(sql`${t.status} = 'BOOKED'`),
@@ -206,11 +255,37 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   sektor: one(sektors, { fields: [users.sektorId], references: [sektors.id] }),
   pergerakan: many(pergerakan),
   roomBookings: many(roomBookings),
+  takwimOwned: many(takwimAktiviti, { relationName: "takwimOwner" }),
+  takwimCreated: many(takwimAktiviti, { relationName: "takwimCreator" }),
 }));
 
 export const pergerakanRelations = relations(pergerakan, ({ one }) => ({
   user: one(users, { fields: [pergerakan.userId], references: [users.id] }),
   sektor: one(sektors, { fields: [pergerakan.sektorId], references: [sektors.id] }),
+  takwimAktiviti: one(takwimAktiviti, {
+    fields: [pergerakan.takwimAktivitiId],
+    references: [takwimAktiviti.id],
+  }),
+}));
+
+export const takwimAktivitiRelations = relations(takwimAktiviti, ({ one, many }) => ({
+  sektor: one(sektors, { fields: [takwimAktiviti.sektorId], references: [sektors.id] }),
+  owner: one(users, {
+    fields: [takwimAktiviti.ownerUserId],
+    references: [users.id],
+    relationName: "takwimOwner",
+  }),
+  createdBy: one(users, {
+    fields: [takwimAktiviti.createdByUserId],
+    references: [users.id],
+    relationName: "takwimCreator",
+  }),
+  importBatch: one(importBatches, {
+    fields: [takwimAktiviti.importBatchId],
+    references: [importBatches.id],
+  }),
+  pergerakan: many(pergerakan),
+  roomBookings: many(roomBookings),
 }));
 
 export const roomsRelations = relations(rooms, ({ many }) => ({
@@ -223,6 +298,10 @@ export const roomBookingsRelations = relations(roomBookings, ({ one }) => ({
   pergerakan: one(pergerakan, {
     fields: [roomBookings.pergerakanId],
     references: [pergerakan.id],
+  }),
+  takwimAktiviti: one(takwimAktiviti, {
+    fields: [roomBookings.takwimAktivitiId],
+    references: [takwimAktiviti.id],
   }),
 }));
 
@@ -242,6 +321,7 @@ export const oprPhotosRelations = relations(oprPhotos, ({ one }) => ({
 export type Sektor = typeof sektors.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Pergerakan = typeof pergerakan.$inferSelect;
+export type TakwimAktiviti = typeof takwimAktiviti.$inferSelect;
 export type Room = typeof rooms.$inferSelect;
 export type RoomBooking = typeof roomBookings.$inferSelect;
 export type Opr = typeof opr.$inferSelect;
