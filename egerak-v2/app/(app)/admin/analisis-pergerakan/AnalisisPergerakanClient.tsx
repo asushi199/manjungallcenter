@@ -293,13 +293,13 @@ function ChartsBlock({
   }));
 
   return (
-    <div className="grid lg:grid-cols-2 gap-4">
-      <div className="card p-4">
+    <div className="grid lg:grid-cols-2 gap-4 min-w-0">
+      <div className="card p-4 min-w-0">
         <h3 className="text-sm font-semibold text-slate-800 mb-1">{lineLabel}</h3>
         <p className="text-xs text-slate-500 mb-4">
           {range === "all" ? "Semua tahun, mengikut bulan kalendar" : `Tahun ${chartYear}`}
         </p>
-        <div className="h-[260px] w-full">
+        <div className="h-[260px] w-full min-w-0 overflow-x-hidden">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={lineData} margin={{ top: 12, right: 16, left: 0, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -327,7 +327,7 @@ function ChartsBlock({
         </div>
       </div>
 
-      <div className="card p-4">
+      <div className="card p-4 min-w-0">
         <h3 className="text-sm font-semibold text-slate-800 mb-1">{barLabel}</h3>
         <p className="text-xs text-slate-500 mb-4">{barHint}</p>
         <RankedBars items={sektorItems} />
@@ -378,7 +378,7 @@ function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
         <p className="text-xs text-slate-500 mb-4">
           Setahun penuh (Jan–Dis) · satu garisan setiap fokus
         </p>
-        <div className="h-[280px] w-full">
+        <div className="h-[280px] w-full min-w-0 overflow-x-hidden">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={trendData} margin={{ top: 18, right: 16, left: 0, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />

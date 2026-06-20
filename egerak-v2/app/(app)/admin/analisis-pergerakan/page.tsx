@@ -72,7 +72,7 @@ export default async function AnalisisPergerakanPage({
     .filter(Boolean) as string[];
 
   return (
-    <div className="mx-auto max-w-6xl p-4 space-y-4">
+    <div className="mx-auto max-w-6xl p-4 space-y-4 overflow-x-hidden">
       <div className="print:hidden">
         <h1 className="text-xl font-semibold">Analisis Pergerakan & OPR</h1>
         <p className="text-sm text-slate-500 mt-1">
