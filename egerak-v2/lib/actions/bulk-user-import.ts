@@ -10,6 +10,7 @@ import { requireAdmin } from "@/lib/rbac";
 import {
   parseCsv,
   resolveUsername,
+  isStrictIcUsername,
   normalizeSektorCode,
   mapPerananCsv,
   type CsvRow,
@@ -40,8 +41,8 @@ const importSchema = z.object({
 });
 
 function isNoteRow(row: CsvRow): boolean {
-  // parseCsv sudah buang baris email bermula "#"; tinggal semak username sahaja.
-  return resolveUsername(row).startsWith("#");
+  const raw = (row.username ?? row.id ?? row.ic ?? row["no ic"] ?? row["no. ic"] ?? "").trim();
+  return raw.startsWith("#");
 }
 
 function resolveNama(row: CsvRow): string {
@@ -63,8 +64,12 @@ async function processUserRow(
   if (!username && !nama) {
     return { line, status: "SKIPPED", message: "Tiada username atau nama" };
   }
-  if (!username || username.length < 3) {
-    return { line, status: "ERROR", message: "Username minimum 3 aksara (atau email sah)" };
+  if (!username || !isStrictIcUsername(username)) {
+    return {
+      line,
+      status: "ERROR",
+      message: "Username mesti No. Kad Pengenalan 12 digit tanpa tanda '-'.",
+    };
   }
   if (!nama) {
     return { line, status: "ERROR", message: "Nama penuh diperlukan" };

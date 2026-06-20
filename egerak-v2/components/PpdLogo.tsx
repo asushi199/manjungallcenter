@@ -1,7 +1,6 @@
 import Image from "next/image";
 
-/** Logo PPD Manjung — fail dalam `public/logo/ppd-manjung.png` */
-export const PPD_LOGO_SRC = "/logo/ppd-manjung.png";
+export const PPD_LOGO_SRC = "/logo/sentra-logo.png";
 
 type Props = {
   className?: string;
@@ -14,9 +13,9 @@ export default function PpdLogo({ className = "", width = 72, priority = false }
   return (
     <Image
       src={PPD_LOGO_SRC}
-      alt="Logo Pejabat Pendidikan Daerah Manjung"
-      width={400}
-      height={240}
+      alt="Logo SentRa PPD Manjung"
+      width={387}
+      height={123}
       className={`h-auto object-contain ${className}`}
       style={{ width: `${width}px`, maxWidth: "100%", height: "auto" }}
       sizes={`(max-width: 768px) ${width}px, ${width}px`}

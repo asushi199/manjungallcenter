@@ -465,7 +465,7 @@ export default function MonthCalendar({
                   <button
                     type="button"
                     className="text-[10px] font-semibold pl-1 text-left w-full hover:underline"
-                    style={{ color: "#b81049" }}
+                    style={{ color: "#0646a3" }}
                     onClick={(e) => openDayDrawerFromEvent(key, e)}
                   >
                     +{more} lagi

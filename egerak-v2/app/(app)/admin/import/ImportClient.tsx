@@ -74,9 +74,9 @@ export default function ImportClient() {
           />
           <p className="text-xs text-slate-500 mt-2">
             Lajur wajib: <strong>Aktiviti</strong>, <strong>Tarikh Mula</strong>,{" "}
-            <strong>Tarikh Tamat</strong>, <strong>Sektor</strong>. Tiada lajur pegawai — pegawai
-            sendiri ambil aktiviti di Daftar Pergerakan. Tarikh rasmi: <strong>2026-06-14</strong>{" "}
-            atau <strong>2026-06-14 08:00</strong>.
+            <strong>Tarikh Tamat</strong>, <strong>Sektor</strong>. Masa Mula/Masa Tamat boleh
+            dikosongkan; sistem guna 08:00 hingga 17:00 dan anggap sepanjang hari. Tiada lajur
+            pegawai; pegawai sendiri ambil aktiviti di Daftar Pergerakan.
           </p>
         </div>
       </div>
@@ -99,7 +99,7 @@ export default function ImportClient() {
                 ))}
               </ul>
               <p className="text-xs mt-1">
-                Minta pegawai guna <strong>yyyy-mm-dd</strong> dan format lajur tarikh sebagai teks.
+                Minta pegawai guna <strong>yyyy-mm-dd</strong> dalam lajur tarikh template Excel.
               </p>
             </div>
           )}

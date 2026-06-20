@@ -1,4 +1,5 @@
 import PpdLogo from "@/components/PpdLogo";
+import { APP_DISPLAY_NAME } from "@/lib/branding";
 import LoginForm from "./LoginForm";
 
 export const dynamic = "force-dynamic";
@@ -12,8 +13,8 @@ export default async function LoginPage({
   return (
     <div className="card p-8 pt-7">
       <header className="flex flex-col items-center gap-1 border-b border-slate-100 pb-5 mb-6">
-        <PpdLogo width={148} priority className="drop-shadow-sm" />
-        <h1 className="text-xl font-bold text-brand-700 leading-tight">eGerak PPD Manjung</h1>
+        <PpdLogo width={188} priority className="drop-shadow-sm" />
+        <h1 className="text-xl font-bold text-brand-700 leading-tight">{APP_DISPLAY_NAME}</h1>
       </header>
       <p className="text-sm text-slate-600 mb-6">
         Sila log masuk dengan ID dan kata laluan anda.

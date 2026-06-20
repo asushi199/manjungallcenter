@@ -6,6 +6,7 @@ import PpdLogo from "@/components/PpdLogo";
 import { oprPhotoDisplayUrl } from "@/lib/opr-photo-url";
 import { formatTitleCase } from "@/lib/format-display-text";
 import OprRichText from "@/components/OprRichText";
+import { APP_DISPLAY_NAME } from "@/lib/branding";
 import PrintToolbar from "./PrintToolbar";
 
 export const dynamic = "force-dynamic";
@@ -115,7 +116,7 @@ export default async function OprPrintPage({ params }: { params: Promise<{ id: s
         ) : null}
 
         <footer className="opr-print-footer text-[7pt] text-slate-600 text-center">
-          Dijana melalui eGerak PPD Manjung · {new Date().toLocaleDateString("ms-MY")}
+          Dijana melalui {APP_DISPLAY_NAME} · {new Date().toLocaleDateString("ms-MY")}
         </footer>
       </article>
     </>

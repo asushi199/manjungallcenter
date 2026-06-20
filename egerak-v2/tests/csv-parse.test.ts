@@ -10,6 +10,7 @@ import {
   parseSektorCodeList,
   resolveDayMonth,
   resolveUsername,
+  isStrictIcUsername,
 } from "../lib/csv-parse";
 
 test("parseCsv supports quoted commas and skips commented email rows", () => {
@@ -43,9 +44,18 @@ test("CSV mapping helpers normalize common admin input", () => {
   assert.deepEqual(resolveDayMonth(14, 6), { dd: 14, mm: 6 });
   assert.equal(normalizeSektorCode(" Sektor (USTP) "), "SEKTOR_USTP");
   assert.deepEqual(parseSektorCodeList("ustp; spb"), ["USTP", "SPB"]);
-  assert.equal(resolveUsername({ email: "pegawai@example.com" }), "pegawai");
+  assert.equal(resolveUsername({ username: "880101081234" }), "880101081234");
+  assert.equal(resolveUsername({ username: "880101-08-1234" }), "");
+  assert.equal(resolveUsername({ email: "pegawai@example.com" }), "");
   assert.equal(mapJenis("Cuti Rehat"), "Bercuti");
   assert.equal(mapJenis("Mesyuarat"), "Pergerakan");
   assert.equal(mapPerananCsv("ketua unit"), "Ketua_Unit");
   assert.equal(mapPerananCsv("Pegawai PPD"), "Penyelia");
+});
+
+test("IC username must be exactly 12 digits without dash", () => {
+  assert.equal(isStrictIcUsername("880101081234"), true);
+  assert.equal(isStrictIcUsername("880101-08-1234"), false);
+  assert.equal(isStrictIcUsername("88010108123"), false);
+  assert.equal(isStrictIcUsername("pegawai"), false);
 });

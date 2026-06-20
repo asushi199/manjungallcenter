@@ -1,15 +1,20 @@
 import type { MetadataRoute } from "next";
+import {
+  APP_DESCRIPTION,
+  BRAND_THEME_COLOR,
+  PWA_APP_NAME,
+} from "@/lib/branding";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "eGerak PPD Manjung",
-    short_name: "eGerak",
-    description: "Sistem pergerakan pegawai PPD Manjung",
+    name: PWA_APP_NAME,
+    short_name: PWA_APP_NAME,
+    description: APP_DESCRIPTION,
     start_url: "/dashboard",
     scope: "/",
     display: "standalone",
     background_color: "#ffffff",
-    theme_color: "#b81049",
+    theme_color: BRAND_THEME_COLOR,
     orientation: "portrait-primary",
     icons: [
       {

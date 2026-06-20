@@ -67,7 +67,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Credentials({
       name: "ID & Kata Laluan",
       credentials: {
-        username: { label: "Nama Pengguna", type: "text" },
+        username: { label: "No. Kad Pengenalan (IC)", type: "text" },
         password: { label: "Kata Laluan", type: "password" },
       },
       authorize: async (raw) => {

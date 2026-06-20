@@ -46,7 +46,7 @@ export function buildUserTemplateWorkbook(
       name: "Panduan",
       rows: [
         ["Panduan"],
-        ["Username (ID log masuk) dan Nama wajib diisi."],
+        ["Username ialah No. Kad Pengenalan (IC) 12 digit tanpa tanda sempang; Nama wajib diisi."],
         ["Username sedia ada akan dikemas kini (kata laluan tidak ditukar)."],
         ["Akaun baharu guna kata laluan lalai (ditetapkan semasa import)."],
         ["Pilih Sektor & Peranan dari senarai juntai-bawah (dropdown)."],

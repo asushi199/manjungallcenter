@@ -202,7 +202,7 @@ async function importRancanganRows(
     const kembaliRaw = rowDateRaw(row, ["Tarikh Tamat", "tarikh_kembali"]);
     if (csvDateUsesAmbiguousSlashFormat(pergiRaw) || csvDateUsesAmbiguousSlashFormat(kembaliRaw)) {
       dateFormatWarnings.push(
-        `Baris ${line}: tarikh format Excel dikesan. Cadangan: guna 2026-06-14 atau 2026-06-14 08:00.`,
+        `Baris ${line}: tarikh format Excel dikesan. Cadangan: guna 2026-06-14 dalam lajur tarikh dan pilih masa dalam lajur masa.`,
       );
     }
 

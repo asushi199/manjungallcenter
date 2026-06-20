@@ -39,10 +39,9 @@ export default function Navbar() {
     <header className="bg-brand-700 text-white shadow sticky top-0 z-40">
       <div className="mx-auto max-w-7xl md:hidden flex items-center gap-2 px-3 py-2.5 min-h-[3.25rem]">
         <Link href="/dashboard" className="flex items-center gap-2 min-w-0 flex-1">
-          <PpdLogo width={44} className="shrink-0 object-contain" />
+          <PpdLogo width={92} className="shrink-0 object-contain" />
           <span className="min-w-0 leading-tight">
-            <span className="block font-bold text-[15px] tracking-tight">eGerak</span>
-            <span className="block text-[11px] font-medium text-white/90">PPD Manjung</span>
+            <span className="block text-[11px] font-semibold text-white/90">PPD Manjung</span>
           </span>
         </Link>
         <MobileNavMenu
@@ -56,9 +55,9 @@ export default function Navbar() {
 
       <div className="mx-auto max-w-7xl hidden md:flex items-center justify-between gap-3 px-4 py-2.5">
         <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
-          <PpdLogo width={72} className="shrink-0 object-contain" />
+          <PpdLogo width={118} className="shrink-0 object-contain" />
           <span className="text-lg font-bold leading-tight whitespace-nowrap">
-            eGerak <span className="font-normal opacity-90">PPD Manjung</span>
+            <span className="font-normal opacity-90">PPD Manjung</span>
           </span>
         </Link>
 

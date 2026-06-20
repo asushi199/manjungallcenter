@@ -28,26 +28,29 @@ Fail CSV lama masih disokong sementara melalui:
 | Lajur | Wajib | Contoh | Nota |
 |-------|-------|--------|------|
 | `Aktiviti` | Ya | `Mesyuarat Kurikulum` | Nama aktiviti Takwim |
-| `Tarikh Mula` | Ya | `2026-06-15` atau `2026-06-15 08:00` | Tarikh sahaja = sepanjang hari |
-| `Tarikh Tamat` | Ya | `2026-06-15` atau `2026-06-15 17:00` | Mesti sama/selepas tarikh mula |
+| `Tarikh Mula` | Ya | `2026-06-15` | Tarikh mula aktiviti |
+| `Masa Mula` | Tidak | `08:00` | Dropdown masa; kosong = `08:00` |
+| `Tarikh Tamat` | Ya | `2026-06-15` | Mesti sama/selepas tarikh mula |
+| `Masa Tamat` | Tidak | `17:00` | Dropdown masa; kosong = `17:00` |
 | `Sektor` | Ya | `USTP` | Ikut kod dalam sheet `Kod Sektor` |
-| `Lokasi` | Tidak | `Dewan Bestari` | Bilik/Dewan tertentu akan cuba ditempah automatik |
-| `Pegawai Bertanggungjawab` | Tidak | `ahmad@moe-dl.edu.my` atau `ahmad` | Jika kosong, hanya rekod Takwim dicipta |
+| `Tempah Bilik` | Tidak | `Bilik Budiman` | Dropdown bilik terurus; akan cuba ditempah automatik |
+| `Lokasi` | Tidak | `SK Seri Manjung` | Lokasi bebas jika bukan bilik terurus |
+
+Jika `Masa Mula` dan `Masa Tamat` dikosongkan, sistem menggunakan `08:00` hingga `17:00` dan menganggap aktiviti sebagai sepanjang hari.
 
 ## Model data import
 
 - Setiap baris mencipta satu rekod master dalam `takwim_aktiviti`.
 - `kategori = 'rancangan'` untuk import Rancangan Tahunan.
-- Jika `Pegawai Bertanggungjawab` diisi dan pengguna wujud, sistem turut mencipta satu `pergerakan` yang link kepada `takwim_aktiviti`.
-- Jika `Pegawai Bertanggungjawab` kosong, aktiviti hanya muncul di `/takwim` dan tidak muncul dalam `Pergerakan Saya` mana-mana pegawai.
+- Aktiviti hanya muncul sebagai rancangan di `/takwim`.
+- Pegawai sendiri boleh mengambil aktiviti itu melalui skrin Daftar Pergerakan.
 - Baris `Bercuti` tidak diterima sebagai Rancangan Tahunan.
 
 ## Tempahan bilik/dewan automatik
 
-Jika `Lokasi` mengandungi **Bilik Budiman** atau **Dewan Bestari**, sistem akan cuba mencipta tempahan bilik:
+Jika `Tempah Bilik` diisi dengan **Bilik Budiman** atau **Dewan Bestari**, sistem akan cuba mencipta tempahan bilik:
 
-- Ada pegawai bertanggungjawab: booking dikaitkan kepada `pergerakan` dan `takwim_aktiviti`.
-- Tiada pegawai bertanggungjawab: booking dikaitkan kepada `takwim_aktiviti`, dengan pengguna import sebagai pemilik booking.
+- Booking dikaitkan kepada `takwim_aktiviti`, dengan pengguna import sebagai pemilik booking.
 - Jika slot bertembung, baris import gagal dan mesej ralat dipaparkan.
 
 ## Keputusan import

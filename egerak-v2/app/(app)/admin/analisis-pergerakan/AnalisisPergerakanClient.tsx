@@ -23,15 +23,16 @@ import type { SektorOption } from "@/components/FilterBar";
 import type { AnalisisAggregates, FokusAggregates } from "@/lib/analisis/cluster-programs";
 import type { LaporanOprRange } from "@/lib/laporan-opr-period";
 import { replaceWithSearchParams } from "@/lib/navigate";
+import { BRAND_GOLD_COLOR, BRAND_TEAL_COLOR, BRAND_THEME_COLOR } from "@/lib/branding";
 
-const BRAND = "#b81049";
+const BRAND = BRAND_THEME_COLOR;
 /** Jalur atas — bezakan jenis analisis */
 const ACCENT_PERGERAKAN = BRAND;
-const ACCENT_PROGRAM = "#0d9488";
+const ACCENT_PROGRAM = BRAND_TEAL_COLOR;
 const ACCENT_FOKUS = "#7c3aed";
 
 /** Warna tetap bagi setiap kategori fokus (konsisten antara carta taburan & trend). */
-const FOKUS_PALETTE = ["#7c3aed", "#0d9488", "#b81049", "#ea580c", "#0369a1", "#65a30d"];
+const FOKUS_PALETTE = ["#7c3aed", BRAND_TEAL_COLOR, BRAND_GOLD_COLOR, "#ea580c", "#0369a1", "#65a30d"];
 const FOKUS_NONE_COLOR = "#94a3b8";
 
 function fokusColor(name: string): string {

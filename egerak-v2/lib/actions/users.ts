@@ -17,6 +17,12 @@ import {
 import { normalizeLaporanSektorIds } from "@/lib/laporan-sektor-scope";
 import { isPenyeliaOnlySektorCode } from "@/lib/sektors";
 import { formatTitleCase } from "@/lib/format-display-text";
+import { isStrictIcUsername } from "@/lib/csv-parse";
+import {
+  canChangeProtectedAdminRole,
+  canDeactivateProtectedAdmin,
+  canEditProtectedAdminUsername,
+} from "@/lib/protected-admin";
 
 const perananSchema = z.enum(PERANAN_VALUES);
 
@@ -71,7 +77,10 @@ const laporanSektorIdsSchema = z
   });
 
 const createSchema = z.object({
-  username: z.string().min(3, "Username minimum 3 aksara").max(50),
+  username: z
+    .string()
+    .trim()
+    .refine(isStrictIcUsername, "No. Kad Pengenalan mesti 12 digit tanpa tanda '-'."),
   password: z.string().min(8, "Kata laluan minimum 8 aksara"),
   nama: z.string().min(1, "Nama diperlukan"),
   jawatan: z.string().default(""),
@@ -161,7 +170,7 @@ const toggleSchema = z.object({
 
 const updateSchema = z.object({
   userId: z.number().int().positive(),
-  username: z.string().min(3).max(50).optional(),
+  username: z.string().trim().optional(),
   nama: z.string().min(1).optional(),
   jawatan: z.string().optional(),
   sektorId: z
@@ -183,6 +192,9 @@ export async function adminUpdateUser(input: unknown): Promise<CreateUserResult>
   if (!target) return { ok: false, error: "Pengguna tidak dijumpai" };
 
   const nextPeranan = (peranan ?? target.peranan) as UserPeranan;
+  if (!canChangeProtectedAdminRole(target.username, nextPeranan)) {
+    return { ok: false, error: "Akaun admin lalai mesti kekal sebagai Admin." };
+  }
   const nextSektorId = sektorId !== undefined ? sektorId : target.sektorId;
   const sektorErr = await validateSektorPeranan(nextPeranan, nextSektorId);
   if (sektorErr) return { ok: false, error: sektorErr };
@@ -215,6 +227,12 @@ export async function adminUpdateUser(input: unknown): Promise<CreateUserResult>
   if (username !== undefined) {
     const nextUsername = username.trim().toLowerCase();
     if (nextUsername !== target.username) {
+      if (!canEditProtectedAdminUsername(target.username, nextUsername)) {
+        return { ok: false, error: "Akaun admin lalai tidak boleh ditukar username." };
+      }
+      if (!isStrictIcUsername(nextUsername)) {
+        return { ok: false, error: "No. Kad Pengenalan mesti 12 digit tanpa tanda '-'." };
+      }
       const clash = await db.query.users.findFirst({ where: eq(users.username, nextUsername) });
       if (clash) return { ok: false, error: "Nama pengguna telah digunakan" };
       patch.username = nextUsername;
@@ -250,6 +268,10 @@ export async function adminSetAktif(input: unknown): Promise<CreateUserResult> {
 
   const target = await db.query.users.findFirst({ where: eq(users.id, parsed.data.userId) });
   if (!target) return { ok: false, error: "Pengguna tidak dijumpai" };
+
+  if (!canDeactivateProtectedAdmin(target.username, parsed.data.aktif)) {
+    return { ok: false, error: "Akaun admin lalai tidak boleh dinyahaktifkan." };
+  }
 
   if (!parsed.data.aktif && target.peranan === "Admin") {
     const admins = await db

@@ -11,7 +11,9 @@ test("normalizeRancanganImportRow accepts the simplified Excel headers (no owner
   const row = normalizeRancanganImportRow({
     Aktiviti: "mesyuarat penyelarasan",
     "Tarikh Mula": "2026-06-14",
+    "Masa Mula": "",
     "Tarikh Tamat": "2026-06-14",
+    "Masa Tamat": "",
     Sektor: "USTP",
     Lokasi: "Dewan Bestari",
   });
@@ -22,6 +24,24 @@ test("normalizeRancanganImportRow accepts the simplified Excel headers (no owner
   assert.equal(row.data.sektorCode, "USTP");
   assert.equal(row.data.fullDay, true);
   assert.equal(row.data.tarikhPergi.toISOString(), "2026-06-14T00:00:00.000Z");
+  assert.equal(row.data.tarikhKembali.toISOString(), "2026-06-14T09:00:00.000Z");
+});
+
+test("normalizeRancanganImportRow accepts separate date and time columns", () => {
+  const row = normalizeRancanganImportRow({
+    Aktiviti: "taklimat sistem",
+    "Tarikh Mula": "2026-06-14",
+    "Masa Mula": "08:30",
+    "Tarikh Tamat": "2026-06-14",
+    "Masa Tamat": "12:00",
+    Sektor: "USTP",
+  });
+
+  assert.equal(row.ok, true);
+  if (!row.ok) return;
+  assert.equal(row.data.tarikhPergi.toISOString(), "2026-06-14T00:30:00.000Z");
+  assert.equal(row.data.tarikhKembali.toISOString(), "2026-06-14T04:00:00.000Z");
+  assert.equal(row.data.fullDay, false);
 });
 
 test("normalizeRancanganImportRow keeps old lowercase CSV aliases compatible", () => {
@@ -93,6 +113,25 @@ test("rancangan xlsx template has four sheets and can be read back from Rancanga
 
   assert.deepEqual(rows.sheetNames, ["Rancangan", "Contoh", "Panduan", "Kod Sektor"]);
   assert.deepEqual(rows.rows, []);
+});
+
+test("rancangan xlsx template separates dates and time dropdowns", () => {
+  const workbook = buildRancanganTemplateWorkbook([
+    { code: "USTP", name: "Unit Sumber Teknologi Pendidikan" },
+  ]);
+  const zip = new PizZip(workbook);
+  const sheetXml = zip.file("xl/worksheets/sheet1.xml")?.asText() ?? "";
+
+  assert.match(sheetXml, /<c r="B1"[^>]*>[\s\S]*<t>Tarikh Mula<\/t>/);
+  assert.match(sheetXml, /<c r="C1"[^>]*>[\s\S]*<t>Masa Mula<\/t>/);
+  assert.match(sheetXml, /<c r="D1"[^>]*>[\s\S]*<t>Tarikh Tamat<\/t>/);
+  assert.match(sheetXml, /<c r="E1"[^>]*>[\s\S]*<t>Masa Tamat<\/t>/);
+  assert.match(sheetXml, /<dataValidation type="date"[^>]*sqref="B2:B1000">/);
+  assert.match(sheetXml, /<dataValidation type="date"[^>]*sqref="D2:D1000">/);
+  assert.match(sheetXml, /<dataValidation type="list"[^>]*sqref="C2:C1000">/);
+  assert.match(sheetXml, /<dataValidation type="list"[^>]*sqref="E2:E1000">/);
+  assert.match(sheetXml, /08:00,08:30/);
+  assert.match(sheetXml, /17:00/);
 });
 
 test("readRancanganWorkbookRows reads shared strings and Excel serial dates", () => {

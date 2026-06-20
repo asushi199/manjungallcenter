@@ -39,13 +39,14 @@ export default function LoginForm({
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
         <label className="label" htmlFor="username">
-          Nama Pengguna (ID)
+          No. Kad Pengenalan (IC)
         </label>
         <input
           id="username"
           className="input"
           autoComplete="username"
           autoFocus
+          inputMode="numeric"
           required
           value={username}
           onChange={(e) => setUsername(e.target.value)}

@@ -164,9 +164,12 @@ export function parseCsvDateRange(
 }
 
 export function resolveUsername(row: CsvRow): string {
-  const email = (row.email ?? row["e-mel"] ?? "").toLowerCase();
-  if (email.includes("@")) return email.split("@")[0];
-  return (row.username ?? row.id ?? "").trim().toLowerCase();
+  const raw = (row.username ?? row.id ?? row.ic ?? row["no ic"] ?? row["no. ic"] ?? "").trim();
+  return isStrictIcUsername(raw) ? raw : "";
+}
+
+export function isStrictIcUsername(value: string): boolean {
+  return /^\d{12}$/.test(value.trim());
 }
 
 export function mapJenis(raw: string): "Pergerakan" | "Bercuti" {

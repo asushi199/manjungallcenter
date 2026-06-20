@@ -1,17 +1,21 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
-
-const APP_NAME = "eGerak PPD Manjung";
+import {
+  APP_DESCRIPTION,
+  APP_DISPLAY_NAME,
+  APP_SHORT_NAME,
+  BRAND_THEME_COLOR,
+} from "@/lib/branding";
 
 export const metadata: Metadata = {
-  applicationName: APP_NAME,
-  title: "eGerak PPD Manjung",
-  description: "Sistem pergerakan pegawai PPD Manjung",
+  applicationName: APP_DISPLAY_NAME,
+  title: APP_DISPLAY_NAME,
+  description: APP_DESCRIPTION,
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "eGerak",
+    title: APP_SHORT_NAME,
   },
   icons: {
     apple: "/icons/apple-touch-icon.png",
@@ -22,7 +26,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#b81049",
+  themeColor: BRAND_THEME_COLOR,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

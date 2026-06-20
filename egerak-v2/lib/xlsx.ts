@@ -108,6 +108,14 @@ export function dropdownValidation(
   );
 }
 
+export function dateValidation(columnLetter: string): string {
+  return (
+    `<dataValidation type="date" allowBlank="1" showInputMessage="1" showErrorMessage="1" operator="between" sqref="${columnLetter}2:${columnLetter}1000">` +
+    `<formula1>DATE(2020,1,1)</formula1><formula2>DATE(2035,12,31)</formula2>` +
+    `</dataValidation>`
+  );
+}
+
 /** Bungkus satu/lebih dropdownValidation menjadi blok <dataValidations>. */
 export function dataValidationsXml(validations: string[]): string {
   const list = validations.filter(Boolean);

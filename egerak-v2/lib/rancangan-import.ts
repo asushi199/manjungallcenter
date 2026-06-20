@@ -9,9 +9,15 @@ import {
   buildXlsxWorkbook,
   colName,
   dataValidationsXml,
+  dateValidation,
   dropdownValidation,
   readWorkbookRows,
 } from "@/lib/xlsx";
+import {
+  DEFAULT_TIME_KEMBALI,
+  DEFAULT_TIME_PERGI,
+  TIME_OPTIONS_REGISTER,
+} from "@/lib/datetime-picker";
 
 export type NormalizedRancanganRow = {
   urusan: string;
@@ -32,7 +38,9 @@ const TEMPAH_BILIK_OPTIONS = ["Dewan Bestari", "Bilik Budiman"] as const;
 const RANCANGAN_HEADERS = [
   "Aktiviti",
   "Tarikh Mula",
+  "Masa Mula",
   "Tarikh Tamat",
+  "Masa Tamat",
   "Sektor",
   "Tempah Bilik",
   "Lokasi",
@@ -54,6 +62,13 @@ function getCell(row: CsvRow, aliases: string[]): string {
   return "";
 }
 
+function dateTimeInput(row: CsvRow, dateAliases: string[], timeAliases: string[]): string {
+  const dateRaw = getCell(row, dateAliases);
+  if (!dateRaw) return "";
+  const timeRaw = getCell(row, timeAliases);
+  return timeRaw ? `${dateRaw} ${timeRaw}` : dateRaw;
+}
+
 export function normalizeRancanganImportRow(row: CsvRow): NormalizeRancanganRowResult {
   const jenisRaw = getCell(row, ["jenis"]);
   if (jenisRaw && mapJenis(jenisRaw) === "Bercuti") {
@@ -67,8 +82,16 @@ export function normalizeRancanganImportRow(row: CsvRow): NormalizeRancanganRowR
   if (!sektorCode) return { ok: false, error: "Sektor diperlukan." };
 
   const range = parseCsvDateRange(
-    getCell(row, ["Tarikh Mula", "tarikh_pergi", "tarikh pergi"]),
-    getCell(row, ["Tarikh Tamat", "tarikh_kembali", "tarikh kembali"]),
+    dateTimeInput(
+      row,
+      ["Tarikh Mula", "tarikh_pergi", "tarikh pergi"],
+      ["Masa Mula", "masa_pergi", "masa pergi"],
+    ),
+    dateTimeInput(
+      row,
+      ["Tarikh Tamat", "tarikh_kembali", "tarikh kembali"],
+      ["Masa Tamat", "masa_kembali", "masa kembali"],
+    ),
   );
   if (!range) return { ok: false, error: "Tarikh mula/tamat tidak sah." };
   if (range.kembali.getTime() < range.pergi.getTime()) {
@@ -93,9 +116,17 @@ export function normalizeRancanganImportRow(row: CsvRow): NormalizeRancanganRowR
   };
 }
 
-/** dataValidation untuk lajur Sektor (rujuk sheet "Kod Sektor") + Tempah Bilik (senarai literal). */
+/** dataValidation untuk tarikh, masa, sektor dan Tempah Bilik. */
 function rancanganValidations(sektorCount: number): string {
   const validations: string[] = [];
+  const tarikhMulaCol = colName(RANCANGAN_HEADERS.indexOf("Tarikh Mula"));
+  const masaMulaCol = colName(RANCANGAN_HEADERS.indexOf("Masa Mula"));
+  const tarikhTamatCol = colName(RANCANGAN_HEADERS.indexOf("Tarikh Tamat"));
+  const masaTamatCol = colName(RANCANGAN_HEADERS.indexOf("Masa Tamat"));
+  validations.push(dateValidation(tarikhMulaCol));
+  validations.push(dropdownValidation(masaMulaCol, `"${TIME_OPTIONS_REGISTER.join(",")}"`));
+  validations.push(dateValidation(tarikhTamatCol));
+  validations.push(dropdownValidation(masaTamatCol, `"${TIME_OPTIONS_REGISTER.join(",")}"`));
   if (sektorCount > 0) {
     const sektorCol = colName(RANCANGAN_HEADERS.indexOf("Sektor"));
     validations.push(dropdownValidation(sektorCol, `'Kod Sektor'!$A$2:$A$${sektorCount + 1}`));
@@ -118,8 +149,17 @@ export function buildRancanganTemplateWorkbook(
       name: "Contoh",
       rows: [
         Array.from(RANCANGAN_HEADERS),
-        ["Mesyuarat Penyelarasan USTP", "2026-06-14", "2026-06-14", "USTP", "Bilik Budiman", ""],
-        ["Lawatan Sekolah", "2026-06-15", "2026-06-15", "USTP", "", "SK Seri Manjung"],
+        [
+          "Mesyuarat Penyelarasan USTP",
+          "2026-06-14",
+          DEFAULT_TIME_PERGI,
+          "2026-06-14",
+          DEFAULT_TIME_KEMBALI,
+          "USTP",
+          "Bilik Budiman",
+          "",
+        ],
+        ["Lawatan Sekolah", "2026-06-15", "", "2026-06-15", "", "USTP", "", "SK Seri Manjung"],
       ],
     },
     {
@@ -127,11 +167,15 @@ export function buildRancanganTemplateWorkbook(
       rows: [
         ["Panduan"],
         ["Isi satu baris untuk satu aktiviti rancangan tahunan."],
+        ["Tarikh Mula dan Tarikh Tamat wajib diisi. Format disyorkan: 2026-06-14."],
+        [
+          "Masa Mula dan Masa Tamat boleh dikosongkan. Jika kosong, sistem guna 08:00 hingga 17:00 dan dianggap aktiviti sepanjang hari.",
+        ],
+        ["Jika perlu masa khusus, pilih Masa Mula dan Masa Tamat dari dropdown."],
         ["Pilih Sektor dari senarai juntai-bawah (dropdown)."],
         ["Tempah Bilik: pilih Dewan Bestari / Bilik Budiman (dropdown) jika perlu bilik terurus."],
         ["Lokasi lain (bukan bilik terurus) → isi lajur Lokasi."],
         ["Tiada lajur pegawai — pegawai sendiri 'ambil' aktiviti di skrin Daftar Pergerakan."],
-        ["Format tarikh disyorkan: 2026-06-14 atau 2026-06-14 08:00."],
       ],
     },
     {

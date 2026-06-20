@@ -16,6 +16,7 @@ import {
 } from "@/lib/roles";
 import { filterSektorsForPeranan, isPenyeliaOnlySektorCode } from "@/lib/sektors";
 import { JAWATAN_OPTIONS } from "@/lib/jawatan";
+import { isProtectedAdminUsername } from "@/lib/protected-admin";
 import AdminUsersImport from "@/components/AdminUsersImport";
 
 type Sektor = { id: number; code: string; name: string };
@@ -159,6 +160,7 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
   }
 
   function UserActions({ u }: { u: Row }) {
+    const protectedAdmin = isProtectedAdminUsername(u.username);
     return (
       <div className="flex flex-wrap gap-2">
         <button
@@ -181,7 +183,8 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
           type="button"
           className="btn-secondary text-xs"
           onClick={() => onToggle(u)}
-          disabled={pending}
+          disabled={pending || protectedAdmin}
+          title={protectedAdmin ? "Akaun admin lalai dikekalkan aktif." : undefined}
         >
           {u.aktif ? "Nyahaktif" : "Aktifkan"}
         </button>
@@ -205,13 +208,25 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
           <h2 className="font-semibold mb-2">Edit Pengguna — {editing.username}</h2>
           <form onSubmit={onSaveEdit} className="grid sm:grid-cols-2 gap-3">
             <div>
-              <label className="label">Nama Pengguna (ID)</label>
+              <label className="label">No. Kad Pengenalan (IC)</label>
               <input
                 className="input"
                 required
+                inputMode="numeric"
+                placeholder="880101081234"
                 value={editForm.username}
                 onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                readOnly={isProtectedAdminUsername(editing.username)}
               />
+              {isProtectedAdminUsername(editing.username) ? (
+                <p className="text-xs text-slate-500 mt-1">
+                  Akaun admin lalai dikekalkan sebagai username admin.
+                </p>
+              ) : (
+                <p className="text-xs text-slate-500 mt-1">
+                  Jika ditukar, mesti 12 digit tanpa tanda sempang.
+                </p>
+              )}
             </div>
             <div>
               <label className="label">Nama Penuh</label>
@@ -250,6 +265,7 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
               <select
                 className="input"
                 value={editForm.peranan}
+                disabled={isProtectedAdminUsername(editing.username)}
                 onChange={(e) => {
                   const peranan = e.target.value as UserPeranan;
                   setEditForm({
@@ -266,6 +282,11 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
                 ))}
               </select>
               <p className="text-xs text-slate-500 mt-1">{PERANAN_LABELS[editForm.peranan]}</p>
+              {isProtectedAdminUsername(editing.username) && (
+                <p className="text-xs text-slate-500 mt-1">
+                  Akaun admin lalai mesti kekal sebagai Admin.
+                </p>
+              )}
             </div>
             {err && (
               <div className="sm:col-span-2 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">
@@ -307,6 +328,9 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
                 <span className={"badge " + perananBadgeClass(u.peranan)}>
                   {PERANAN_SELECT_OPTIONS.find((o) => o.value === u.peranan)?.label ?? u.peranan}
                 </span>
+                {isProtectedAdminUsername(u.username) && (
+                  <span className="badge bg-slate-100 text-slate-700">Akaun lalai</span>
+                )}
                 <span
                   className={
                     "badge " +
@@ -358,6 +382,9 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
                   <span className={"badge " + perananBadgeClass(u.peranan)}>
                     {PERANAN_SELECT_OPTIONS.find((o) => o.value === u.peranan)?.label ?? u.peranan}
                   </span>
+                  {isProtectedAdminUsername(u.username) && (
+                    <span className="badge bg-slate-100 text-slate-700 ml-1">Akaun lalai</span>
+                  )}
                 </td>
                 <td className="px-3 py-2">
                   <span
@@ -394,13 +421,18 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
         <h2 className="font-semibold mb-2">Tambah Pengguna</h2>
         <form onSubmit={onCreate} className="space-y-3">
           <div>
-            <label className="label">Nama Pengguna (ID)</label>
+            <label className="label">No. Kad Pengenalan (IC)</label>
             <input
               className="input"
               required
+              inputMode="numeric"
+              pattern="\d{12}"
+              maxLength={12}
+              placeholder="880101081234"
               value={form.username}
               onChange={(e) => setForm({ ...form, username: e.target.value })}
             />
+            <p className="text-xs text-slate-500 mt-1">12 digit tanpa tanda sempang.</p>
           </div>
           <div>
             <label className="label">Kata Laluan Awal</label>

@@ -10,6 +10,7 @@ import {
 } from "@/lib/bilik-month";
 import { TZ } from "@/lib/dates";
 import { requireAdmin } from "@/lib/rbac";
+import { APP_SHORT_NAME } from "@/lib/branding";
 import BilikPrintToolbar from "./BilikPrintToolbar";
 
 export const dynamic = "force-dynamic";
@@ -61,7 +62,7 @@ export default async function BilikCetakPage({
         />
 
         <footer className="bilik-print-footer">
-          Dicetak: {printedAt} · eGerak · {bookings.length} tempahan dalam bulan ini
+          Dicetak: {printedAt} · {APP_SHORT_NAME} · {bookings.length} tempahan dalam bulan ini
         </footer>
       </article>
     </>

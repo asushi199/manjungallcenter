@@ -2,7 +2,8 @@
  * Kosongkan data ujian beta — HARD DELETE dari Postgres.
  *
  * Kekal: sektors, rooms, users (lalai), struktur jadual.
- * Padam: pergerakan (+ opr + opr_photos cascade), room_bookings, import_batches, audit_log.
+ * Padam: takwim_aktiviti, pergerakan (+ opr + opr_photos cascade), room_bookings,
+ * import_batches, audit_log.
  *
  * Penggunaan (dari folder egerak-v2, .env.local mesti ada DATABASE_URL):
  *   npm run db:reset-beta -- --confirm
@@ -51,6 +52,7 @@ async function main() {
         opr,
         room_bookings,
         pergerakan,
+        takwim_aktiviti,
         import_batches,
         audit_log
       RESTART IDENTITY CASCADE

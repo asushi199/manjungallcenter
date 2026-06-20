@@ -7,6 +7,7 @@ import { sektorStyle } from "@/lib/sektor-colors";
 import { oprStatusBadge } from "@/lib/opr-status";
 import { cn } from "@/lib/cn";
 import type { PegawaiOption, JejakSummary } from "@/lib/actions/jejak-pegawai";
+import { BRAND_THEME_COLOR } from "@/lib/branding";
 
 type SerializedItem = {
   id: number;
@@ -296,8 +297,8 @@ export default function JejakPegawaiClient({
             <StatTile
               label="Pergerakan"
               value={selected.summary.pergerakan}
-              accent="#dc1858"
-              tint="#fff1f6"
+              accent={BRAND_THEME_COLOR}
+              tint="#effaf9"
             />
             <StatTile
               label="OPR Siap"

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/cn";
 import type { AppNavLink } from "@/lib/app-nav";
+import { APP_SHORT_NAME } from "@/lib/branding";
 import PwaInstallButton from "@/components/PwaInstallButton";
 
 function isActive(path: string | null, href: string) {
@@ -119,7 +120,7 @@ export default function MobileNavMenu({
             <div className="bg-brand-700 text-white px-4 py-4 shrink-0">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-lg font-bold leading-tight">eGerak</p>
+                  <p className="text-lg font-bold leading-tight">{APP_SHORT_NAME}</p>
                   <p className="text-sm text-white/90">PPD Manjung</p>
                   {userNama && (
                     <p className="mt-2 text-xs text-white/80 truncate max-w-[14rem]">

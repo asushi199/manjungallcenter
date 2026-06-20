@@ -63,7 +63,7 @@ export default function AdminUsersImport() {
       className="group card border-brand-100"
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 select-none [&::-webkit-details-marker]:hidden">
-        <span className="font-semibold text-slate-900">Import Pengguna (CSV)</span>
+        <span className="font-semibold text-slate-900">Import Pengguna (Excel / CSV)</span>
         <span className="text-xs font-normal text-slate-500 shrink-0">
           <span className="group-open:hidden">Buka</span>
           <span className="hidden group-open:inline">Tutup</span>
@@ -76,7 +76,8 @@ export default function AdminUsersImport() {
           lalai di bawah (mesti ditukar pada login pertama).
         </p>
         <p className="text-xs text-slate-500">
-          Lajur: <strong>username</strong>, <strong>nama</strong>, <strong>jawatan</strong>,{" "}
+          Lajur: <strong>username</strong> (IC 12 digit), <strong>nama</strong>,{" "}
+          <strong>jawatan</strong>,{" "}
           <strong>sektor</strong>, <strong>peranan</strong>. Hanya <strong>username</strong> dan{" "}
           <strong>nama</strong> wajib; peranan kosong = Pengguna.
         </p>
