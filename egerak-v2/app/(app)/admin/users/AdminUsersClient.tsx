@@ -15,6 +15,7 @@ import {
   type UserPeranan,
 } from "@/lib/roles";
 import { filterSektorsForPeranan, isPenyeliaOnlySektorCode } from "@/lib/sektors";
+import { JAWATAN_OPTIONS } from "@/lib/jawatan";
 import AdminUsersImport from "@/components/AdminUsersImport";
 
 type Sektor = { id: number; code: string; name: string };
@@ -190,6 +191,11 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
 
   return (
     <div className="space-y-4">
+      <datalist id="jawatan-options">
+        {JAWATAN_OPTIONS.map((j) => (
+          <option key={j} value={j} />
+        ))}
+      </datalist>
       <p className="text-sm text-slate-600 rounded-md bg-slate-50 border border-slate-200 px-3 py-2">
         <strong>Tiada padam pengguna</strong> dari pangkalan data — gunakan{" "}
         <strong>Nyahaktif</strong> apabila pegawai berpindah / bersara. Rekod pergerakan & OPR kekal
@@ -225,6 +231,7 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
               <label className="label">Jawatan</label>
               <input
                 className="input"
+                list="jawatan-options"
                 value={editForm.jawatan}
                 onChange={(e) => setEditForm({ ...editForm, jawatan: e.target.value })}
               />
@@ -426,6 +433,7 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
             <label className="label">Jawatan</label>
             <input
               className="input"
+              list="jawatan-options"
               value={form.jawatan}
               onChange={(e) => setForm({ ...form, jawatan: e.target.value })}
             />

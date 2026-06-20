@@ -182,3 +182,14 @@
 - Padam `public/templates/pengguna-{kosong,contoh}.csv`.
 - Ujian baharu: `tests/user-template.test.ts` + kes "Tempah Bilik".
   43 ujian lulus; `tsc`, ESLint, `next build` bersih. Tiada migration.
+
+## 2026-06-20 - Jawatan Cadangan Dropdown (Boleh Taip Lain)
+
+- `lib/jawatan.ts` baharu: `JAWATAN_OPTIONS` = Penolong PPD, Ketua Unit,
+  Timbalan PPD, Pegawai PPD.
+- Borang Tambah/Edit Pengguna: input jawatan guna `<datalist>` (cadangan
+  dropdown, masih boleh taip jawatan lain seperti kerani/pegawai teknologi).
+- Templat Excel Pengguna: lajur jawatan jadi dropdown dengan `allowOther`
+  (showErrorMessage=0) — cadangan tetapi tidak menyekat nilai lain.
+- `lib/xlsx.ts`: `dropdownValidation` tambah opsyen `{ allowOther }`.
+- Tiada migration; nilai jawatan kekal teks bebas.

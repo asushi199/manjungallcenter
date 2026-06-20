@@ -92,10 +92,17 @@ export function buildXlsxWorkbook(sheets: XlsxSheet[]): Buffer {
  * dataValidation jenis senarai (dropdown) untuk satu lajur.
  * `source` boleh rujukan julat (cth. `'Kod Sektor'!$A$2:$A$9`) atau senarai literal
  * dalam petikan (cth. `"Dewan Bestari,Bilik Budiman"`).
+ * `allowOther: true` → tunjuk dropdown tetapi benarkan pengguna taip nilai lain
+ * (tiada amaran ralat); default tegas (hanya nilai senarai).
  */
-export function dropdownValidation(columnLetter: string, source: string): string {
+export function dropdownValidation(
+  columnLetter: string,
+  source: string,
+  opts: { allowOther?: boolean } = {},
+): string {
+  const showErrorMessage = opts.allowOther ? "0" : "1";
   return (
-    `<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" sqref="${columnLetter}2:${columnLetter}1000">` +
+    `<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="${showErrorMessage}" sqref="${columnLetter}2:${columnLetter}1000">` +
     `<formula1>${source}</formula1>` +
     `</dataValidation>`
   );
