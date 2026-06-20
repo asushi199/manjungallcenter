@@ -1,6 +1,5 @@
 /**
- * Cadangan jawatan rasmi PPD (untuk dropdown). Senarai ini bukan tegas —
- * pengguna masih boleh taip jawatan lain (cth. kerani, pegawai teknologi).
+ * Pilihan jawatan rasmi PPD untuk borang pengguna dan template import.
  */
 export const JAWATAN_OPTIONS = [
   "Penolong PPD",

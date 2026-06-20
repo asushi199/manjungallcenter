@@ -14,11 +14,8 @@ const USER_HEADERS = ["username", "nama", "jawatan", "sektor", "peranan"] as con
 
 function userValidations(sektorCount: number): string {
   const validations: string[] = [];
-  // Jawatan: cadangan dropdown tetapi benarkan jawatan lain ditaip.
   const jawatanCol = colName(USER_HEADERS.indexOf("jawatan"));
-  validations.push(
-    dropdownValidation(jawatanCol, `"${JAWATAN_OPTIONS.join(",")}"`, { allowOther: true }),
-  );
+  validations.push(dropdownValidation(jawatanCol, `"${JAWATAN_OPTIONS.join(",")}"`));
   if (sektorCount > 0) {
     const sektorCol = colName(USER_HEADERS.indexOf("sektor"));
     validations.push(dropdownValidation(sektorCol, `'Kod Sektor'!$A$2:$A$${sektorCount + 1}`));
