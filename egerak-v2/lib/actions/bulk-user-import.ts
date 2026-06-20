@@ -16,6 +16,7 @@ import {
 } from "@/lib/csv-parse";
 import { validateSektorPeranan } from "@/lib/actions/users";
 import { formatTitleCase } from "@/lib/format-display-text";
+import { readWorkbookRows } from "@/lib/xlsx";
 
 export type BulkUserImportRowResult = {
   line: number;
@@ -153,19 +154,24 @@ async function processUserRow(
   };
 }
 
-export async function importUsersCsv(
-  csvText: string,
+/** Huruf kecilkan kunci header (padan dengan output parseCsv) untuk baris dari Excel. */
+function lowercaseRowKeys(row: CsvRow): CsvRow {
+  const out: CsvRow = {};
+  for (const [k, v] of Object.entries(row)) out[k.trim().toLowerCase()] = v;
+  return out;
+}
+
+async function importUserRows(
+  rows: CsvRow[],
   defaultPassword: string,
-  filename?: string,
+  filename: string,
 ): Promise<BulkUserImportResult> {
   const admin = await requireAdmin();
-  const parsed = importSchema.safeParse({ csvText, defaultPassword, filename });
-  if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Input tidak sah");
+  if (defaultPassword.length < 8) {
+    throw new Error("Kata laluan lalai minimum 8 aksara");
   }
 
-  const defaultPasswordHash = await bcrypt.hash(parsed.data.defaultPassword, 10);
-  const rows = parseCsv(parsed.data.csvText);
+  const defaultPasswordHash = await bcrypt.hash(defaultPassword, 10);
   const sektorsList = await db.select().from(sektors);
   const sektorByCode = new Map(sektorsList.map((s) => [s.code, { id: s.id }]));
 
@@ -197,17 +203,38 @@ export async function importUsersCsv(
   await db.insert(auditLog).values({
     action: "BULK_IMPORT_USERS",
     userId: Number(admin.id),
-    detail: {
-      filename: parsed.data.filename ?? "upload.csv",
-      ok,
-      updated,
-      error,
-      skipped,
-    },
+    detail: { filename, ok, updated, error, skipped },
   });
 
   revalidatePath("/admin/users");
   revalidatePath("/dashboard");
 
   return { ok, updated, error, skipped, rows: results };
+}
+
+export async function importUsersCsv(
+  csvText: string,
+  defaultPassword: string,
+  filename?: string,
+): Promise<BulkUserImportResult> {
+  const parsed = importSchema.safeParse({ csvText, defaultPassword, filename });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Input tidak sah");
+  }
+  return importUserRows(
+    parseCsv(parsed.data.csvText),
+    parsed.data.defaultPassword,
+    parsed.data.filename ?? "upload.csv",
+  );
+}
+
+export async function importUsersXlsx(
+  workbookBase64: string,
+  defaultPassword: string,
+  filename?: string,
+): Promise<BulkUserImportResult> {
+  const buffer = Buffer.from(workbookBase64, "base64");
+  const parsed = readWorkbookRows(buffer);
+  const rows = parsed.rows.map(lowercaseRowKeys);
+  return importUserRows(rows, defaultPassword, filename ?? "pengguna.xlsx");
 }

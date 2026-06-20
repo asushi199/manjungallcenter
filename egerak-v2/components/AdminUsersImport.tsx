@@ -3,10 +3,18 @@
 import { useEffect, useState, useTransition } from "react";
 import {
   importUsersCsv,
+  importUsersXlsx,
   type BulkUserImportResult,
 } from "@/lib/actions/bulk-user-import";
 
 export const DEFAULT_USER_IMPORT_PASSWORD = "TukarSegera1!";
+
+function isXlsxFile(file: File): boolean {
+  return (
+    file.name.toLowerCase().endsWith(".xlsx") ||
+    file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  );
+}
 
 export default function AdminUsersImport() {
   const [open, setOpen] = useState(false);
@@ -29,18 +37,22 @@ export default function AdminUsersImport() {
     setError(null);
     setResult(null);
     const reader = new FileReader();
+    const xlsx = isXlsxFile(file);
     reader.onload = () => {
-      const text = String(reader.result ?? "");
       startTransition(async () => {
         try {
-          const r = await importUsersCsv(text, defaultPassword, file.name);
+          const raw = String(reader.result ?? "");
+          const r = xlsx
+            ? await importUsersXlsx(raw.split(",")[1] ?? "", defaultPassword, file.name)
+            : await importUsersCsv(raw, defaultPassword, file.name);
           setResult(r);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Import gagal");
         }
       });
     };
-    reader.readAsText(file, "utf-8");
+    if (xlsx) reader.readAsDataURL(file);
+    else reader.readAsText(file, "utf-8");
     e.target.value = "";
   }
 
@@ -70,21 +82,14 @@ export default function AdminUsersImport() {
         </p>
 
         <div>
-          <div className="label">Template CSV</div>
+          <div className="label">Template Excel (Sektor & Peranan dropdown)</div>
           <div className="flex flex-wrap gap-2">
             <a
-              href="/templates/pengguna-kosong.csv"
-              download="pengguna-kosong.csv"
-              className="btn-secondary text-sm"
+              href="/api/templates/pengguna"
+              download="pengguna.xlsx"
+              className="btn-primary text-sm"
             >
-              Muat turun — kosong
-            </a>
-            <a
-              href="/templates/pengguna-contoh.csv"
-              download="pengguna-contoh.csv"
-              className="btn-secondary text-sm"
-            >
-              Muat turun — contoh
+              Muat turun template Excel
             </a>
           </div>
         </div>
@@ -107,10 +112,10 @@ export default function AdminUsersImport() {
         </div>
 
         <div>
-          <label className="label">Fail CSV</label>
+          <label className="label">Fail Excel / CSV</label>
           <input
             type="file"
-            accept=".csv,text/csv"
+            accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             className="input"
             disabled={pending}
             onChange={onFile}
