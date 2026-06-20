@@ -11,15 +11,6 @@ import {
 
 export type AppNavLink = { href: string; label: string };
 
-export type RoleNavLabels = {
-  /** Label dropdown header (desktop). */
-  header: string;
-  /** Label ringkas jika ruang sempit (contoh: KU). */
-  headerShort?: string;
-  /** Tajuk seksyen menu mudah alih. */
-  mobileSection: string;
-};
-
 export const MAIN_NAV_LINKS: AppNavLink[] = [
   { href: "/dashboard", label: "Utama" },
   { href: "/new", label: "Daftar Pergerakan" },
@@ -98,33 +89,16 @@ export function roleNavLinksForPeranan(peranan: string | undefined | null): AppN
   return [];
 }
 
-export function roleNavLabelsForPeranan(peranan: string | undefined | null): RoleNavLabels | null {
-  if (!roleNavLinksForPeranan(peranan).length) return null;
-
-  switch (peranan) {
-    case "Ketua_Unit":
-      return {
-        header: "Ketua Unit",
-        headerShort: "KU",
-        mobileSection: "Ketua Unit",
-      };
-    case "Timbalan_PPD":
-      return {
-        header: "Timbalan",
-        mobileSection: "Timbalan PPD",
-      };
-    case "Penyelia":
-      return {
-        header: "Penyelia",
-        mobileSection: "Penyelia",
-      };
-    default:
-      return null;
-  }
-}
-
 export function adminNavLinksForPeranan(peranan: string | undefined | null): AppNavLink[] {
   return isFullAdmin(peranan) ? [...FULL_ADMIN_NAV_LINKS] : [];
+}
+
+/**
+ * Pautan menu pentadbiran (gabungan) — tajuk seragam "Admin" untuk semua peranan istimewa.
+ * Peranan penuh (Admin) dan peranan ikut sektor (Ketua/Timbalan/Pegawai PPD) saling eksklusif.
+ */
+export function adminMenuLinksForPeranan(peranan: string | undefined | null): AppNavLink[] {
+  return [...roleNavLinksForPeranan(peranan), ...adminNavLinksForPeranan(peranan)];
 }
 
 /** Semua pautan (cetak / menu gabungan). */

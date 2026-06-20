@@ -47,4 +47,5 @@ test("CSV mapping helpers normalize common admin input", () => {
   assert.equal(mapJenis("Cuti Rehat"), "Bercuti");
   assert.equal(mapJenis("Mesyuarat"), "Pergerakan");
   assert.equal(mapPerananCsv("ketua unit"), "Ketua_Unit");
+  assert.equal(mapPerananCsv("Pegawai PPD"), "Penyelia");
 });

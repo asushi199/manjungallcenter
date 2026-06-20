@@ -184,6 +184,7 @@ export function mapPerananCsv(raw: string): UserPeranan | null {
     admin: "Admin",
     pentadbir: "Admin",
     penyelia: "Penyelia",
+    pegawai_ppd: "Penyelia",
     timbalan_ppd: "Timbalan_PPD",
     timbalan: "Timbalan_PPD",
     ketua_unit: "Ketua_Unit",

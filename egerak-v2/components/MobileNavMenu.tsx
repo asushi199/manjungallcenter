@@ -51,16 +51,12 @@ function NavSection({
 
 export default function MobileNavMenu({
   mainLinks,
-  roleLinks,
-  roleSectionTitle,
   adminLinks,
   showAdminSection,
   userNama,
   userUsername,
 }: {
   mainLinks: AppNavLink[];
-  roleLinks?: AppNavLink[];
-  roleSectionTitle?: string;
   adminLinks: AppNavLink[];
   showAdminSection: boolean;
   userNama?: string;
@@ -155,16 +151,8 @@ export default function MobileNavMenu({
 
             <nav className="flex-1 overflow-y-auto">
               <NavSection title="Utama" links={mainLinks} path={path} onNavigate={close} />
-              {roleLinks && roleLinks.length > 0 && roleSectionTitle && (
-                <NavSection
-                  title={roleSectionTitle}
-                  links={roleLinks}
-                  path={path}
-                  onNavigate={close}
-                />
-              )}
               {showAdminSection && (
-                <NavSection title="Pentadbir" links={adminLinks} path={path} onNavigate={close} />
+                <NavSection title="Admin" links={adminLinks} path={path} onNavigate={close} />
               )}
             </nav>
 

@@ -63,6 +63,11 @@ export default function AdminUsersImport() {
           Username sedia ada akan <strong>dikemas kini</strong>. Akaun baharu guna kata laluan
           lalai di bawah (mesti ditukar pada login pertama).
         </p>
+        <p className="text-xs text-slate-500">
+          Lajur: <strong>username</strong>, <strong>nama</strong>, <strong>jawatan</strong>,{" "}
+          <strong>sektor</strong>, <strong>peranan</strong>. Hanya <strong>username</strong> dan{" "}
+          <strong>nama</strong> wajib; peranan kosong = Pengguna.
+        </p>
 
         <div>
           <div className="label">Template CSV</div>

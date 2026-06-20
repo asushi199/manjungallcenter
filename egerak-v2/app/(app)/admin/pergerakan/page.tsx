@@ -1,5 +1,4 @@
 import { listPergerakanForSectorAdmin } from "@/lib/actions/pergerakan";
-import { getUserLaporanSektorScope } from "@/lib/actions/laporan-opr";
 import { listAllSektors } from "@/lib/actions/users";
 import { requireSectorPergerakanAdmin } from "@/lib/rbac";
 import { isFullAdmin } from "@/lib/roles";
@@ -28,15 +27,11 @@ export default async function AdminPergerakanPage({
       ? Number(user.sektorId)
       : null;
 
-  const timbalanScope = isTimbalan ? await getUserLaporanSektorScope(Number(user.id)) : [];
   const allSektors = await listAllSektors();
   const lockedSektorLabel =
     isKetua && lockedSektorId
       ? (allSektors.find((s) => s.id === lockedSektorId)?.name ?? null)
       : null;
-  const timbalanScopeNames = timbalanScope
-    .map((id) => allSektors.find((s) => s.id === id)?.name)
-    .filter(Boolean) as string[];
 
   const items = await listPergerakanForSectorAdmin(year);
 
@@ -56,19 +51,14 @@ export default async function AdminPergerakanPage({
             Skop: <strong>{lockedSektorLabel}</strong>
           </p>
         )}
-        {isTimbalan && timbalanScopeNames.length > 0 && (
+        {isTimbalan && (
           <p className="mt-2 text-sm text-teal-900 bg-teal-50 border border-teal-200 rounded-md px-3 py-2">
-            Skop Timbalan PPD: <strong>{timbalanScopeNames.join(" · ")}</strong>
+            Anda boleh melihat pergerakan <strong>semua sektor</strong>.
           </p>
         )}
         {isKetua && !lockedSektorId && (
           <p className="mt-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
             Akaun Ketua Unit belum dikaitkan dengan sektor. Hubungi pentadbir.
-          </p>
-        )}
-        {isTimbalan && timbalanScope.length === 0 && (
-          <p className="mt-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-            Akaun Timbalan PPD belum ditetapkan sektor laporan. Hubungi pentadbir.
           </p>
         )}
       </div>

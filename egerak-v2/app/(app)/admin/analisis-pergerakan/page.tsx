@@ -1,7 +1,5 @@
 import { getAnalisisPergerakanData } from "@/lib/actions/analisis-pergerakan";
-import { getUserLaporanSektorScope } from "@/lib/actions/laporan-opr";
 import { listAllSektors } from "@/lib/actions/users";
-import { intersectSektorIds } from "@/lib/laporan-sektor-scope";
 import { requireAnalisisAccess } from "@/lib/rbac";
 import { canViewAllAnalisisPergerakan } from "@/lib/roles";
 import AnalisisPergerakanClient from "./AnalisisPergerakanClient";
@@ -33,9 +31,7 @@ export default async function AnalisisPergerakanPage({
       : null;
   const noSektorAssigned = isKetua && lockedSektorId == null;
 
-  const timbalanScope = isTimbalan ? await getUserLaporanSektorScope(Number(user.id)) : [];
-  const noTimbalanScope = isTimbalan && timbalanScope.length === 0;
-
+  const hasSektorParam = (sp.sektor ?? "").trim().length > 0;
   let sektorIds = (sp.sektor ?? "")
     .split(",")
     .map((s) => Number(s))
@@ -43,8 +39,9 @@ export default async function AnalisisPergerakanPage({
 
   if (isKetua && lockedSektorId) {
     sektorIds = [lockedSektorId];
-  } else if (isTimbalan && timbalanScope.length) {
-    sektorIds = intersectSektorIds(sektorIds.length ? sektorIds : undefined, timbalanScope);
+  } else if (isTimbalan && !hasSektorParam && lockedSektorId) {
+    // Default: sektor sendiri (boleh tukar ke sektor lain atau semua).
+    sektorIds = [lockedSektorId];
   }
 
   const spForData = {
@@ -59,17 +56,12 @@ export default async function AnalisisPergerakanPage({
 
   const filterSektors = allSektors
     .filter((s) => s.code !== "PPD_PENTADBIRAN")
-    .filter((s) => (isTimbalan ? timbalanScope.includes(s.id) : true))
     .map((s) => ({ id: s.id, code: s.code, name: s.name }));
 
   const lockedSektorLabel =
     lockedSektorId != null
       ? (allSektors.find((s) => s.id === lockedSektorId)?.name ?? null)
       : null;
-
-  const timbalanScopeNames = timbalanScope
-    .map((id) => allSektors.find((s) => s.id === id)?.name)
-    .filter(Boolean) as string[];
 
   return (
     <div className="mx-auto max-w-6xl p-4 space-y-4 overflow-x-hidden">
@@ -86,19 +78,15 @@ export default async function AnalisisPergerakanPage({
             Anda melihat analisis sektor: <strong>{lockedSektorLabel}</strong> sahaja.
           </p>
         )}
-        {isTimbalan && timbalanScopeNames.length > 0 && (
+        {isTimbalan && (
           <p className="mt-2 text-sm text-teal-900 bg-teal-50 border border-teal-200 rounded-md px-3 py-2">
-            Skop Timbalan PPD: <strong>{timbalanScopeNames.join(" · ")}</strong>
+            Paparan lalai: sektor anda sendiri. Boleh tukar penapis sektor untuk lihat semua
+            sektor.
           </p>
         )}
         {noSektorAssigned && (
           <p className="mt-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
             Akaun Ketua Unit belum dikaitkan dengan sektor. Sila hubungi pentadbir.
-          </p>
-        )}
-        {noTimbalanScope && (
-          <p className="mt-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-            Akaun Timbalan PPD belum ditetapkan sektor laporan. Sila hubungi pentadbir.
           </p>
         )}
         {viewAll && user.peranan === "Penyelia" && (

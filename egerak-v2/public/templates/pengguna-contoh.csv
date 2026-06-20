@@ -1,5 +1,5 @@
-username,email,nama,jawatan,sektor,peranan,laporan_sektor
-ahmad.ali,ahmad.ali@moe-dl.edu.my,Ahmad bin Ali,Guru Penolong Kanan,PEMBELAJARAN,Pengguna,
-siti.aminah,,Siti Aminah binti Hassan,Pegawai Tadbir,USTP,Pengguna,
-ketua.ustp,,En. Kamal,Ketua Unit,USTP,Ketua_Unit,
-timbalan.kurikulum,,Pn. Zainab,Timbalan PPD Kurikulum,PERANCANGAN,Timbalan_PPD,"PEMBELAJARAN,PENTAKSIRAN"
+username,nama,jawatan,sektor,peranan
+ahmad.ali,Ahmad bin Ali,Guru Penolong Kanan,PEMBELAJARAN,Pengguna
+siti.aminah,Siti Aminah binti Hassan,Pegawai Tadbir,USTP,Pengguna
+ketua.ustp,En. Kamal,Ketua Unit,USTP,Ketua_Unit
+timbalan.kurikulum,Pn. Zainab,Timbalan PPD Kurikulum,PERANCANGAN,Timbalan_PPD

@@ -12,12 +12,9 @@ import {
   resolveUsername,
   normalizeSektorCode,
   mapPerananCsv,
-  parseSektorCodeList,
   type CsvRow,
 } from "@/lib/csv-parse";
-import { normalizeLaporanSektorIds } from "@/lib/laporan-sektor-scope";
-import { perananUsesLaporanSektorScope } from "@/lib/roles";
-import { validateLaporanSektorIds, validateSektorPeranan } from "@/lib/actions/users";
+import { validateSektorPeranan } from "@/lib/actions/users";
 import { formatTitleCase } from "@/lib/format-display-text";
 
 export type BulkUserImportRowResult = {
@@ -42,29 +39,12 @@ const importSchema = z.object({
 });
 
 function isNoteRow(row: CsvRow): boolean {
-  const u = resolveUsername(row);
-  const email = (row.email ?? "").trim();
-  return email.startsWith("#") || u.startsWith("#");
+  // parseCsv sudah buang baris email bermula "#"; tinggal semak username sahaja.
+  return resolveUsername(row).startsWith("#");
 }
 
 function resolveNama(row: CsvRow): string {
   return (row.nama ?? row.name ?? "").trim();
-}
-
-function resolveLaporanSektorIds(
-  row: CsvRow,
-  sektorByCode: Map<string, { id: number }>,
-): { ids: number[] } | { error: string } {
-  const raw = (row.laporan_sektor ?? row.laporan_sektor_codes ?? "").trim();
-  if (!raw) return { ids: [] };
-  const codes = parseSektorCodeList(raw);
-  const ids: number[] = [];
-  for (const code of codes) {
-    const sek = sektorByCode.get(code);
-    if (!sek) return { error: `Kod sektor laporan tidak dijumpai: ${code}` };
-    ids.push(sek.id);
-  }
-  return { ids: normalizeLaporanSektorIds(ids) };
 }
 
 async function processUserRow(
@@ -105,19 +85,8 @@ async function processUserRow(
     return { line, status: "ERROR", message: `Kod sektor tidak dijumpai: ${sektorCode}` };
   }
 
-  const laporanParsed = resolveLaporanSektorIds(row, sektorByCode);
-  if ("error" in laporanParsed) {
-    return { line, status: "ERROR", message: laporanParsed.error };
-  }
-  const laporanIds = perananUsesLaporanSektorScope(peranan)
-    ? laporanParsed.ids
-    : [];
-
   const sektorErr = await validateSektorPeranan(peranan, sektorId);
   if (sektorErr) return { line, status: "ERROR", message: sektorErr };
-
-  const laporanErr = await validateLaporanSektorIds(peranan, laporanIds);
-  if (laporanErr) return { line, status: "ERROR", message: laporanErr };
 
   const jawatan = formatTitleCase(row.jawatan ?? "");
   const existing = await db.query.users.findFirst({ where: eq(users.username, username) });
@@ -147,7 +116,7 @@ async function processUserRow(
         jawatan,
         sektorId,
         peranan,
-        laporanSektorIds: laporanIds,
+        laporanSektorIds: [],
         aktif: true,
         updatedAt: new Date(),
       })
@@ -161,19 +130,21 @@ async function processUserRow(
     };
   }
 
-  await db.insert(users).values({
-    username,
-    passwordHash: defaultPasswordHash,
-    nama,
-    jawatan,
-    sektorId,
-    laporanSektorIds: laporanIds,
-    peranan,
-    aktif: true,
-    mustChangePassword: true,
-  });
+  const [created] = await db
+    .insert(users)
+    .values({
+      username,
+      passwordHash: defaultPasswordHash,
+      nama,
+      jawatan,
+      sektorId,
+      laporanSektorIds: [],
+      peranan,
+      aktif: true,
+      mustChangePassword: true,
+    })
+    .returning({ id: users.id });
 
-  const created = await db.query.users.findFirst({ where: eq(users.username, username) });
   return {
     line,
     status: "OK",

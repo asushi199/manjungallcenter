@@ -15,19 +15,17 @@
 
 | Lajur | Wajib | Contoh |
 |-------|-------|--------|
-| `username` | Ya* | `ahmad.ali` |
-| `email` | Ya* | `ahmad.ali@moe-dl.edu.my` → username = `ahmad.ali` |
+| `username` | Ya | `ahmad.ali` (ID log masuk) |
 | `nama` | Ya | `Ahmad bin Ali` |
 | `jawatan` | Tidak | `GPK` |
 | `sektor` | Tidak* | `USTP`, `PEMBELAJARAN` (kod sistem) |
-| `peranan` | Tidak | Kosong = `Pengguna`; `Ketua_Unit`, `Timbalan_PPD`, `Penyelia`, `Admin` |
-| `laporan_sektor` | Timbalan sahaja | `PEMBELAJARAN,PENTAKSIRAN` |
+| `peranan` | Tidak | Kosong = `Pengguna`; `Ketua_Unit`, `Timbalan_PPD`, `Pegawai_PPD`, `Admin` |
 
-\* Salah satu `username` atau `email`. \* Wajib untuk `Ketua_Unit`.
+\* Wajib untuk `Ketua_Unit`.
 
 ## Kod sektor (contoh)
 
-`PERANCANGAN`, `PENGURUSAN_SEKOLAH`, `PEMBANGUNAN_MURID`, `PENTAKSIRAN`, `PSIKOLOGI_KAUNSELING`, `PENGURUSAN`, `USTP`, `PEMBELAJARAN`, `PPD_PENTADBIRAN` (hanya Penyelia)
+`PERANCANGAN`, `PENGURUSAN_SEKOLAH`, `PEMBANGUNAN_MURID`, `PENTAKSIRAN`, `PSIKOLOGI_KAUNSELING`, `PENGURUSAN`, `USTP`, `PEMBELAJARAN`, `PPD_PENTADBIRAN` (hanya Pegawai PPD)
 
 ## Excel
 
