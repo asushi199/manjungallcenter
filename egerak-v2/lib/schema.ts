@@ -82,6 +82,8 @@ export const pergerakan = pgTable(
     tarikhKembali: timestamp("tarikh_kembali", { withTimezone: true }).notNull(),
     aktif: boolean("aktif").notNull().default(true),
     source: sourceEnum("source").notNull().default("web"),
+    /** null = biasa; "tambahan" = aktiviti Takwim yang ditambah selepas rancangan tahunan. */
+    takwimKategori: text("takwim_kategori"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
@@ -90,6 +92,7 @@ export const pergerakan = pgTable(
     kembaliIdx: index("pergerakan_kembali_idx").on(t.tarikhKembali),
     userAktifIdx: index("pergerakan_user_aktif_idx").on(t.userId, t.aktif),
     sektorIdx: index("pergerakan_sektor_idx").on(t.sektorId),
+    takwimKategoriIdx: index("pergerakan_takwim_kategori_idx").on(t.takwimKategori),
     aktifRangeIdx: index("pergerakan_aktif_range_idx")
       .on(t.aktif, t.tarikhKembali, t.tarikhPergi)
       .where(sql`${t.aktif} = true`),

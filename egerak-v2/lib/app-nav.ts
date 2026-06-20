@@ -1,6 +1,7 @@
 import {
   canImportRancangan,
   canSectorDeletePergerakan,
+  canTrackPegawai,
   canViewAnalisisPergerakan,
   canViewLaporanOpr,
   isFullAdmin,
@@ -23,6 +24,7 @@ export const MAIN_NAV_LINKS: AppNavLink[] = [
   { href: "/dashboard", label: "Utama" },
   { href: "/new", label: "Daftar Pergerakan" },
   { href: "/my", label: "Pergerakan Saya" },
+  { href: "/takwim", label: "Takwim" },
   { href: "/bilik", label: "Tempahan Bilik" },
 ];
 
@@ -34,6 +36,11 @@ export const LAPORAN_OPR_LINK: AppNavLink = {
 export const ANALISIS_PROGRAM_LINK: AppNavLink = {
   href: "/admin/analisis-pergerakan",
   label: "Analisis Pergerakan & OPR",
+};
+
+export const JEJAK_PEGAWAI_LINK: AppNavLink = {
+  href: "/jejak-pegawai",
+  label: "Jejak Pegawai",
 };
 
 export const IMPORT_RANCANGAN_LINK: AppNavLink = {
@@ -50,6 +57,7 @@ export const PADAM_PERGERAKAN_LINK: AppNavLink = {
 export const FULL_ADMIN_NAV_LINKS: AppNavLink[] = [
   { href: "/admin/users", label: "Pengurusan Pengguna" },
   ANALISIS_PROGRAM_LINK,
+  JEJAK_PEGAWAI_LINK,
   LAPORAN_OPR_LINK,
   PADAM_PERGERAKAN_LINK,
   IMPORT_RANCANGAN_LINK,
@@ -58,7 +66,11 @@ export const FULL_ADMIN_NAV_LINKS: AppNavLink[] = [
 /** @deprecated Guna FULL_ADMIN_NAV_LINKS */
 export const ADMIN_NAV_LINKS = FULL_ADMIN_NAV_LINKS;
 
-const PENYELIA_ROLE_NAV_LINKS: AppNavLink[] = [ANALISIS_PROGRAM_LINK, LAPORAN_OPR_LINK];
+const PENYELIA_ROLE_NAV_LINKS: AppNavLink[] = [
+  ANALISIS_PROGRAM_LINK,
+  JEJAK_PEGAWAI_LINK,
+  LAPORAN_OPR_LINK,
+];
 
 /** Utama sahaja — sama untuk semua peranan. */
 export function mainNavLinksForPeranan(_peranan?: string | null): AppNavLink[] {
@@ -76,6 +88,7 @@ export function roleNavLinksForPeranan(peranan: string | undefined | null): AppN
   if (isKetuaOrTimbalan(peranan)) {
     const links: AppNavLink[] = [];
     if (canViewAnalisisPergerakan(peranan)) links.push(ANALISIS_PROGRAM_LINK);
+    if (canTrackPegawai(peranan)) links.push(JEJAK_PEGAWAI_LINK);
     if (canViewLaporanOpr(peranan)) links.push(LAPORAN_OPR_LINK);
     if (canImportRancangan(peranan)) links.push(IMPORT_RANCANGAN_LINK);
     if (canSectorDeletePergerakan(peranan)) links.push(PADAM_PERGERAKAN_LINK);
