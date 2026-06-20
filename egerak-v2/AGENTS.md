@@ -20,6 +20,7 @@ Project guidance for AI coding agents working on eGerak v2.
 
 ## Git And Files
 
+- Git repository root is `C:\Cursorproject\Manjungallcenter`; this project lives in the `egerak-v2/` subfolder. When running Git from the repository root, scope paths with `egerak-v2/` and avoid staging sibling folders.
 - Never commit secrets, runtime data, build output, or dependency folders.
 - Do not commit:
   - `.env`, `.env.local`, `.env*.local`

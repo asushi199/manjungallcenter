@@ -66,6 +66,19 @@ export function canManageUsers(peranan: string | undefined | null): boolean {
   return isFullAdmin(peranan);
 }
 
+/**
+ * Jejak pergerakan pegawai tertentu.
+ * Admin / Penyelia / Timbalan — semua pegawai; Ketua Unit — sektor sendiri sahaja.
+ */
+export function canTrackPegawai(peranan: string | undefined | null): boolean {
+  return isFullAdmin(peranan) || isPenyelia(peranan) || isKetuaOrTimbalan(peranan);
+}
+
+/** Jejak semua pegawai (tanpa had sektor) — Timbalan disamakan dengan Penyelia. */
+export function canTrackAllPegawai(peranan: string | undefined | null): boolean {
+  return isFullAdmin(peranan) || isPenyelia(peranan) || peranan === "Timbalan_PPD";
+}
+
 /** Padam pergerakan — pentadbir penuh atau Ketua/Timbalan (ikut skop sektor). */
 export function canSectorDeletePergerakan(peranan: string | undefined | null): boolean {
   return isFullAdmin(peranan) || isKetuaOrTimbalan(peranan);

@@ -4,6 +4,7 @@ import { auth } from "./auth";
 import {
   canImportRancangan,
   canSectorDeletePergerakan,
+  canTrackPegawai,
   canViewAnalisisPergerakan,
   canViewLaporanOpr,
   isFullAdmin,
@@ -50,6 +51,13 @@ export async function requireImportRancanganAccess(): Promise<SessionUser> {
 export async function requireSectorPergerakanAdmin(): Promise<SessionUser> {
   const user = await requireUser();
   if (!canSectorDeletePergerakan(user.peranan)) redirect("/dashboard");
+  return user;
+}
+
+/** Jejak Pegawai — Admin/Penyelia/Timbalan (semua), Ketua Unit (sektor sendiri). */
+export async function requireJejakPegawaiAccess(): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!canTrackPegawai(user.peranan)) redirect("/dashboard");
   return user;
 }
 
