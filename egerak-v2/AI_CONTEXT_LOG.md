@@ -62,3 +62,55 @@
 - Template rasmi mengandungi sheet `Rancangan`, `Contoh`, `Panduan` dan `Kod Sektor`.
 - `/takwim` membaca `takwim_aktiviti` sebagai sumber utama, dan hanya memaparkan `Lain-lain` daripada `pergerakan` biasa yang belum link kepada aktiviti Takwim.
 - `Tambah Takwim` menulis terus ke `takwim_aktiviti(kategori = 'tambahan')`.
+
+## 2026-06-20 - Ringkas Import Pengguna; Timbalan = Pegawai PPD; Menu Admin Seragam
+
+### Ringkasan
+
+- Empat perubahan berkaitan untuk memudahkan sistem untuk pegawai PPD.
+- Commit `fcbebe9` pada cabang `codex-rancangan-master-import`.
+
+### Keputusan Produk
+
+- **Import Pengguna CSV** dipermudah kepada 5 lajur sahaja: `username, nama,
+  jawatan, sektor, peranan`. Lajur `email` dan `laporan_sektor` dibuang dari
+  templat/panduan/UI kerana mengelirukan pengguna. (Lajur `email` lama masih
+  ditoleransi oleh `resolveUsername` untuk fail lama.)
+- **Timbalan PPD disetarakan dengan Penyelia (Pegawai PPD)**: boleh lihat
+  semua sektor dalam Laporan OPR / Analisis / Padam Pergerakan, dengan
+  paparan lalai = sektor sendiri (boleh tukar). Skop `laporanSektorIds`
+  dimansuhkan tetapi lajur DB **dikekalkan** (tiada migration).
+- **Peranan `Penyelia` dipaparkan sebagai "Pegawai PPD"** (nilai dalaman
+  `Penyelia` kekal). Import menerima alias `pegawai_ppd` / `pegawai ppd`.
+- **Menu pentadbiran semua peranan diseragamkan bertajuk "Admin"** —
+  peranan tidak diulang dalam menu kerana sudah dipapar di bawah nama.
+
+### Perubahan Teknikal
+
+- `lib/roles.ts`: `canViewAllLaporanOpr` & `canViewAllAnalisisPergerakan`
+  termasuk Timbalan; `perananUsesLaporanSektorScope` kini sentiasa `false`
+  (`@deprecated`); label peranan dikemas kini.
+- `lib/sektor-admin-scope.ts`: cabang `Timbalan_PPD` → `allSectors: true`.
+- `lib/actions/laporan-opr.ts`: buang sekatan Timbalan + fungsi
+  `getUserLaporanSektorScope`.
+- Halaman `laporan-opr`, `analisis-pergerakan`, `pergerakan` (Padam): buang
+  banner/penapis skop Timbalan; Timbalan default sektor sendiri.
+- `lib/actions/bulk-user-import.ts`: buang pemprosesan `laporanSektorIds`;
+  guna `.returning({ id })` ganti query berulang.
+- `lib/csv-parse.ts`: alias peranan `pegawai_ppd`.
+- `lib/app-nav.ts`: tambah `adminMenuLinksForPeranan`; buang
+  `roleNavLabelsForPeranan`/`RoleNavLabels` yang tidak lagi digunakan.
+- `components/Navbar.tsx`, `components/MobileNavMenu.tsx`: satu menu "Admin".
+- `components/AdminUsersImport.tsx`: nota 5 lajur.
+- Templat: `pengguna-kosong.csv`, `pengguna-contoh.csv`,
+  `PANDUAN-CSV-PENGGUNA.md` dikemas kini ke 5 lajur.
+- Ujian: `tests/csv-parse.test.ts` tambah assertion alias Pegawai PPD.
+  Semua 40 ujian lulus; `tsc --noEmit` & ESLint bersih.
+
+### Kesan Sampingan (perlu pantau)
+
+- Kerana Timbalan kini `allSectors` di mana-mana, dan
+  `canSectorDeletePergerakan` masih termasuk Timbalan, **Timbalan kini
+  boleh padam pergerakan semua sektor** (Penyelia tiada hak padam). Jika
+  hak padam perlu dihadkan, kembalikan secara berasingan.
+- `components/LaporanSektorScopePicker.tsx` kini tidak digunakan (dikekalkan).

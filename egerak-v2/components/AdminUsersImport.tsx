@@ -86,14 +86,6 @@ export default function AdminUsersImport() {
             >
               Muat turun — contoh
             </a>
-            <a
-              href="/templates/PANDUAN-CSV-PENGGUNA.md"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-secondary text-sm"
-            >
-              Panduan (BM)
-            </a>
           </div>
         </div>
 

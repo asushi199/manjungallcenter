@@ -1,11 +1,19 @@
 "use server";
 
 import { z } from "zod";
-import { and, desc, eq, gte, lte, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lte, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { withDbTimeout } from "@/lib/db-timeout";
-import { pergerakan, users, sektors, auditLog, opr, roomBookings } from "@/lib/schema";
+import {
+  pergerakan,
+  users,
+  sektors,
+  auditLog,
+  opr,
+  roomBookings,
+  takwimAktiviti,
+} from "@/lib/schema";
 import type { OprStatus } from "@/lib/opr-status";
 import { requireUser, requireSectorPergerakanAdmin } from "@/lib/rbac";
 import { isSektorIdInScope, resolveUserSektorScope } from "@/lib/sektor-admin-scope";
@@ -732,7 +740,9 @@ export type UrusanTemplate = {
 /**
  * Cadangan urusan (aktiviti) pada tarikh tertentu.
  * Aktiviti PPD pada hari itu: satu baris setiap urusan (hampir sama), lokasi ikut rekod pertama.
- * Tidak pulang nama pegawai.
+ * Sumber: rekod `pergerakan` sedia ada + aktiviti master Rancangan Tahunan yang belum ada
+ * pegawai bertanggungjawab (takwim_aktiviti tanpa pergerakan), supaya pegawai boleh "ambil"
+ * aktiviti rancangan walaupun tiada owner. Tidak pulang nama pegawai.
  */
 export async function listUrusanTemplatesForDay(ymdDate: string): Promise<UrusanTemplate[]> {
   await requireUser();
@@ -761,8 +771,31 @@ export async function listUrusanTemplatesForDay(ymdDate: string): Promise<Urusan
       .limit(500),
   );
 
+  // Aktiviti Rancangan Tahunan tanpa pegawai bertanggungjawab — hanya wujud sebagai
+  // takwim_aktiviti (tiada pergerakan), jadi gabungkan supaya turut jadi cadangan.
+  const masterRows = await withDbTimeout(
+    db
+      .select({
+        urusan: takwimAktiviti.urusan,
+        lokasi: takwimAktiviti.lokasi,
+        tarikhPergi: takwimAktiviti.tarikhPergi,
+        tarikhKembali: takwimAktiviti.tarikhKembali,
+      })
+      .from(takwimAktiviti)
+      .where(
+        and(
+          eq(takwimAktiviti.aktif, true),
+          eq(takwimAktiviti.kategori, "rancangan"),
+          isNull(takwimAktiviti.sourcePergerakanId),
+          lte(takwimAktiviti.tarikhPergi, end),
+          gte(takwimAktiviti.tarikhKembali, start),
+        ),
+      )
+      .limit(500),
+  );
+
   const templates = buildDayUrusanCadangan(
-    rows.map((r) => ({
+    [...rows, ...masterRows].map((r) => ({
       urusan: String(r.urusan || ""),
       lokasi: String(r.lokasi || ""),
       tarikhPergi: new Date(r.tarikhPergi),

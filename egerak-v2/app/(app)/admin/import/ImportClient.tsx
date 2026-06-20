@@ -60,14 +60,6 @@ export default function ImportClient() {
             >
               Muat turun template Excel
             </a>
-            <a
-              href="/templates/PANDUAN-RANCANGAN-TAHUNAN.md"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-secondary text-sm"
-            >
-              Panduan import
-            </a>
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
             <a
