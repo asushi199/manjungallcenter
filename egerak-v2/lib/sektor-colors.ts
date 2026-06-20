@@ -16,7 +16,7 @@ export const SEKTOR_STYLE: Record<string, SektorStyle> = {
   PENGURUSAN: { bg: "#fbcfe8", border: "#db2777", text: "#831843", chip: "#db2777" },
   USTP: { bg: "#c7d2fe", border: "#4f46e5", text: "#312e81", chip: "#4f46e5" },
   PEMBELAJARAN: { bg: "#fed7aa", border: "#ea580c", text: "#7c2d12", chip: "#ea580c" },
-  PPD_PENTADBIRAN: { bg: "#e2e8f0", border: "#475569", text: "#0f172a", chip: "#475569" },
+  PPD_PENTADBIRAN: { bg: "#ccfbf1", border: "#0f766e", text: "#134e4a", chip: "#0f766e" },
 };
 
 export const SEKTOR_STYLE_DEFAULT: SektorStyle = {
@@ -61,7 +61,7 @@ export const SEKTOR_COLOR: Record<string, { bg: string; fg: string; chip: string
   PENGURUSAN: { bg: "bg-pink-200", fg: "text-pink-900", chip: "bg-pink-600" },
   USTP: { bg: "bg-indigo-200", fg: "text-indigo-900", chip: "bg-indigo-600" },
   PEMBELAJARAN: { bg: "bg-orange-200", fg: "text-orange-900", chip: "bg-orange-600" },
-  PPD_PENTADBIRAN: { bg: "bg-slate-200", fg: "text-slate-900", chip: "bg-slate-600" },
+  PPD_PENTADBIRAN: { bg: "bg-teal-100", fg: "text-teal-900", chip: "bg-teal-700" },
 };
 
 export const SEKTOR_COLOR_DEFAULT = {
