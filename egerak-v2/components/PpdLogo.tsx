@@ -14,8 +14,8 @@ export default function PpdLogo({ className = "", width = 72, priority = false }
     <Image
       src={PPD_LOGO_SRC}
       alt="Logo SentRa PPD Manjung"
-      width={387}
-      height={123}
+      width={1254}
+      height={1254}
       className={`h-auto object-contain ${className}`}
       style={{ width: `${width}px`, maxWidth: "100%", height: "auto" }}
       sizes={`(max-width: 768px) ${width}px, ${width}px`}
