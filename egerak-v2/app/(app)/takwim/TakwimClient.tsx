@@ -461,14 +461,18 @@ function AgendaRow({ item }: { item: SerializedTakwimItem }) {
         </span>
       </button>
       {open && (
-        <div className="px-3 pb-3 pl-[5.9rem] text-xs text-slate-500">
-          <div className="rounded-md border border-slate-100 bg-white px-3 py-2">
+        <div className="px-3 pb-3 pl-4 sm:pl-[5.9rem] text-xs text-slate-500">
+          <div className="space-y-1 rounded-md border border-slate-100 bg-white px-3 py-2">
+            <p>
+              <span className="font-semibold text-slate-600">Aktiviti:</span>{" "}
+              <span className="break-words text-slate-700">{item.urusan}</span>
+            </p>
             <p>
               <span className="font-semibold text-slate-600">Masa:</span> {fullTimeLabel(item)}
             </p>
-            <p className="mt-1">
+            <p>
               <span className="font-semibold text-slate-600">Lokasi:</span>{" "}
-              {item.lokasi || "Tiada lokasi"}
+              <span className="break-words">{item.lokasi || "Tiada lokasi"}</span>
             </p>
           </div>
         </div>
