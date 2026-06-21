@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import { sektorStyle } from "@/lib/sektor-colors";
 import { OPR_FOKUS_OPTIONS } from "@/lib/opr-fokus";
+import { fokusShortLabel, sektorShortLabel } from "@/lib/analisis-short-labels";
 import SektorFilterDropdown from "@/components/SektorFilterDropdown";
 import type { SektorOption } from "@/components/FilterBar";
 import type { AnalisisAggregates, FokusAggregates } from "@/lib/analisis/cluster-programs";
@@ -216,8 +217,8 @@ function StackedRankedBars({
   rows,
   series,
 }: {
-  rows: { label: string; total: number; counts: Record<string, number> }[];
-  series: { key: string; color: string }[];
+  rows: { label: string; title?: string; total: number; counts: Record<string, number> }[];
+  series: { key: string; label?: string; title?: string; color: string }[];
 }) {
   if (rows.length === 0) {
     return <p className="text-sm text-slate-500 text-center py-6">Tiada data dalam tempoh ini.</p>;
@@ -235,7 +236,7 @@ function StackedRankedBars({
         return (
           <div key={r.label}>
             <div className="flex items-baseline justify-between gap-2 mb-1">
-              <span className="text-sm text-slate-700 truncate" title={r.label}>
+              <span className="text-sm text-slate-700 truncate" title={r.title ?? r.label}>
                 {r.label}
               </span>
               <span className="shrink-0 text-sm font-semibold tabular-nums text-slate-800">
@@ -251,7 +252,7 @@ function StackedRankedBars({
                 {present.map((s) => (
                   <span
                     key={s.key}
-                    title={`${s.key}: ${r.counts[s.key]}`}
+                    title={`${s.title ?? s.key}: ${r.counts[s.key]}`}
                     style={{
                       width: `${((r.counts[s.key] ?? 0) / r.total) * 100}%`,
                       backgroundColor: s.color,
@@ -271,13 +272,39 @@ function StackedRankedBars({
                     style={{ backgroundColor: s.color }}
                     aria-hidden
                   />
-                  {s.key} <span className="font-semibold text-slate-800">{r.counts[s.key]}</span>
+                  <span title={s.title ?? s.key}>{s.label ?? s.key}</span>{" "}
+                  <span className="font-semibold text-slate-800">{r.counts[s.key]}</span>
                 </span>
               ))}
             </div>
           </div>
         );
       })}
+      <details className="text-xs text-slate-500">
+        <summary className="cursor-pointer select-none font-medium text-slate-600">
+          Kod ringkas
+        </summary>
+        <div className="mt-2 space-y-1">
+          <p>
+            Sektor:{" "}
+            {rows.map((r, index) => (
+              <span key={r.label}>
+                <strong>{r.label}</strong>={r.title ?? r.label}
+                {index < rows.length - 1 ? " · " : ""}
+              </span>
+            ))}
+          </p>
+          <p>
+            Fokus:{" "}
+            {series.map((s, index) => (
+              <span key={s.key}>
+                <strong>{s.label ?? s.key}</strong>={s.title ?? s.key}
+                {index < series.length - 1 ? " · " : ""}
+              </span>
+            ))}
+          </p>
+        </div>
+      </details>
     </div>
   );
 }
@@ -495,9 +522,15 @@ function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
   }));
   const top = byFokus[0];
   const trendData = aggregates.byMonth.map((m) => ({ label: m.label, ...m.counts }));
-  const crossSeriesObjs = byFokus.map((f) => ({ key: f.fokus, color: fokusColor(f.fokus) }));
+  const crossSeriesObjs = byFokus.map((f) => ({
+    key: f.fokus,
+    label: fokusShortLabel(f.fokus),
+    title: f.fokus,
+    color: fokusColor(f.fokus),
+  }));
   const crossRows = bySektorFokus.map((s) => ({
-    label: s.name,
+    label: sektorShortLabel(s.code === "—" ? null : s.code, s.name),
+    title: s.name,
     total: s.total,
     counts: s.counts,
   }));
