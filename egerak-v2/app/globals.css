@@ -81,12 +81,6 @@
     page: bilik-sheet;
   }
 
-  /* OPR — saiz & jidar piawai dokumen Word (A4, jidar 1"). */
-  @page opr-sheet {
-    size: A4 portrait;
-    margin: 1in;
-  }
-
   html,
   body {
     height: auto !important;
@@ -138,7 +132,8 @@
   }
 
   .opr-print {
-    page: opr-sheet;
+    /* Jidar 1" datang daripada @page lalai (laluan cetak OPR) — sokongan pelayar
+       paling luas (termasuk mudah alih); bukan named-page yang kerap diabaikan. */
     width: 100% !important;
     max-width: none !important;
     padding: 0 !important;
