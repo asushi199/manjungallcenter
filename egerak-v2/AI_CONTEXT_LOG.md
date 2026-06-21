@@ -250,3 +250,31 @@ import), tetapi paparkan & uruskan sebagai SATU unit.
 - `BilikClient.tsx`: editor sembunyikan pemilih Slot bila sepanjang hari.
 - `BilikPermohonanClient.tsx`: papar "Sepanjang hari".
 - Ujian: `tests/room-booking-group.test.ts`. 77 ujian lulus; `tsc`/ESLint bersih.
+
+## 2026-06-21 - Pergerakan: Asingkan Tempahan Bilik + Cadangan Urusan Seragam
+
+Spek: docs/superpowers/specs/2026-06-21-pergerakan-decouple-booking-cadangan-design.md
+Pelan: docs/superpowers/plans/2026-06-21-pergerakan-decouple-booking-cadangan.md
+
+- **Pergerakan tidak lagi menempah bilik.** `submitPergerakan`/`updatePergerakan`
+  berhenti memanggil sync tempahan; tempahan hanya via takwim + /bilik. Tempahan
+  sedia ada tidak disentuh. Menutup pintasan kunci 24 jam melalui suntingan.
+- **"Tidak perlu tulis OPR" jadi kotak semak berdiri sendiri** (tidak bergantung
+  lokasi); kekal cipta OPR status TIADA.
+- **Cadangan urusan dua sumber:**
+  - Budiman/Bestari → `listRoomBookingCadanganForDay` (tempahan sebenar bilik:
+    AM/PM diasing, sepanjang hari digabung, slot diserlah ikut masa pergi/balik
+    via `attendanceKind`). Mod C: mesti pilih, atau tanda "tiada dalam senarai".
+    Tiada tempahan → peringatan + butang "Tempah sekarang" (guna `bookRoom`).
+  - Lokasi lain → `listUrusanTemplatesForDay` (kini diutamakan sektor sendiri,
+    semua sektor disertakan); 6 dahulu + "Lihat lagi (N)"; hari sama sahaja.
+  - Gerbang lembut: urusan dikunci semasa cadangan dimuat ("Mencari…"), buka
+    selepas siap (tiada kotak semak kecuali Mod C); guard respons basi.
+- Fail baharu: `lib/pergerakan-slot.ts` (`slotsOnDay`/`attendanceKind`),
+  `rankCadanganBySektor` dalam `lib/analisis/day-activity-templates.ts`,
+  `listRoomBookingCadanganForDay` dalam `lib/actions/pergerakan.ts`.
+  `checkPergerakanRoomAvailability` dibuang. `app/(app)/new/page.tsx` hantar
+  `rooms={await listRooms()}`.
+- Ujian baharu: `tests/pergerakan-slot.test.ts`, `tests/day-activity-templates.test.ts`.
+- Belum dibuat (di luar skop): pengecaman/kitaran hayat tempahan import takwim
+  (baki bug #5). Dropdown lokasi Tambah Takwim sudah disiapkan (commit 9f5a4d5).
