@@ -25,7 +25,6 @@ import { buildDayUrusanCadangan, rankCadanganBySektor } from "@/lib/analisis/day
 import { addDays, parseISO } from "date-fns";
 import {
   resolveBookableRoomCode,
-  syncRoomBookingsFromPergerakan,
   cancelRoomBookingsForPergerakan,
   previewRoomBookingsForPergerakan,
   type RoomBookingPreview,
@@ -93,8 +92,6 @@ export async function submitPergerakan(input: unknown): Promise<SubmitResult> {
     jenis,
     tarikhPergi,
     tarikhKembali,
-    sepenuhHari,
-    tempahBilik,
     tidakPerluOpr,
   } = parsed.data;
   const { urusan, lokasi } = normalizePergerakanText(
@@ -105,9 +102,7 @@ export async function submitPergerakan(input: unknown): Promise<SubmitResult> {
   const kembali = parseLocalInput(tarikhKembali);
   if (!pergi || !kembali) return { ok: false, error: "Format tarikh tidak sah" };
 
-  const roomCode = jenis === "Pergerakan" ? resolveBookableRoomCode(lokasi) : null;
-  const shouldBookRoom = roomCode != null && tempahBilik !== false;
-
+  // Tiada lagi tempahan bilik dari pergerakan; tempahan hanya via takwim + /bilik.
   try {
     const result = await db.transaction(async (tx) => {
       const [row] = await tx
@@ -124,24 +119,6 @@ export async function submitPergerakan(input: unknown): Promise<SubmitResult> {
         })
         .returning({ id: pergerakan.id });
 
-      let roomSlotsBooked = 0;
-      if (shouldBookRoom && roomCode) {
-        const sync = await syncRoomBookingsFromPergerakan(tx, {
-          pergerakanId: row.id,
-          roomCode,
-          userId: Number(user.id),
-          title: urusan,
-          pergi,
-          kembali,
-          fullDay: sepenuhHari === true,
-          auditUserId: Number(user.id),
-        });
-        if (!sync.ok) {
-          throw new Error(sync.error);
-        }
-        roomSlotsBooked = sync.count;
-      }
-
       if (jenis === "Pergerakan" && tidakPerluOpr === true) {
         await tx.insert(opr).values({ pergerakanId: row.id, status: "TIADA" });
       }
@@ -149,33 +126,16 @@ export async function submitPergerakan(input: unknown): Promise<SubmitResult> {
       await tx.insert(auditLog).values({
         action: "SUBMIT_PERGERAKAN",
         userId: Number(user.id),
-        detail: {
-          id: row.id,
-          jenis,
-          urusan,
-          lokasi,
-          roomSlotsBooked,
-          tempahBilik: shouldBookRoom,
-          tidakPerluOpr: tidakPerluOpr === true,
-        },
+        detail: { id: row.id, jenis, urusan, lokasi, tidakPerluOpr: tidakPerluOpr === true },
       });
 
-      return { id: row.id, roomSlotsBooked };
+      return { id: row.id };
     });
 
     revalidatePath("/dashboard");
     revalidatePath("/my");
-    revalidatePath("/bilik");
-    return {
-      ok: true,
-      id: result.id,
-      roomSlotsBooked: result.roomSlotsBooked || undefined,
-    };
+    return { ok: true, id: result.id };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "";
-    if (msg.startsWith("Tempahan gagal") || msg.includes("Bilik/dewan") || msg.includes("Masa pergerakan")) {
-      return { ok: false, error: msg };
-    }
     throw e;
   }
 }
@@ -281,7 +241,7 @@ export async function updatePergerakan(id: number, input: unknown): Promise<Upda
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak sah" };
   }
-  const { jenis, tarikhPergi, tarikhKembali, sepenuhHari, tempahBilik } = parsed.data;
+  const { jenis, tarikhPergi, tarikhKembali } = parsed.data;
   const { urusan, lokasi } = normalizePergerakanText(
     parsed.data.urusan,
     parsed.data.lokasi,
@@ -290,64 +250,27 @@ export async function updatePergerakan(id: number, input: unknown): Promise<Upda
   const kembali = parseLocalInput(tarikhKembali);
   if (!pergi || !kembali) return { ok: false, error: "Format tarikh tidak sah" };
 
-  const roomCode = jenis === "Pergerakan" ? resolveBookableRoomCode(lokasi) : null;
-  const shouldBookRoom = roomCode != null && tempahBilik !== false;
-
   try {
     const result = await db.transaction(async (tx) => {
       await tx
         .update(pergerakan)
-        .set({
-          jenis,
-          urusan,
-          lokasi,
-          tarikhPergi: pergi,
-          tarikhKembali: kembali,
-          updatedAt: new Date(),
-        })
+        .set({ jenis, urusan, lokasi, tarikhPergi: pergi, tarikhKembali: kembali, updatedAt: new Date() })
         .where(eq(pergerakan.id, id));
-
-      await cancelRoomBookingsForPergerakan(tx, [id], Number(user.id));
-
-      let roomSlotsBooked = 0;
-      if (shouldBookRoom && roomCode) {
-        const sync = await syncRoomBookingsFromPergerakan(tx, {
-          pergerakanId: id,
-          roomCode,
-          userId: existing.userId,
-          title: urusan,
-          pergi,
-          kembali,
-          fullDay: sepenuhHari === true,
-          auditUserId: Number(user.id),
-        });
-        if (!sync.ok) throw new Error(sync.error);
-        roomSlotsBooked = sync.count;
-      }
 
       await tx.insert(auditLog).values({
         action: "UPDATE_PERGERAKAN",
         userId: Number(user.id),
-        detail: { id, jenis, urusan, lokasi, roomSlotsBooked, tempahBilik: shouldBookRoom },
+        detail: { id, jenis, urusan, lokasi },
       });
 
-      return { id, roomSlotsBooked };
+      return { id };
     });
 
     revalidatePath("/dashboard");
     revalidatePath("/my");
-    revalidatePath("/bilik");
     revalidatePath(`/my/${id}/edit`);
-    return {
-      ok: true,
-      id: result.id,
-      roomSlotsBooked: result.roomSlotsBooked || undefined,
-    };
+    return { ok: true, id: result.id };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "";
-    if (msg.startsWith("Tempahan gagal") || msg.includes("Bilik/dewan") || msg.includes("Masa pergerakan")) {
-      return { ok: false, error: msg };
-    }
     throw e;
   }
 }
