@@ -59,8 +59,7 @@ export default function OprPhotoGallery({
     <>
       {!storageEnabled ? (
         <p className="text-sm text-slate-500">
-          {storageHint ||
-            "Muat naik gambar memerlukan Google Apps Script + Drive PPD (lihat docs/GAS_UPLOAD_SETUP.md)."}
+          {storageHint || "Muat naik gambar belum tersedia."}
         </p>
       ) : (
         <>

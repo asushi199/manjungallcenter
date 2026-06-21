@@ -4,12 +4,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { SortDir } from "@/components/SortableTh";
-import { formatInTimeZone } from "date-fns-tz";
 import SektorFilterDropdown from "@/components/SektorFilterDropdown";
 import { sektorStyle } from "@/lib/sektor-colors";
 import CompactExpandableCard, { ClampText } from "@/components/CompactExpandableCard";
 import { formatDate } from "@/lib/dates";
-import { TZ } from "@/lib/dates";
 import type { LaporanOprRow } from "@/lib/actions/laporan-opr";
 import type { SektorOption } from "@/components/FilterBar";
 import type { LaporanOprRange } from "@/lib/laporan-opr-period";
@@ -139,8 +137,6 @@ export default function LaporanOprClient({
     }
   }
 
-  const activeSortLabel = SORT_OPTIONS.find((o) => o.value === sortKey)?.label ?? sortKey;
-
   const groups = useMemo(() => {
     const map = new Map<string, Group>();
     for (const r of sortedFiltered) {
@@ -266,19 +262,6 @@ export default function LaporanOprClient({
     replaceParams({ year: String(Number(current.year) + delta) });
   }
 
-  const monthLabel = formatInTimeZone(
-    new Date(`${current.month}-01T12:00:00`),
-    TZ,
-    "MMMM yyyy",
-  );
-
-  const periodHint =
-    current.range === "all"
-      ? "Memaparkan semua laporan OPR siap tanpa had tarikh aktiviti."
-      : current.range === "year"
-        ? `Tapisan aktiviti yang bertindih dengan tahun ${current.year}.`
-        : `Tapisan aktiviti yang bertindih dengan ${monthLabel}.`;
-
   return (
     <div className="space-y-4">
       <div className="card p-4 space-y-3">
@@ -384,15 +367,6 @@ export default function LaporanOprClient({
             </div>
           )}
 
-          {current.range === "all" && (
-            <div className="flex items-end">
-              <p className="text-sm text-slate-600 rounded-md bg-slate-50 border border-slate-200 px-3 py-2 w-full">
-                Semua laporan siap dipaparkan. Gunakan tapisan sektor atau carian untuk mengecilkan
-                senarai.
-              </p>
-            </div>
-          )}
-
           <div>
             <label className="label" htmlFor="laporan-q">
               Carian pantas
@@ -416,8 +390,6 @@ export default function LaporanOprClient({
           </div>
         </div>
 
-        <p className="text-xs text-slate-500">{periodHint}</p>
-
         {!sektorFilterLocked && (
           <SektorFilterDropdown
             label="Sektor"
@@ -436,7 +408,6 @@ export default function LaporanOprClient({
           <span className="text-brand-700">{current.periodLabel}</span>
           {current.sektorIds.length > 0 ? " · sektor ditapis" : ""}
         </p>
-        <p className="text-xs text-slate-500">Hanya status Siap dipaparkan</p>
       </div>
 
       {filtered.length > 0 && (
@@ -466,10 +437,6 @@ export default function LaporanOprClient({
           >
             {sortDir === "asc" ? "↑ Menaik" : "↓ Menurun"}
           </button>
-          <p className="text-xs text-slate-500 w-full sm:w-auto sm:ml-auto">
-            Juga boleh klik tajuk lajur jadual · semasa:{" "}
-            <strong>{activeSortLabel}</strong> ({sortDir === "asc" ? "menaik" : "menurun"})
-          </p>
         </div>
       )}
 
@@ -486,9 +453,6 @@ export default function LaporanOprClient({
             <button type="button" className="btn-secondary" onClick={() => setAllCollapsed(true)}>
               Runtuhkan semua
             </button>
-            <p className="text-xs text-slate-500">
-              Petua: klik tajuk sektor untuk buka/tutup.
-            </p>
           </div>
 
           <div className="space-y-6">

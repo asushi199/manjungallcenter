@@ -42,9 +42,7 @@ export default async function AdminPergerakanPage({
           {isAdmin ? "Padam Pergerakan (Admin)" : "Padam Pergerakan (Sektor)"}
         </h1>
         <p className="text-sm text-slate-500">
-          {isAdmin
-            ? "Senarai semua pergerakan aktif dalam sistem — untuk bersihkan data ujian atau rekod silap."
-            : "Senarai pergerakan aktif dalam skop sektor anda sahaja."}
+          {isAdmin ? "Senarai semua pergerakan aktif." : "Senarai pergerakan aktif sektor anda."}
         </p>
         {isKetua && lockedSektorLabel && (
           <p className="mt-2 text-sm text-brand-800 bg-brand-50 border border-brand-200 rounded-md px-3 py-2">
@@ -53,7 +51,7 @@ export default async function AdminPergerakanPage({
         )}
         {isTimbalan && (
           <p className="mt-2 text-sm text-teal-900 bg-teal-50 border border-teal-200 rounded-md px-3 py-2">
-            Anda boleh melihat pergerakan <strong>semua sektor</strong>.
+            Skop: <strong>semua sektor</strong>
           </p>
         )}
         {isKetua && !lockedSektorId && (

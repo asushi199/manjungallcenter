@@ -69,23 +69,22 @@ export default async function AnalisisPergerakanPage({
         <h1 className="text-xl font-semibold">Analisis Pergerakan & OPR</h1>
         {isKetua && lockedSektorLabel && (
           <p className="mt-2 text-sm text-brand-800 bg-brand-50 border border-brand-200 rounded-md px-3 py-2">
-            Anda melihat analisis sektor: <strong>{lockedSektorLabel}</strong> sahaja.
+            Skop: <strong>{lockedSektorLabel}</strong>
           </p>
         )}
         {isTimbalan && (
           <p className="mt-2 text-sm text-teal-900 bg-teal-50 border border-teal-200 rounded-md px-3 py-2">
-            Paparan lalai: sektor anda sendiri. Boleh tukar penapis sektor untuk lihat semua
-            sektor.
+            Skop: sektor sendiri
           </p>
         )}
         {noSektorAssigned && (
           <p className="mt-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-            Akaun Ketua Unit belum dikaitkan dengan sektor. Sila hubungi pentadbir.
+            Akaun Ketua Unit belum dikaitkan dengan sektor.
           </p>
         )}
         {viewAll && user.peranan === "Penyelia" && (
           <p className="mt-2 text-sm text-violet-900 bg-violet-50 border border-violet-200 rounded-md px-3 py-2">
-            Paparan <strong>semua sektor</strong> PPD.
+            Skop: <strong>semua sektor</strong>
           </p>
         )}
       </div>

@@ -61,25 +61,19 @@ export default async function LaporanOprPage({
     <div className="mx-auto max-w-6xl p-4 space-y-4">
       <div>
         <h1 className="text-xl font-semibold">Laporan OPR PPD</h1>
-        <p className="text-sm text-slate-500">
-          Ringkasan laporan pelaksanaan yang telah ditandakan siap. Klik pautan untuk pratonton atau
-          cetak laporan penuh.
-        </p>
         {isKetua && lockedSektorLabel && (
           <p className="mt-2 text-sm text-brand-800 bg-brand-50 border border-brand-200 rounded-md px-3 py-2">
-            Anda melihat laporan sektor: <strong>{lockedSektorLabel}</strong> sahaja.
+            Skop: <strong>{lockedSektorLabel}</strong>
           </p>
         )}
         {isTimbalan && (
           <p className="mt-2 text-sm text-teal-900 bg-teal-50 border border-teal-200 rounded-md px-3 py-2">
-            Paparan lalai: sektor anda sendiri. Anda boleh tukar penapis sektor untuk lihat
-            sektor lain atau semua sektor.
+            Skop: sektor sendiri
           </p>
         )}
         {noSektorAssigned && (
           <p className="mt-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-            Akaun Ketua Unit anda belum dikaitkan dengan sektor. Sila hubungi pentadbir untuk
-            kemas kini profil.
+            Akaun Ketua Unit belum dikaitkan dengan sektor.
           </p>
         )}
       </div>

@@ -329,8 +329,7 @@ export default function PergerakanForm({
             Anda sudah ada {myDayRegs.length} rekod pada tarikh ini
           </p>
           <p className="text-xs text-amber-800 mt-1">
-            Peringatan sahaja — anda masih boleh daftar aktiviti lain pada hari yang sama
-            (contoh dua program berbeza).
+            Anda masih boleh daftar aktiviti lain pada hari yang sama.
           </p>
           <ul className="mt-2 space-y-1.5 text-xs text-amber-900">
             {myDayRegs.map((r) => (
@@ -359,17 +358,10 @@ export default function PergerakanForm({
         <p className="text-xs text-slate-500">Mencari aktiviti pada tarikh ini…</p>
       ) : urusanSuggest.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-xs text-slate-600 leading-relaxed">
-            Jika anda pergi ke aktiviti yang sama dengan rakan sekerja dan seseorang sudah
-            mendaftar, pilih urusan di bawah untuk auto-isi. Nama urusan yang sama hanya
-            dipaparkan sekali — semak dan ubah lokasi jika perlu.
-          </p>
           <details className="rounded-md border border-slate-200 bg-slate-50/80 group">
             <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-slate-800 flex items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
               <span>Cadangan urusan ({urusanSuggest.length})</span>
-              <span className="text-xs font-normal text-slate-500 group-open:hidden">
-                Klik untuk lihat
-              </span>
+              <span className="text-xs font-normal text-slate-500 group-open:hidden">Lihat</span>
               <span className="text-xs font-normal text-slate-500 hidden group-open:inline">
                 Tutup
               </span>
@@ -464,8 +456,7 @@ export default function PergerakanForm({
             <span>
               <strong>Tempah bilik/dewan (penganjur)</strong>
               <span className="block text-xs text-slate-600 mt-0.5">
-                Slot Pagi / Petang ditempah automatik. Hanya seorang penganjur per slot
-                masa.
+                Slot Pagi / Petang ditempah automatik.
               </span>
             </span>
           </label>
@@ -480,8 +471,7 @@ export default function PergerakanForm({
             <span>
               <strong>Sertai aktiviti sedia ada</strong>
               <span className="block text-xs text-slate-600 mt-0.5">
-                Rekod pergerakan anda di kalendar tanpa menempah slot. Pilih ini jika
-                penganjur sudah tempah {lokasi}.
+                Rekod pergerakan anda tanpa menempah slot.
               </span>
             </span>
           </label>
@@ -497,8 +487,7 @@ export default function PergerakanForm({
             onChange={(e) => setSepenuhHari(e.target.checked)}
           />
           <span>
-            <strong>Aktiviti sepanjang hari</strong> — tempah Pagi & Petang untuk setiap tarikh
-            antara pergi dan kembali (seluruh hari tidak tersedia di kalendar tempahan).
+            <strong>Aktiviti sepanjang hari</strong> — tempah Pagi & Petang.
           </span>
         </label>
       )}
@@ -506,12 +495,7 @@ export default function PergerakanForm({
       {needsRoom && !tempahBilik && (
         <div className="space-y-2">
           <p className="text-sm text-brand-800 bg-brand-50 border border-brand-200 rounded-md px-3 py-2">
-            Anda menyertai aktiviti di <strong>{lokasi}</strong> tanpa menempah slot. Pastikan
-            penganjur telah membuat tempahan di halaman{" "}
-            <Link href="/bilik" className="font-medium underline">
-              Tempahan Bilik
-            </Link>
-            .
+            Anda menyertai aktiviti di <strong>{lokasi}</strong> tanpa menempah slot.
           </p>
           {!isEdit && jenis === "Pergerakan" ? (
             <label className="flex items-start gap-2 text-sm cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
@@ -524,8 +508,7 @@ export default function PergerakanForm({
               <span>
                 <strong>Tidak perlu OPR</strong>
                 <span className="block text-xs text-slate-600 mt-0.5">
-                  Tandakan jika laporan ditulis oleh penganjur atau rakan sektor yang sama. Anda
-                  boleh ubah kemudian di halaman OPR.
+                  Tandakan jika laporan ditulis oleh penganjur atau rakan sektor yang sama.
                 </span>
               </span>
             </label>

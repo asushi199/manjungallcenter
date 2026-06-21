@@ -50,15 +50,15 @@ export function isStorageConfigured(): boolean {
 export function getStorageSetupHint(): string {
   const backend = resolveOprPhotoStorage();
   if (backend === "gas") {
-    return "Gambar disimpan dalam folder Google Drive PPD (muat naik melalui Apps Script).";
+    return "Gambar aktiviti akan disimpan bersama OPR.";
   }
   if (backend === "drive") {
-    return "Gambar disimpan dalam folder Google Drive PPD bersama.";
+    return "Gambar aktiviti akan disimpan bersama OPR.";
   }
   if (backend === "supabase") {
-    return "Gambar disimpan dalam Supabase Storage.";
+    return "Gambar aktiviti akan disimpan bersama OPR.";
   }
-  return "Set GAS_WEB_APP_URL + GAS_UPLOAD_SECRET (lihat docs/GAS_UPLOAD_SETUP.md), atau Drive API / Supabase dalam .env.local.";
+  return "Muat naik gambar belum tersedia.";
 }
 
 async function uploadOprPhotoToSupabase(

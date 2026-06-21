@@ -32,7 +32,7 @@ const EMPTY_HOLIDAYS: CalendarHolidays = {
   schoolDetails: new Map(),
 };
 
-/** Sekali percubaan semula — cuba pulih dari cold-start Supabase / Vercel function. */
+/** Sekali percubaan semula untuk ralat sementara. */
 async function fetchPergerakanWithRetry(opts: {
   start: Date;
   end: Date;
@@ -133,8 +133,8 @@ export default async function DashboardMain({
       {pergerakanFailed && (
         <div className="card border-amber-200 bg-amber-50 px-4 py-3">
           <p className="text-sm text-amber-900">
-            <strong>Tidak dapat memuatkan rekod pergerakan.</strong> Sambungan
-            pangkalan data mungkin sejuk. Cuba muat semula sebentar lagi.
+            <strong>Tidak dapat memuatkan rekod pergerakan.</strong> Cuba muat semula sebentar
+            lagi.
           </p>
           <Link
             href={retryHref}
@@ -150,8 +150,7 @@ export default async function DashboardMain({
         <div>
           <h1 className="text-lg font-semibold text-slate-900">Kalendar Pergerakan</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {formatInTimeZone(monthStart, TZ, "MMMM yyyy")} · {monthItems.length} rekod · warna
-            mengikut sektor · <strong>klik hari</strong> untuk butiran (kad)
+            {formatInTimeZone(monthStart, TZ, "MMMM yyyy")} · {monthItems.length} rekod
           </p>
         </div>
 

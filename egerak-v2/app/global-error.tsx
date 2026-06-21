@@ -1,13 +1,5 @@
 "use client";
 
-/**
- * Penangkap akhir untuk semua ralat tidak ditangani di mana-mana segmen.
- * Tanpa fail ini, Next.js akan papar UI ralat platform Vercel (skrin putih
- * "Application error: a server-side exception has occurred").
- *
- * Wajib mempunyai <html><body> sendiri kerana ia menggantikan root layout
- * apabila layout itu sendiri yang gagal.
- */
 export default function GlobalError({
   error,
   reset,
@@ -61,8 +53,7 @@ export default function GlobalError({
                 lineHeight: 1.5,
               }}
             >
-              Sambungan pangkalan data mungkin sejuk (cold start). Cuba muat
-              semula sebentar lagi. Jika masalah berterusan, kembali ke{" "}
+              Cuba muat semula sebentar lagi atau kembali ke{" "}
               <a
                 href="/dashboard"
                 style={{ color: "#b91c1c", textDecoration: "underline" }}

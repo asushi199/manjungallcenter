@@ -2,14 +2,6 @@
 
 import Link from "next/link";
 
-/**
- * Penangkap ralat default untuk semua halaman dalam (app):
- * /bilik, /my, /admin/*, dll. Halaman yang ada error.tsx sendiri
- * (cth. /dashboard) akan diutamakan.
- *
- * Tujuan utama: elak skrin putih Vercel "Application error" apabila
- * query DB gagal (cold start Supabase/Vercel).
- */
 export default function AppSegmentError({
   error,
   reset,
@@ -23,10 +15,7 @@ export default function AppSegmentError({
         <h2 className="font-semibold text-red-800">
           Halaman tidak dapat dimuatkan
         </h2>
-        <p className="text-sm text-red-700">
-          Sambungan pangkalan data mungkin sejuk. Cuba muat semula sebentar
-          lagi.
-        </p>
+        <p className="text-sm text-red-700">Cuba muat semula sebentar lagi.</p>
         {error?.digest && (
           <p className="text-xs text-red-600/80">
             Kod ralat: <code>{error.digest}</code>

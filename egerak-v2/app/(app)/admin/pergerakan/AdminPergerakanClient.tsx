@@ -140,8 +140,7 @@ export default function AdminPergerakanClient({ items, year, currentYear }: Prop
     <div className="space-y-3">
       <p className="text-sm text-slate-600 rounded-md bg-amber-50 border border-amber-200 px-3 py-2">
         Padam di sini akan <strong>nyahaktifkan pergerakan</strong> dan{" "}
-        <strong>batalkan tempahan bilik</strong> yang dipautkan. Laporan OPR siap tidak lagi
-        dipaparkan dalam ringkasan.
+        <strong>batalkan tempahan bilik</strong> yang dipautkan.
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center rounded-md border border-slate-200 bg-white overflow-hidden">
@@ -222,7 +221,7 @@ export default function AdminPergerakanClient({ items, year, currentYear }: Prop
                       <span className="text-xs text-slate-500">{g.total} rekod</span>
                     </div>
                     <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                      {yOpen ? "Klik bulan untuk lihat rekod." : `${g.months.length} bulan`}
+                      {g.months.length} bulan
                     </p>
                   </div>
                 </button>

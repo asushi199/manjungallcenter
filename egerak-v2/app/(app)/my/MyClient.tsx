@@ -296,7 +296,7 @@ export default function MyClient({ items }: { items: MyItem[] }) {
                       <span className="text-xs text-slate-500">{g.total} rekod</span>
                     </div>
                     <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                      {yOpen ? "Klik bulan untuk lihat rekod." : `${g.months.length} bulan`}
+                      {g.months.length} bulan
                     </p>
                   </div>
                 </button>

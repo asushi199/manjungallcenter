@@ -128,9 +128,6 @@ export default function JejakPegawaiClient({
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">
           Jejak Pergerakan Pegawai
         </h1>
-        <p className="text-sm text-slate-500">
-          Pilih seorang pegawai untuk melihat sejarah pergerakan dan status OPR mereka.
-        </p>
         {!canViewAll && lockedSektorName && (
           <p className="inline-flex items-center gap-1.5 mt-1 text-xs font-medium text-brand-800 bg-brand-50 border border-brand-200 rounded-full px-3 py-1">
             <span className="h-1.5 w-1.5 rounded-full bg-brand-500" aria-hidden />
@@ -199,9 +196,6 @@ export default function JejakPegawaiClient({
             </svg>
           </div>
           <p className="font-medium text-slate-700">Belum ada pegawai dipilih</p>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Gunakan pemilih di atas untuk mula menjejak.
-          </p>
         </div>
       )}
 

@@ -38,8 +38,7 @@ export default async function DashboardTodayStats() {
           <h2 className="text-sm font-semibold">Pergerakan Hari Ini</h2>
         </div>
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
-          Statistik tidak dapat dimuatkan. Sambungan DB mungkin sejuk; sila
-          muat semula sebentar lagi.
+          Statistik tidak dapat dimuatkan. Cuba muat semula sebentar lagi.
         </p>
       </div>
     );

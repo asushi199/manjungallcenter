@@ -338,9 +338,7 @@ export default function OprFormClient({
 
       {isSiap && (
         <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-          <strong>OPR telah ditandakan siap.</strong> Laporan dianggap muktamad untuk rekod ini. Anda
-          masih boleh edit dan cetak semula jika perlu; &quot;Simpan Draf&quot; tidak menukar
-          status kecuali anda ubah kandungan kemudian tekan semula &quot;Tandakan Siap&quot;.
+          <strong>OPR telah ditandakan siap.</strong> Anda masih boleh edit dan cetak semula jika perlu.
         </div>
       )}
 
@@ -359,7 +357,6 @@ export default function OprFormClient({
               <div className="input bg-slate-50 text-slate-700 cursor-not-allowed">
                 {profileSektorName}
               </div>
-              <p className="text-xs text-slate-500 mt-1">Mengikut profil pegawai.</p>
             </div>
             <div>
               <label className="label">
@@ -445,8 +442,7 @@ export default function OprFormClient({
           <div className="card p-4 space-y-3">
             {outputsLocked ? (
               <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                Bahagian ini akan diisi selepas anda tekan <strong>Jana Draf (AI)</strong>. Anda
-                boleh menyuntingnya selepas draf dijana.
+                Jana draf AI untuk mengisi bahagian ini.
               </p>
             ) : null}
             <label className="label">Dapatan</label>
@@ -475,9 +471,7 @@ export default function OprFormClient({
           <div className="card p-4">
             <h2 className="font-semibold mb-2">Gambar aktiviti</h2>
             <p className="text-xs text-slate-500 mb-2">
-              Maksimum {OPR_MAX_PHOTOS} gambar. <strong>Melintang (landskap) disyorkan</strong> untuk
-              cetakan OPR; gambar menegak juga boleh dimuat naik. Dimampatkan automatik. Dalam cetakan,
-              gambar disusun menegak di sebelah kanan.
+              Maksimum {OPR_MAX_PHOTOS} gambar. <strong>Melintang (landskap) disyorkan</strong>.
             </p>
             <OprPhotoGallery
               pergerakanId={pergerakanId}

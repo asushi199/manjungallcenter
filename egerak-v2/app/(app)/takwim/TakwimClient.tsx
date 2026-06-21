@@ -198,13 +198,10 @@ export default function TakwimClient({
   return (
     <div className="mx-auto max-w-4xl p-3 sm:p-4 space-y-3">
       <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
+        <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
             Takwim Aktiviti Sektor
           </h1>
-          <p className="text-sm text-slate-500">
-            Paparan ringkas aktiviti sektor. Klik aktiviti untuk masa penuh dan lokasi.
-          </p>
         </div>
         {canCreateTakwim && (
           <button
