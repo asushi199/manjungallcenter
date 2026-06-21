@@ -77,23 +77,39 @@ sememangnya sudah wujud: **`room_bookings` (tajuk + slot AM/PM)**.
   padan dengan masa pergi/kembali pengguna secara automatik.
 - **Jika tempahan ialah sepanjang hari (AM+PM aktiviti sama) → paparkan
   sebagai satu entri, tidak dipecah Pagi/Petang.**
-- **Mod penguatkuasaan C**: `urusan` mesti dipilih daripada senarai; sediakan
-  satu suis "Aktiviti tiada dalam senarai" — hanya selepas ditanda barulah
-  boleh taip bebas.
-- Jika bilik tiada tempahan pada hari itu → benarkan taip bebas terus, dengan
-  pautan "Tempah dahulu di Tempahan Bilik".
-- Apabila satu tempahan dipilih, `urusan` = **tajuk sebenar tempahan**
-  (salin teks supaya nama seragam).
+- **Mod penguatkuasaan C** (apabila ADA tempahan): `urusan` mesti dipilih
+  daripada senarai; sediakan satu suis "Aktiviti tiada dalam senarai" — hanya
+  selepas ditanda barulah boleh taip bebas.
+- Apabila satu tempahan dipilih, `urusan` = **tajuk sebenar tempahan** (salin
+  teks supaya nama seragam).
+- **Apabila TIADA tempahan pada hari/slot itu** (mesyuarat tak rasmi / terlupa
+  tempah — pendekatan longgar, tidak memaksa tempah):
+  - Jatuh balik kepada **cadangan rakan** — papar pendaftaran pergerakan rakan
+    yang sudah pilih bilik ini pada hari itu, supaya nama tetap seragam
+    (gerbang lembut seperti lokasi lain di bawah).
+  - Papar peringatan lembut (tidak menghalang hantar): *"Bilik ini tiada
+    tempahan rasmi pada hari ini. Jika aktiviti rasmi, sila tempah di Tempahan
+    Bilik."* + butang **"Tempah sekarang"** yang mencipta tempahan di /bilik
+    menggunakan nama aktiviti yang diisi (supaya orang pertama boleh tampung
+    tempahan terlupa, dan bilik ditanda sebagai diguna).
 
 **(b) Lokasi lain** (sekolah dll.) — sumber = pendaftaran rakan terkini.
 - **Semua sektor dicadangkan**; cadangan **sektor sendiri diutamakan** (diletak
   paling atas, label "Sektor anda"), diikuti sektor lain — kerana sektor lain
   pun mungkin turut serta ke aktiviti yang sama.
-- Dipaparkan **terbuka & jelas**; satu ketik mengisi urusan + lokasi + tarikh.
+- **Papar 6 cadangan dahulu**, selebihnya di sebalik **"Lihat lagi (N)"**.
 - Padanan **hari yang sama sahaja** (tiada pelonggaran ±hari). Setiap peserta
   mengisi untuk tarikh sebenar acara, jadi melihat hari yang sama sudah cukup
   dan tidak perlu papar lebih awal.
 - Masih benarkan taip bebas (orang pertama mengisi = nama standard).
+
+### 3.3.1 Gerbang lembut "lihat dahulu" (lokasi lain + Budiman/Bestari tiada tempahan)
+- Selepas tarikh diisi, sistem mencari cadangan; medan `urusan` **dikunci**
+  sementara dengan label "Mencari aktiviti hari ini…".
+- Selepas selesai: jika ADA cadangan, ia dipaparkan terbuka & jelas, kemudian
+  `urusan` **dibuka untuk taip bebas** — pengguna cuma perlu lihat dahulu,
+  **tiada kotak semak wajib** (kotak semak hanya untuk Budiman/Bestari Mod C).
+- Tujuan: elak orang gopoh menaip nama sendiri sebelum cadangan muncul.
 
 ### 3.4 Pepijat yang ditutup
 - #1 (pintasan kunci 24 jam): pergerakan tidak lagi menyentuh tempahan.
@@ -101,6 +117,17 @@ sememangnya sudah wujud: **`room_bookings` (tajuk + slot AM/PM)**.
   daripada tempahan sebenar".
 - #4 (tajuk tempahan = teks bebas): tajuk datang daripada tempahan /bilik &
   takwim; pergerakan merujuknya.
+- #5 (dua pintu tempahan / tempah-terlepas / tempah-berganda): sebahagian
+  besar ditutup kerana pergerakan tidak lagi menempah —
+  - tempah-berganda "penganjur dihalang oleh tempahan rancangan sendiri" dan
+    "pendua bayangan pergerakan" → hilang.
+  - tempah-terlepas akibat nama lokasi tidak dikenali (resolveBookableRoomCode)
+    → dikurangkan kerana **lokasi kini dropdown** di import, tambah lokasi, dan
+    **Tambah Takwim** (sudah dihantar, commit berasingan).
+  - **Baki ditangguh (di luar skop spek ini)**: pengecaman lokasi/masa import
+    takwim yang masih lemah, dan kitaran hayat tempahan dari takwim (suntingan/
+    pembatalan takwim tidak menyelaras tempahan). Ini milik modul takwim —
+    jadikan tugas susulan berasingan.
 
 ## 4. Skop Tidak Dibuat (YAGNI)
 - Tiada jadual "aktiviti" baharu; tiada pautan id peserta↔tempahan. v1 hanya
@@ -117,6 +144,9 @@ sememangnya sudah wujud: **`room_bookings` (tajuk + slot AM/PM)**.
 - Tentukan helper memetakan masa pergi/kembali pergerakan kepada slot AM/PM
   (guna semula logik `computeRoomSlotsForRange` / `slotTimeRange` daripada
   `lib/sync-room-bookings.ts` / `lib/room-slots.ts`).
+- Butang "Tempah sekarang" (kes tiada tempahan) guna semula `bookRoom`
+  (`lib/actions/rooms.ts`) dengan slot terbitan masa; ia melalui tetingkap 24
+  jam / aliran kelulusan /bilik seperti biasa.
 
 ## 6. Ujian
 - Helper pemetaan masa→slot (AM/PM/penuh hari) sebagai fungsi tulen + ujian.
