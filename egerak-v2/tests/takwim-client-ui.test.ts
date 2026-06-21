@@ -8,3 +8,9 @@ test("expanded takwim rows include the full activity text in a mobile-friendly d
   assert.match(takwimClientSource, /Aktiviti:/);
   assert.match(takwimClientSource, /pl-4 sm:pl-\[5\.9rem\]/);
 });
+
+test("takwim activity rows show compact sektor labels while keeping the full sektor in details", () => {
+  assert.match(takwimClientSource, /sektorShortLabel/);
+  assert.match(takwimClientSource, /title=\{sektorFullLabel\}/);
+  assert.match(takwimClientSource, /Sektor:/);
+});

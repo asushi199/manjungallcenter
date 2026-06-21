@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 import { formatDateTime, TZ } from "@/lib/dates";
 import { replaceWithSearchParams } from "@/lib/navigate";
 import { sektorStyle } from "@/lib/sektor-colors";
+import { sektorShortLabel } from "@/lib/analisis-short-labels";
 import {
   compactTakwimTimeLabel,
   groupTakwimItemsByWeek,
@@ -427,6 +428,8 @@ function AgendaRow({ item }: { item: SerializedTakwimItem }) {
   const kind = takwimDisplayKind(item);
   const isTakwim = kind === "rancangan" || kind === "tambahan";
   const st = sektorStyle(item.sektorCode, item.jenis);
+  const sektorFullLabel = item.sektorName ?? item.sektorCode ?? "Tanpa sektor";
+  const sektorCompactLabel = sektorShortLabel(item.sektorCode, sektorFullLabel);
 
   return (
     <article className={cn("relative", !isTakwim && "text-slate-500")}>
@@ -467,7 +470,10 @@ function AgendaRow({ item }: { item: SerializedTakwimItem }) {
               style={{ backgroundColor: st.chip }}
               aria-hidden
             />
-            <span className="truncate">{item.sektorName ?? item.sektorCode ?? "Tanpa sektor"}</span>
+            <span className="truncate" title={sektorFullLabel}>
+              <span className="sm:hidden">{sektorCompactLabel}</span>
+              <span className="hidden sm:inline">{sektorFullLabel}</span>
+            </span>
           </span>
         </span>
         <span
@@ -494,6 +500,10 @@ function AgendaRow({ item }: { item: SerializedTakwimItem }) {
             <p>
               <span className="font-semibold text-slate-600">Lokasi:</span>{" "}
               <span className="break-words">{item.lokasi || "Tiada lokasi"}</span>
+            </p>
+            <p>
+              <span className="font-semibold text-slate-600">Sektor:</span>{" "}
+              <span className="break-words">{sektorFullLabel}</span>
             </p>
           </div>
         </div>

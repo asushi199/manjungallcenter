@@ -18,7 +18,7 @@ import {
 } from "recharts";
 import { sektorStyle } from "@/lib/sektor-colors";
 import { OPR_FOKUS_OPTIONS } from "@/lib/opr-fokus";
-import { fokusShortLabel, sektorShortLabel } from "@/lib/analisis-short-labels";
+import { fokusShortLabel } from "@/lib/analisis-short-labels";
 import SektorFilterDropdown from "@/components/SektorFilterDropdown";
 import type { SektorOption } from "@/components/FilterBar";
 import type { AnalisisAggregates, FokusAggregates } from "@/lib/analisis/cluster-programs";
@@ -529,8 +529,7 @@ function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
     color: fokusColor(f.fokus),
   }));
   const crossRows = bySektorFokus.map((s) => ({
-    label: sektorShortLabel(s.code === "—" ? null : s.code, s.name),
-    title: s.name,
+    label: s.name,
     total: s.total,
     counts: s.counts,
   }));
