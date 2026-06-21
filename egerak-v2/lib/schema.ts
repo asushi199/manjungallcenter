@@ -25,6 +25,12 @@ export const jenis = pgEnum("jenis", ["Pergerakan", "Bercuti"]);
 export const sourceEnum = pgEnum("source", ["web", "bulk"]);
 export const roomSlot = pgEnum("room_slot", ["AM", "PM"]);
 export const bookingStatus = pgEnum("booking_status", ["BOOKED", "CANCELLED"]);
+export const bookingRequestType = pgEnum("booking_request_type", ["CANCEL", "MODIFY"]);
+export const bookingRequestStatus = pgEnum("booking_request_status", [
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+]);
 export const oprStatusEnum = pgEnum("opr_status", ["TIADA", "DRAFT", "SIAP"]);
 
 export const sektors = pgTable(
@@ -198,6 +204,48 @@ export const roomBookings = pgTable(
   }),
 );
 
+/**
+ * Permohonan batal / ubah tempahan yang melepasi tempoh swakhidmat (24 jam).
+ * Tempahan asal kekal tidak berubah sehingga Admin meluluskan (lulus-dahulu, ubah-kemudian).
+ */
+export const bookingRequests = pgTable(
+  "booking_requests",
+  {
+    id: serial("id").primaryKey(),
+    bookingId: integer("booking_id")
+      .notNull()
+      .references(() => roomBookings.id, { onDelete: "cascade" }),
+    /** Slot kedua untuk tempahan sepanjang hari (AM+PM) — satu permohonan meliputi kedua-dua. */
+    bookingId2: integer("booking_id_2").references(() => roomBookings.id, {
+      onDelete: "cascade",
+    }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    type: bookingRequestType("type").notNull(),
+    status: bookingRequestStatus("status").notNull().default("PENDING"),
+    /** Cadangan baharu untuk permohonan UBAH (null bagi BATAL). */
+    newRoomId: integer("new_room_id").references(() => rooms.id, { onDelete: "set null" }),
+    newTarikh: date("new_tarikh"),
+    newSlot: roomSlot("new_slot"),
+    note: text("note"),
+    decidedByUserId: integer("decided_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    statusIdx: index("booking_requests_status_idx").on(t.status),
+    bookingIdx: index("booking_requests_booking_idx").on(t.bookingId),
+    /** Satu permohonan PENDING sahaja bagi setiap tempahan. */
+    pendingUnique: uniqueIndex("booking_requests_pending_unique")
+      .on(t.bookingId)
+      .where(sql`${t.status} = 'PENDING'`),
+  }),
+);
+
 export const opr = pgTable(
   "opr",
   {
@@ -292,7 +340,7 @@ export const roomsRelations = relations(rooms, ({ many }) => ({
   bookings: many(roomBookings),
 }));
 
-export const roomBookingsRelations = relations(roomBookings, ({ one }) => ({
+export const roomBookingsRelations = relations(roomBookings, ({ one, many }) => ({
   room: one(rooms, { fields: [roomBookings.roomId], references: [rooms.id] }),
   user: one(users, { fields: [roomBookings.userId], references: [users.id] }),
   pergerakan: one(pergerakan, {
@@ -302,6 +350,20 @@ export const roomBookingsRelations = relations(roomBookings, ({ one }) => ({
   takwimAktiviti: one(takwimAktiviti, {
     fields: [roomBookings.takwimAktivitiId],
     references: [takwimAktiviti.id],
+  }),
+  requests: many(bookingRequests),
+}));
+
+export const bookingRequestsRelations = relations(bookingRequests, ({ one }) => ({
+  booking: one(roomBookings, {
+    fields: [bookingRequests.bookingId],
+    references: [roomBookings.id],
+  }),
+  user: one(users, { fields: [bookingRequests.userId], references: [users.id] }),
+  newRoom: one(rooms, { fields: [bookingRequests.newRoomId], references: [rooms.id] }),
+  decidedBy: one(users, {
+    fields: [bookingRequests.decidedByUserId],
+    references: [users.id],
   }),
 }));
 
@@ -324,6 +386,7 @@ export type Pergerakan = typeof pergerakan.$inferSelect;
 export type TakwimAktiviti = typeof takwimAktiviti.$inferSelect;
 export type Room = typeof rooms.$inferSelect;
 export type RoomBooking = typeof roomBookings.$inferSelect;
+export type BookingRequest = typeof bookingRequests.$inferSelect;
 export type Opr = typeof opr.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type NewPergerakan = typeof pergerakan.$inferInsert;

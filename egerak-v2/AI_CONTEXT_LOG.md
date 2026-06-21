@@ -193,3 +193,60 @@
   (showErrorMessage=0) — cadangan tetapi tidak menyekat nilai lain.
 - `lib/xlsx.ts`: `dropdownValidation` tambah opsyen `{ allowOther }`.
 - Tiada migration; nilai jawatan kekal teks bebas.
+
+## 2026-06-21 - Tempahan Bilik: Swakhidmat 24 jam + Permohonan Kelulusan Admin
+
+Logik baharu batal/ubah tempahan bilik:
+- Dalam 24 jam (kira dari `room_bookings.created_at`, tetingkap bergolek):
+  pemilik boleh ubah/batal sendiri serta-merta.
+- Selepas 24 jam: ubah/batal jadi permohonan (PENDING) untuk kelulusan Admin;
+  tempahan asal kekal sehingga diluluskan (lulus-dahulu, ubah-kemudian).
+- Notifikasi Admin = dalam aplikasi: lencana merah pada menu "Admin"
+  (`AdminRequestsBadge`) + halaman `/admin/bilik-permohonan`. (Telegram/email
+  ditangguh — buat hanya jika perlu.)
+
+Fail:
+- `drizzle/0013_booking_requests.sql` (baharu): jadual `booking_requests`
+  + enum `booking_request_type`/`booking_request_status`; unique index PENDING
+  satu setiap tempahan. **Perlu dijalankan manual (Supabase SQL editor)** —
+  journal drizzle tidak digunakan untuk migrasi 0007+.
+- `lib/schema.ts`: jadual + relations + enum + type `BookingRequest`.
+- `lib/room-booking-policy.ts` (baharu, tulen/boleh uji): `isWithinGrace`,
+  `graceRemainingMs`, `GRACE_PERIOD_MS` (24 jam).
+- `lib/actions/rooms.ts`: `cancelBooking` (kini sedar-tempoh), `modifyBooking`
+  (baharu — tukar bilik/tarikh/slot), `submitRequest`, `listMyBookings`
+  (+createdAt, +pendingType), `listPendingBookingRequests`,
+  `countPendingBookingRequests`, `decideBookingRequest` (luluskan/tolak;
+  semak konflik slot semula semasa luluskan).
+- `app/(app)/bilik/{page,BilikClient}.tsx`: butang Ubah/Batal vs Mohon ubah/
+  Mohon batal ikut tempoh; editor ubah inline; cip "menunggu Admin".
+- `app/(app)/admin/bilik-permohonan/{page,BilikPermohonanClient}.tsx` (baharu):
+  senarai permohonan, banding lama→baharu, Luluskan/Tolak.
+- `lib/app-nav.ts`: pautan `PERMOHONAN_BILIK_LINK`.
+- `components/{Navbar,AdminRequestsBadge}.tsx`: lencana kiraan (desktop, Admin).
+- Ujian baharu: `tests/room-booking-policy.test.ts`. 72 ujian lulus; `tsc`,
+  ESLint bersih.
+
+Belum dibuat: lencana mudah alih (mobile nav) — pautan ada, kiraan langsung tiada.
+
+### Susulan hari sama — Tempahan sepanjang hari sebagai satu item
+
+Pengguna minta tempahan sepanjang hari (AM+PM) tidak perlu diubah/batal dua
+kali. Pilihan: kekal dua baris dalam DB (tidak ganggu kalendar/sync/cetak/
+import), tetapi paparkan & uruskan sebagai SATU unit.
+
+- `drizzle/0014_booking_request_fullday.sql` (baharu): `booking_requests`
+  tambah `booking_id_2` (slot kedua; null bagi satu slot). **Perlu jalankan
+  manual selepas 0013.**
+- `lib/room-booking-group.ts` (baharu, tulen/boleh uji): `groupMyBookings`
+  kumpulkan baris AM+PM (bilik+tarikh+tajuk sama) jadi satu `MyBookingItem`
+  (`ids: [amId, pmId]`, `slot: "FULL"`).
+- `lib/actions/rooms.ts`: `cancelBooking(ids[])` & `modifyBooking({bookingIds,
+  roomId,tarikh,slot?})` kini sedar-kumpulan; sepanjang hari pindah kedua-dua
+  slot serentak (slot kekal). `submitRequest`/`decideBookingRequest`/
+  `listPendingBookingRequests` kendalikan `booking_id_2` (satu permohonan
+  meliputi dua slot; semak konflik AM&PM semasa luluskan).
+- `app/(app)/bilik/page.tsx`: kumpulkan sebelum hantar ke klien.
+- `BilikClient.tsx`: editor sembunyikan pemilih Slot bila sepanjang hari.
+- `BilikPermohonanClient.tsx`: papar "Sepanjang hari".
+- Ujian: `tests/room-booking-group.test.ts`. 77 ujian lulus; `tsc`/ESLint bersih.

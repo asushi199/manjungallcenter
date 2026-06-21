@@ -1,4 +1,5 @@
 import { listRooms, listBookingsInRange, listMyBookings } from "@/lib/actions/rooms";
+import { groupMyBookings } from "@/lib/room-booking-group";
 import { auth } from "@/lib/auth";
 import { requireUser } from "@/lib/rbac";
 import { formatInTimeZone } from "date-fns-tz";
@@ -57,10 +58,14 @@ export default async function BilikPage({
           ...b,
           tarikh: String(b.tarikh),
         }))}
-        myBookings={myBookings.map((b) => ({
-          ...b,
-          tarikh: String(b.tarikh),
-        }))}
+        myBookings={groupMyBookings(
+          myBookings.map((b) => ({
+            ...b,
+            tarikh: String(b.tarikh),
+            createdAt: b.createdAt.toISOString(),
+            pendingType: b.pendingType ?? null,
+          })),
+        )}
         weekStart={weekStart}
         isAdmin={isAdmin}
       />

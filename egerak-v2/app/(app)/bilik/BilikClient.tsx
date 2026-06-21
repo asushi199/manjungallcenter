@@ -3,10 +3,18 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, format, parseISO } from "date-fns";
-import { bookRoom, cancelBooking, cancelBookingsBulk } from "@/lib/actions/rooms";
+import { bookRoom, cancelBooking, modifyBooking, cancelBookingsBulk } from "@/lib/actions/rooms";
 import { SLOT_LABEL } from "@/lib/room-slots";
+import { isWithinGrace } from "@/lib/room-booking-policy";
+import type { MyBookingItem } from "@/lib/room-booking-group";
 import { replaceWithSearchParams } from "@/lib/navigate";
 import { cn } from "@/lib/cn";
+
+const SLOT_SHORT: Record<"AM" | "PM" | "FULL", string> = {
+  AM: "Pagi",
+  PM: "Petang",
+  FULL: "Sepanjang hari",
+};
 
 type Room = { id: number; code: string; name: string };
 type Booking = {
@@ -19,14 +27,7 @@ type Booking = {
   title: string;
   pegawaiNama: string;
 };
-type MyBooking = {
-  id: number;
-  roomName: string;
-  tarikh: string;
-  slot: "AM" | "PM";
-  title: string;
-  pegawaiNama: string;
-};
+type MyBooking = MyBookingItem;
 
 function BookingCell({ booking }: { booking: Booking }) {
   const tip = `${booking.title} — ${booking.pegawaiNama}`;
@@ -75,6 +76,7 @@ export default function BilikClient({
   const [msg, setMsg] = useState<string | null>(null);
   const [roomFocus, setRoomFocus] = useState(rooms[0]?.id ?? 0);
   const [selectedBookings, setSelectedBookings] = useState<Set<number>>(new Set());
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     roomId: rooms[0]?.id ?? 0,
@@ -113,12 +115,44 @@ export default function BilikClient({
     });
   }
 
-  function onCancel(id: number) {
-    if (!confirm("Batalkan tempahan ini?")) return;
+  function onCancel(b: MyBooking) {
+    const selfService = isWithinGrace(b.createdAt);
+    const prompt = selfService
+      ? "Batalkan tempahan ini?"
+      : "Tempahan ini melepasi 24 jam. Hantar permohonan batal kepada Admin?";
+    if (!confirm(prompt)) return;
     startTransition(async () => {
-      const res = await cancelBooking(id);
-      if (!res.ok) alert(res.error);
-      else router.refresh();
+      const res = await cancelBooking(b.ids);
+      if (!res.ok) {
+        alert(res.error);
+        return;
+      }
+      alert(
+        res.mode === "requested"
+          ? "Permohonan batal dihantar. Menunggu kelulusan Admin."
+          : "Tempahan dibatalkan.",
+      );
+      router.refresh();
+    });
+  }
+
+  function onModify(
+    ids: number[],
+    target: { roomId: number; tarikh: string; slot?: "AM" | "PM" },
+  ) {
+    startTransition(async () => {
+      const res = await modifyBooking({ bookingIds: ids, ...target });
+      if (!res.ok) {
+        alert(res.error);
+        return;
+      }
+      alert(
+        res.mode === "requested"
+          ? "Permohonan ubah dihantar. Tempahan asal kekal sehingga Admin meluluskan."
+          : "Tempahan dikemas kini.",
+      );
+      setEditingId(null);
+      router.refresh();
     });
   }
 
@@ -414,29 +448,146 @@ export default function BilikClient({
       )}
 
       <div className="card p-4">
-        <h2 className="font-semibold mb-2">Tempahan Saya</h2>
+        <h2 className="font-semibold mb-1">Tempahan Saya</h2>
+        <p className="text-xs text-slate-500 mb-2">
+          Dalam <strong>24 jam</strong> selepas tempah, anda boleh ubah atau batal sendiri.
+          Selepas itu, ubah/batal perlu kelulusan Admin (tempahan asal kekal sehingga
+          diluluskan).
+        </p>
         {myBookings.length === 0 ? (
           <p className="text-sm text-slate-500">Tiada tempahan aktif.</p>
         ) : (
           <ul className="divide-y text-sm">
-            {myBookings.map((b) => (
-              <li key={b.id} className="py-2 flex flex-wrap items-center justify-between gap-2">
-                <span>
-                  <strong>{b.roomName}</strong> · {b.tarikh} · {b.slot} — {b.title}
-                  <span className="text-slate-500"> ({b.pegawaiNama})</span>
-                </span>
-                <button
-                  type="button"
-                  className="btn-danger text-xs"
-                  disabled={pending}
-                  onClick={() => onCancel(b.id)}
-                >
-                  Batal
-                </button>
-              </li>
-            ))}
+            {myBookings.map((b) => {
+              const key = b.ids.join("-");
+              return (
+                <li key={key} className="py-2 space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span>
+                      <strong>{b.roomName}</strong> · {b.tarikh} · {SLOT_SHORT[b.slot]} — {b.title}
+                      <span className="text-slate-500"> ({b.pegawaiNama})</span>
+                    </span>
+                    {b.pendingType ? (
+                      <span className="rounded-full bg-amber-100 text-amber-800 text-xs px-2.5 py-1 whitespace-nowrap">
+                        {b.pendingType === "CANCEL" ? "Mohon batal" : "Mohon ubah"} — menunggu Admin
+                      </span>
+                    ) : (
+                      <span className="flex gap-2 shrink-0">
+                        <button
+                          type="button"
+                          className="btn-secondary text-xs"
+                          disabled={pending}
+                          onClick={() => setEditingId(editingId === key ? null : key)}
+                        >
+                          {isWithinGrace(b.createdAt) ? "Ubah" : "Mohon ubah"}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-danger text-xs"
+                          disabled={pending}
+                          onClick={() => onCancel(b)}
+                        >
+                          {isWithinGrace(b.createdAt) ? "Batal" : "Mohon batal"}
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                  {editingId === key && !b.pendingType && (
+                    <ModifyEditor
+                      booking={b}
+                      rooms={rooms}
+                      pending={pending}
+                      selfService={isWithinGrace(b.createdAt)}
+                      onCancel={() => setEditingId(null)}
+                      onSubmit={(target) => onModify(b.ids, target)}
+                    />
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ModifyEditor({
+  booking,
+  rooms,
+  pending,
+  selfService,
+  onCancel,
+  onSubmit,
+}: {
+  booking: MyBooking;
+  rooms: Room[];
+  pending: boolean;
+  selfService: boolean;
+  onCancel: () => void;
+  onSubmit: (target: { roomId: number; tarikh: string; slot?: "AM" | "PM" }) => void;
+}) {
+  const fullDay = booking.fullDay;
+  const [roomId, setRoomId] = useState(booking.roomId);
+  const [tarikh, setTarikh] = useState(booking.tarikh);
+  const [slot, setSlot] = useState<"AM" | "PM">(fullDay ? "AM" : (booking.slot as "AM" | "PM"));
+  const unchanged =
+    roomId === booking.roomId &&
+    tarikh === booking.tarikh &&
+    (fullDay || slot === booking.slot);
+
+  return (
+    <div className="rounded-md border bg-slate-50 p-3 space-y-3">
+      <div className={cn("grid gap-3", fullDay ? "sm:grid-cols-2" : "sm:grid-cols-3")}>
+        <div>
+          <label className="label">Bilik / Dewan</label>
+          <select className="input" value={roomId} onChange={(e) => setRoomId(Number(e.target.value))}>
+            {rooms.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="label">Tarikh</label>
+          <input
+            type="date"
+            className="input"
+            value={tarikh}
+            onChange={(e) => setTarikh(e.target.value)}
+          />
+        </div>
+        {!fullDay && (
+          <div>
+            <label className="label">Slot</label>
+            <select className="input" value={slot} onChange={(e) => setSlot(e.target.value as "AM" | "PM")}>
+              {SLOTS.map((s) => (
+                <option key={s} value={s}>
+                  {SLOT_LABEL[s]}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+      {fullDay && (
+        <p className="text-xs text-slate-500">
+          Tempahan sepanjang hari — kedua-dua slot Pagi &amp; Petang akan dipindahkan bersama.
+        </p>
+      )}
+      <div className="flex items-center justify-end gap-2">
+        <button type="button" className="btn-secondary text-xs" onClick={onCancel} disabled={pending}>
+          Batal
+        </button>
+        <button
+          type="button"
+          className="btn-primary text-xs"
+          disabled={pending || unchanged}
+          onClick={() => onSubmit(fullDay ? { roomId, tarikh } : { roomId, tarikh, slot })}
+        >
+          {selfService ? "Simpan ubah" : "Hantar permohonan ubah"}
+        </button>
       </div>
     </div>
   );

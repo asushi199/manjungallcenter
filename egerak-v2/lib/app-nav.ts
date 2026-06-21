@@ -44,12 +44,18 @@ export const PADAM_PERGERAKAN_LINK: AppNavLink = {
   label: "Padam Pergerakan",
 };
 
+export const PERMOHONAN_BILIK_LINK: AppNavLink = {
+  href: "/admin/bilik-permohonan",
+  label: "Permohonan Bilik",
+};
+
 /** Menu pentadbir penuh (Admin sahaja). */
 export const FULL_ADMIN_NAV_LINKS: AppNavLink[] = [
   { href: "/admin/users", label: "Pengurusan Pengguna" },
   ANALISIS_PROGRAM_LINK,
   JEJAK_PEGAWAI_LINK,
   LAPORAN_OPR_LINK,
+  PERMOHONAN_BILIK_LINK,
   PADAM_PERGERAKAN_LINK,
   IMPORT_RANCANGAN_LINK,
 ];

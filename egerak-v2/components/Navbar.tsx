@@ -7,10 +7,12 @@ import PpdLogo from "@/components/PpdLogo";
 import PwaInstallButton from "@/components/PwaInstallButton";
 import HeaderNavDropdown from "@/components/HeaderNavDropdown";
 import MobileNavMenu from "@/components/MobileNavMenu";
+import AdminRequestsBadge from "@/components/AdminRequestsBadge";
 import {
   adminMenuLinksForPeranan,
   mainNavLinksForPeranan,
 } from "@/lib/app-nav";
+import { isFullAdmin } from "@/lib/roles";
 import { APP_SHORT_NAME } from "@/lib/branding";
 
 export default function Navbar() {
@@ -25,6 +27,7 @@ export default function Navbar() {
 
   const mainLinks = mainNavLinksForPeranan(peranan);
   const adminMenuLinks = adminMenuLinksForPeranan(peranan);
+  const showRequestsBadge = isFullAdmin(peranan);
 
   const logoutBtn = (
     <button
@@ -70,7 +73,10 @@ export default function Navbar() {
         <nav className="flex items-center gap-1 flex-wrap justify-center flex-1 min-w-0">
           <HeaderNavDropdown label="Utama" links={mainLinks} />
           {adminMenuLinks.length > 0 && (
-            <HeaderNavDropdown label="Admin" links={adminMenuLinks} />
+            <span className="relative inline-flex">
+              <HeaderNavDropdown label="Admin" links={adminMenuLinks} />
+              {showRequestsBadge && <AdminRequestsBadge />}
+            </span>
           )}
         </nav>
 
