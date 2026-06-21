@@ -39,5 +39,5 @@ test("rankCadanganBySektor with null ownSektorId keeps original order", () => {
     base({ urusan: "Mesyuarat Panitia", sektorId: 2 }),
     base({ urusan: "Latihan Guru", sektorId: 5 }),
   ]);
-  assert.deepEqual(rankCadanganBySektor(t, null), t);
+  assert.strictEqual(rankCadanganBySektor(t, null), t);
 });
