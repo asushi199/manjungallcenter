@@ -61,8 +61,20 @@ function dateHeaderLabel(dateKey: string) {
   const date = parseISO(`${dateKey}T00:00:00`);
   return {
     day: format(date, "d", { locale: ms }),
-    rest: format(date, "MMMM - EEEE", { locale: ms }),
+    month: format(date, "MMM", { locale: ms }),
+    weekday: format(date, "EEEE", { locale: ms }),
   };
+}
+
+function distinctSektorCount(week: TakwimWeekGroup<SerializedTakwimItem>): number {
+  const keys = new Set<string>();
+  for (const day of week.days) {
+    for (const item of day.items) {
+      const key = item.sektorCode ?? item.sektorName;
+      if (key) keys.add(key);
+    }
+  }
+  return keys.size;
 }
 
 function rangeLabel(startDateKey: string, endDateKey: string) {
@@ -181,12 +193,6 @@ export default function TakwimClient({
   }
 
   const hasNoDefaultSektor = !hasOwnSektor && !isAllSectors && selectedSektorIds.length === 0;
-  const todayKey = formatInTimeZone(new Date(), TZ, "yyyy-MM-dd");
-  const currentWeekKey =
-    todayKey.startsWith(`${month}-`)
-      ? weekGroups.find((group) => group.startDateKey <= todayKey && todayKey <= group.endDateKey)
-          ?.weekKey
-      : null;
 
   return (
     <div className="mx-auto max-w-4xl p-3 sm:p-4 space-y-3">
@@ -339,11 +345,7 @@ export default function TakwimClient({
       ) : (
         <div className="space-y-2">
           {weekGroups.map((week) => (
-            <WeekDetails
-              key={week.weekKey}
-              week={week}
-              defaultOpen={week.weekKey === (currentWeekKey ?? weekGroups[0]?.weekKey)}
-            />
+            <WeekDetails key={week.weekKey} week={week} defaultOpen />
           ))}
         </div>
       )}
@@ -364,18 +366,34 @@ function WeekDetails({
     setOpen(defaultOpen);
   }, [defaultOpen, week.weekKey]);
 
+  const sektorCount = distinctSektorCount(week);
+
   return (
     <details
       className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
       open={open}
       onToggle={(e) => setOpen(e.currentTarget.open)}
     >
-      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2 text-sm hover:bg-slate-100">
-        <span className="font-bold text-brand-700">{week.label}</span>
+      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2.5 text-sm hover:bg-slate-100">
+        <span className="font-bold uppercase tracking-wide text-brand-700">
+          Minggu {week.weekNumber}
+        </span>
         <span className="font-semibold text-slate-800">
           {rangeLabel(week.startDateKey, week.endDateKey)}
         </span>
-        <span className="ml-auto text-xs text-slate-500">{week.itemCount} rekod</span>
+        <span className="ml-auto flex items-center gap-2 text-xs text-slate-500">
+          <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200">
+            <CalendarIcon />
+            {week.itemCount} aktiviti
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200">
+            <GridIcon />
+            {sektorCount} sektor
+          </span>
+          <ChevronIcon
+            className={cn("text-slate-400 transition-transform", open && "rotate-180")}
+          />
+        </span>
       </summary>
       <div className="divide-y divide-slate-100">
         {week.days.map((day) => (
@@ -389,13 +407,13 @@ function WeekDetails({
 function DateGroupSection({ group }: { group: TakwimDateGroup<SerializedTakwimItem> }) {
   const header = dateHeaderLabel(group.dateKey);
   return (
-    <section>
-      <div className="flex items-baseline gap-2 bg-white px-3 py-2">
-        <span className="text-xl font-bold leading-none text-brand-700">{header.day}</span>
-        <span className="text-sm font-semibold text-slate-700">{header.rest}</span>
-        <span className="ml-auto text-xs text-slate-400">{group.items.length} rekod</span>
+    <section className="flex gap-3 px-3 py-3">
+      <div className="w-12 shrink-0 text-center">
+        <span className="block text-2xl font-bold leading-none text-brand-700">{header.day}</span>
+        <span className="mt-0.5 block text-xs font-medium text-slate-500">{header.month}</span>
+        <span className="block text-[11px] text-slate-400">{header.weekday}</span>
       </div>
-      <div className="divide-y divide-slate-100 border-t border-slate-100">
+      <div className="min-w-0 flex-1 border-l border-slate-200 pl-3">
         {group.items.map((item) => (
           <AgendaRow key={`${item.source}-${item.takwimKategori ?? "none"}-${item.id}`} item={item} />
         ))}
@@ -411,15 +429,18 @@ function AgendaRow({ item }: { item: SerializedTakwimItem }) {
   const st = sektorStyle(item.sektorCode, item.jenis);
 
   return (
-    <article className={cn("relative", !isTakwim && "bg-slate-50/70 text-slate-500")}>
+    <article className={cn("relative", !isTakwim && "text-slate-500")}>
       <span
-        className="absolute inset-y-0 left-0 w-1"
+        className="absolute left-[-0.75rem] top-[0.95rem] h-2.5 w-2.5 -translate-x-1/2 rounded-full ring-2 ring-white"
         style={{ backgroundColor: isTakwim ? st.border : "#cbd5e1" }}
         aria-hidden
       />
       <button
         type="button"
-        className="flex w-full items-start gap-2 px-3 py-2.5 pl-4 text-left hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-300"
+        className={cn(
+          "flex w-full items-start gap-2 rounded-md px-2 py-2 text-left hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-300",
+          !isTakwim && "bg-slate-50/70",
+        )}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
@@ -571,6 +592,36 @@ function TakwimForm({ addSektors, month }: { addSektors: SektorOption[]; month: 
         </div>
       </form>
     </section>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M8 2v4" />
+      <path d="M16 2v4" />
+      <rect width="18" height="18" x="3" y="4" rx="2" />
+      <path d="M3 10h18" />
+    </svg>
+  );
+}
+
+function GridIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect width="7" height="7" x="3" y="3" rx="1" />
+      <rect width="7" height="7" x="14" y="3" rx="1" />
+      <rect width="7" height="7" x="3" y="14" rx="1" />
+      <rect width="7" height="7" x="14" y="14" rx="1" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
   );
 }
 
