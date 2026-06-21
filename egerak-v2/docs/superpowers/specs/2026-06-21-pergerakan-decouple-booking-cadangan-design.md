@@ -86,11 +86,13 @@ sememangnya sudah wujud: **`room_bookings` (tajuk + slot AM/PM)**.
   (salin teks supaya nama seragam).
 
 **(b) Lokasi lain** (sekolah dll.) — sumber = pendaftaran rakan terkini.
-- **Cadangan sektor sendiri diutamakan (diletak paling atas, label "Sektor
-  anda")**, kemudian sektor lain.
+- **Semua sektor dicadangkan**; cadangan **sektor sendiri diutamakan** (diletak
+  paling atas, label "Sektor anda"), diikuti sektor lain — kerana sektor lain
+  pun mungkin turut serta ke aktiviti yang sama.
 - Dipaparkan **terbuka & jelas**; satu ketik mengisi urusan + lokasi + tarikh.
-- Padanan tarikh dilonggarkan ke **±3 hari** (boleh ditala) supaya beza
-  sehari tidak menyembunyikan padanan.
+- Padanan **hari yang sama sahaja** (tiada pelonggaran ±hari). Setiap peserta
+  mengisi untuk tarikh sebenar acara, jadi melihat hari yang sama sudah cukup
+  dan tidak perlu papar lebih awal.
 - Masih benarkan taip bebas (orang pertama mengisi = nama standard).
 
 ### 3.4 Pepijat yang ditutup
@@ -118,5 +120,5 @@ sememangnya sudah wujud: **`room_bookings` (tajuk + slot AM/PM)**.
 
 ## 6. Ujian
 - Helper pemetaan masa→slot (AM/PM/penuh hari) sebagai fungsi tulen + ujian.
-- Helper pembinaan cadangan (keutamaan sektor, longgar tarikh, dedup) sebagai
-  fungsi tulen + ujian.
+- Helper pembinaan cadangan (keutamaan sektor sendiri, semua sektor disertakan,
+  dedup nama, padanan hari sama) sebagai fungsi tulen + ujian.
