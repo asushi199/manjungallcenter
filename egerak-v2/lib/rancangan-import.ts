@@ -167,7 +167,10 @@ export function buildRancanganTemplateWorkbook(
       rows: [
         ["Panduan"],
         ["Isi satu baris untuk satu aktiviti rancangan tahunan."],
-        ["Tarikh Mula dan Tarikh Tamat wajib diisi. Format disyorkan: 2026-06-14."],
+        ["Tarikh Mula dan Tarikh Tamat wajib diisi. WAJIB guna format TTTT-BB-HH (cth: 2026-06-14)."],
+        [
+          "Elak format 6/7/2026 - jika hari & bulan kedua-duanya 12 ke bawah, sistem mungkin keliru (6 Julai jadi 7 Jun). Guna 2026-07-06 untuk pasti.",
+        ],
         [
           "Masa Mula dan Masa Tamat boleh dikosongkan. Jika kosong, sistem guna 08:00 hingga 17:00 dan dianggap aktiviti sepanjang hari.",
         ],

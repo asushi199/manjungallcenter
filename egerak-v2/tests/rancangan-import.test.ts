@@ -126,8 +126,9 @@ test("rancangan xlsx template separates dates and time dropdowns", () => {
   assert.match(sheetXml, /<c r="C1"[^>]*>[\s\S]*<t>Masa Mula<\/t>/);
   assert.match(sheetXml, /<c r="D1"[^>]*>[\s\S]*<t>Tarikh Tamat<\/t>/);
   assert.match(sheetXml, /<c r="E1"[^>]*>[\s\S]*<t>Masa Tamat<\/t>/);
-  assert.match(sheetXml, /<dataValidation type="date"[^>]*sqref="B2:B1000">/);
-  assert.match(sheetXml, /<dataValidation type="date"[^>]*sqref="D2:D1000">/);
+  assert.match(sheetXml, /<dataValidation type="date"[^>]*sqref="B2:B1000"/);
+  assert.match(sheetXml, /<dataValidation type="date"[^>]*sqref="D2:D1000"/);
+  assert.match(sheetXml, /sqref="B2:B1000"[^>]*promptTitle="Format tarikh"/);
   assert.match(sheetXml, /<dataValidation type="list"[^>]*sqref="C2:C1000">/);
   assert.match(sheetXml, /<dataValidation type="list"[^>]*sqref="E2:E1000">/);
   assert.match(sheetXml, /08:00,08:30/);

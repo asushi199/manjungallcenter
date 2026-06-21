@@ -109,8 +109,11 @@ export function dropdownValidation(
 }
 
 export function dateValidation(columnLetter: string): string {
+  const promptTitle = "Format tarikh";
+  const prompt =
+    "Taip format TTTT-BB-HH (cth: 2026-06-14). Elak 6/7/2026 - sistem boleh keliru bulan/hari.";
   return (
-    `<dataValidation type="date" allowBlank="1" showInputMessage="1" showErrorMessage="1" operator="between" sqref="${columnLetter}2:${columnLetter}1000">` +
+    `<dataValidation type="date" allowBlank="1" showInputMessage="1" showErrorMessage="1" operator="between" sqref="${columnLetter}2:${columnLetter}1000" promptTitle="${xmlEscape(promptTitle)}" prompt="${xmlEscape(prompt)}">` +
     `<formula1>DATE(2020,1,1)</formula1><formula2>DATE(2035,12,31)</formula2>` +
     `</dataValidation>`
   );
