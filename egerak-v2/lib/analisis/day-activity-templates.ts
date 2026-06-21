@@ -12,6 +12,7 @@ export function buildDayUrusanCadangan(rows: DayActivityRow[]): DayActivityTempl
       lokasi,
       tarikhPergi: r.tarikhPergi,
       tarikhKembali: r.tarikhKembali,
+      sektorId: r.sektorId,
     });
   }
 
@@ -43,6 +44,7 @@ export function buildDayUrusanCadangan(rows: DayActivityRow[]): DayActivityTempl
         tarikhPergi: lead.tarikhPergi,
         tarikhKembali: lead.tarikhKembali,
         count: group.length,
+        sektorId: lead.sektorId ?? null,
       };
     })
     .sort((a, b) => b.count - a.count || b.urusan.length - a.urusan.length);
@@ -53,6 +55,7 @@ export type DayActivityRow = {
   lokasi: string;
   tarikhPergi: Date;
   tarikhKembali: Date;
+  sektorId?: number | null;
 };
 
 export type DayActivityTemplate = {
@@ -61,4 +64,16 @@ export type DayActivityTemplate = {
   tarikhPergi: Date;
   tarikhKembali: Date;
   count: number;
+  sektorId: number | null;
 };
+
+/** Utamakan cadangan sektor sendiri; selebihnya kekal susunan asal (stable). */
+export function rankCadanganBySektor(
+  templates: DayActivityTemplate[],
+  ownSektorId: number | null,
+): DayActivityTemplate[] {
+  if (ownSektorId == null) return templates;
+  const own = templates.filter((t) => t.sektorId === ownSektorId);
+  const rest = templates.filter((t) => t.sektorId !== ownSektorId);
+  return [...own, ...rest];
+}
