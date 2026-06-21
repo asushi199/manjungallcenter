@@ -8,6 +8,7 @@ import { formatTitleCase } from "@/lib/format-display-text";
 import OprRichText from "@/components/OprRichText";
 import { APP_DISPLAY_NAME } from "@/lib/branding";
 import PrintToolbar from "./PrintToolbar";
+import OprPrintScaler from "./OprPrintScaler";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,7 @@ export default async function OprPrintPage({ params }: { params: Promise<{ id: s
   return (
     <>
       <PrintToolbar pergerakanId={pergerakanId} />
+      <OprPrintScaler>
       <article className="opr-print max-w-[210mm] mx-auto bg-white text-black shadow-sm print:shadow-none">
         <header className="opr-print-header border-b border-black/20 pb-2 mb-2">
           <div className="flex flex-col items-center gap-1 text-center">
@@ -119,6 +121,7 @@ export default async function OprPrintPage({ params }: { params: Promise<{ id: s
           Dijana melalui {APP_DISPLAY_NAME} · {new Date().toLocaleDateString("ms-MY")}
         </footer>
       </article>
+      </OprPrintScaler>
     </>
   );
 }
