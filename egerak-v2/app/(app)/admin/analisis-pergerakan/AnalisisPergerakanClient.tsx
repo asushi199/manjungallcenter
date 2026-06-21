@@ -318,7 +318,7 @@ function AnalisisSection({
 }: {
   title: string;
   count: number;
-  hint: string;
+  hint?: string;
   accentColor: string;
   children: ReactNode;
 }) {
@@ -332,7 +332,7 @@ function AnalisisSection({
             {count}
           </span>
         </div>
-        <p className="text-xs text-slate-500 mt-0.5">{hint}</p>
+        {hint && <p className="text-xs text-slate-500 mt-0.5">{hint}</p>}
       </div>
       <div className="px-4 pb-4 pt-3 space-y-4">{children}</div>
     </div>
@@ -341,18 +341,12 @@ function AnalisisSection({
 
 function ChartsBlock({
   aggregates,
-  chartYear,
-  range,
   lineLabel,
   barLabel,
-  barHint,
 }: {
   aggregates: AnalisisAggregates;
-  chartYear: string;
-  range: LaporanOprRange;
   lineLabel: string;
   barLabel: string;
-  barHint: string;
 }) {
   const compactMonths = useIsNarrow();
   const lineData = toLineData(aggregates);
@@ -367,10 +361,7 @@ function ChartsBlock({
       <div className="grid lg:grid-cols-2 gap-4 min-w-0">
         <div className="card p-4 min-w-0">
           <h3 className="text-sm font-semibold text-slate-800 mb-1">{lineLabel}</h3>
-          <p className="text-xs text-slate-500 mb-4">
-            {range === "all" ? "Semua tahun, mengikut bulan kalendar" : `Tahun ${chartYear}`}
-          </p>
-          <div className="h-[260px] w-full min-w-0 overflow-x-hidden">
+          <div className="h-[260px] w-full min-w-0 overflow-x-hidden mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={lineData} margin={{ top: 12, right: 16, left: 0, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -409,14 +400,14 @@ function ChartsBlock({
 
         <div className="card p-4 min-w-0">
           <h3 className="text-sm font-semibold text-slate-800 mb-1">{barLabel}</h3>
-          <p className="text-xs text-slate-500 mb-4">{barHint}</p>
+          <div className="mt-4">
           <RankedBars items={sektorItems} />
+          </div>
         </div>
       </div>
       <SektorTrendBlock
         aggregates={aggregates}
         title={`Trend ${lineLabel.toLowerCase()} mengikut bulan dan sektor`}
-        hint="Setahun penuh (Jan-Dis) - satu garisan setiap sektor"
       />
     </div>
   );
@@ -425,11 +416,9 @@ function ChartsBlock({
 function SektorTrendBlock({
   aggregates,
   title,
-  hint,
 }: {
   aggregates: AnalisisAggregates;
   title: string;
-  hint: string;
 }) {
   const compactMonths = useIsNarrow();
   const trendData = toSektorTrendData(aggregates);
@@ -440,11 +429,10 @@ function SektorTrendBlock({
   return (
     <div className="card p-4 min-w-0">
       <h3 className="text-sm font-semibold text-slate-800 mb-1">{title}</h3>
-      <p className="text-xs text-slate-500 mb-4">{hint}</p>
       {aggregates.sektorKeys.length === 0 ? (
         <p className="text-sm text-slate-500 text-center py-6">Tiada data dalam tempoh ini.</p>
       ) : (
-        <div className="h-[280px] w-full min-w-0 overflow-x-hidden">
+        <div className="h-[280px] w-full min-w-0 overflow-x-hidden mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={trendData} margin={{ top: 18, right: 16, left: 0, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -520,7 +508,6 @@ function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
     count: f.count,
     color: fokusColor(f.fokus),
   }));
-  const top = byFokus[0];
   const trendData = aggregates.byMonth.map((m) => ({ label: m.label, ...m.counts }));
   const crossSeriesObjs = byFokus.map((f) => ({
     key: f.fokus,
@@ -537,22 +524,16 @@ function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
 
   return (
     <>
-      <p className="text-xs text-slate-500 text-center">
-        Fokus terbanyak: <strong>{top.fokus}</strong> ({top.count} ·{" "}
-        {Math.round((top.count / total) * 100)}%) daripada {total} OPR siap.
-      </p>
       <div className="card p-4">
         <h3 className="text-sm font-semibold text-slate-800 mb-1">Bilangan OPR siap mengikut fokus</h3>
-        <p className="text-xs text-slate-500 mb-4">Tempoh dipilih · disusun terbanyak ke atas</p>
-        <RankedBars items={fokusItems} total={total} />
+        <div className="mt-4">
+          <RankedBars items={fokusItems} total={total} />
+        </div>
       </div>
 
       <div className="card p-4">
         <h3 className="text-sm font-semibold text-slate-800 mb-1">Trend fokus mengikut bulan</h3>
-        <p className="text-xs text-slate-500 mb-4">
-          Setahun penuh (Jan–Dis) · satu garisan setiap fokus
-        </p>
-        <div className="h-[280px] w-full min-w-0 overflow-x-hidden">
+        <div className="h-[280px] w-full min-w-0 overflow-x-hidden mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={trendData} margin={{ top: 18, right: 16, left: 0, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -604,10 +585,9 @@ function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
       {showCross && (
         <div className="card p-4">
           <h3 className="text-sm font-semibold text-slate-800 mb-1">Fokus mengikut sektor</h3>
-          <p className="text-xs text-slate-500 mb-4">
-            Tempoh dipilih · bar bertindan mengikut fokus
-          </p>
-          <StackedRankedBars rows={crossRows} series={crossSeriesObjs} />
+          <div className="mt-4">
+            <StackedRankedBars rows={crossRows} series={crossSeriesObjs} />
+          </div>
         </div>
       )}
     </>
@@ -799,10 +779,6 @@ export default function AnalisisPergerakanClient({
 
       <p className="text-sm text-slate-600 print:hidden">
         Tempoh paparan: <strong>{current.periodLabel}</strong>
-        {current.range === "month" && (
-          <> · Carta bulanan = tahun {current.chartYear} (konteks penuh)</>
-        )}
-        {current.range === "all" && " · Carta bulanan = semua tahun (ikut bulan Jan–Dis)"}
       </p>
 
       <div className="flex items-center gap-1 border-b border-slate-200 print:hidden" role="tablist">
@@ -862,19 +838,12 @@ export default function AnalisisPergerakanClient({
           <AnalisisSection
             title="Analisis pergerakan"
             count={pergerakanAggregates.totalRecords}
-            hint="Setiap rekod pergerakan = 1 · ikut sektor pendaftaran"
             accentColor={ACCENT_PERGERAKAN}
           >
-            <p className="text-xs text-slate-500 text-center">
-              Tidak termasuk cuti/Bercuti. Tiada penggabungan aktiviti.
-            </p>
             <ChartsBlock
               aggregates={pergerakanAggregates}
-              chartYear={current.chartYear}
-              range={current.range}
               lineLabel="Pergerakan"
               barLabel="Pergerakan mengikut sektor"
-              barHint="Tempoh dipilih · sektor pendaftaran rekod"
             />
           </AnalisisSection>
         </div>
@@ -883,7 +852,6 @@ export default function AnalisisPergerakanClient({
           <AnalisisSection
             title="Analisis fokus"
             count={fokusAggregates.total}
-            hint="OPR siap mengikut jenis fokus · lihat fokus paling kerap"
             accentColor={ACCENT_FOKUS}
           >
             <FokusBlock aggregates={fokusAggregates} />
@@ -892,20 +860,12 @@ export default function AnalisisPergerakanClient({
           <AnalisisSection
             title="Analisis program (OPR siap)"
             count={programAggregates.totalRecords}
-            hint="Satu OPR siap = satu program · ikut sektor yang menghantar OPR"
             accentColor={ACCENT_PROGRAM}
           >
-            <p className="text-xs text-slate-500 text-center">
-              Hanya OPR berstatus <strong>SIAP</strong>. Sektor = override OPR (jika ada) atau sektor
-              pegawai.
-            </p>
             <ChartsBlock
               aggregates={programAggregates}
-              chartYear={current.chartYear}
-              range={current.range}
               lineLabel="Program"
               barLabel="Program mengikut sektor"
-              barHint="Tempoh dipilih · sektor penghantar OPR siap"
             />
           </AnalisisSection>
         </div>

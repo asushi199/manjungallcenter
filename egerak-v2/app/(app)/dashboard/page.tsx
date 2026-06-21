@@ -52,8 +52,17 @@ export default async function DashboardPage({
             <DashboardTodayStats />
           </Suspense>
 
-          <Link className="btn-primary w-full justify-center" href="/new">
-            + Isi Pergerakan Baharu
+          <Link
+            className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-gradient-to-r from-brand-700 via-brand-600 to-cyan-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:from-brand-800 hover:via-brand-700 hover:to-cyan-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
+            href="/new"
+          >
+            <span
+              className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-white/20 text-base font-semibold leading-none ring-1 ring-white/25"
+              aria-hidden="true"
+            >
+              +
+            </span>
+            <span>Isi Pergerakan Baharu</span>
           </Link>
         </aside>
 

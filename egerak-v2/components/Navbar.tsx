@@ -40,7 +40,9 @@ export default function Navbar() {
     <header className="bg-brand-700 text-white shadow sticky top-0 z-40">
       <div className="mx-auto max-w-7xl md:hidden flex items-center gap-2 px-3 py-2.5 min-h-[3.25rem]">
         <Link href="/dashboard" className="flex items-center gap-2 min-w-0 flex-1">
-          <PpdLogo width={44} className="shrink-0 object-contain" />
+          <span className="inline-flex h-10 w-12 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-white/20 via-white/10 to-cyan-300/20 ring-1 ring-white/20 shadow-sm">
+            <PpdLogo width={40} className="object-contain" />
+          </span>
           <span className="min-w-0 leading-tight">
             <span className="block font-bold text-[15px] tracking-tight">{APP_SHORT_NAME}</span>
             <span className="block text-[11px] font-semibold text-white/90">PPD Manjung</span>
@@ -57,7 +59,9 @@ export default function Navbar() {
 
       <div className="mx-auto max-w-7xl hidden md:flex items-center justify-between gap-3 px-4 py-2.5">
         <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
-          <PpdLogo width={72} className="shrink-0 object-contain" />
+          <span className="inline-flex h-12 w-16 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-white/20 via-white/10 to-cyan-300/20 ring-1 ring-white/20 shadow-sm">
+            <PpdLogo width={58} className="object-contain" />
+          </span>
           <span className="text-lg font-bold leading-tight whitespace-nowrap">
             {APP_SHORT_NAME} <span className="font-normal opacity-90">PPD Manjung</span>
           </span>

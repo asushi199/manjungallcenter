@@ -67,12 +67,6 @@ export default async function AnalisisPergerakanPage({
     <div className="mx-auto max-w-6xl p-4 space-y-4 overflow-x-hidden">
       <div className="print:hidden">
         <h1 className="text-xl font-semibold">Analisis Pergerakan & OPR</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Pilih tab <strong>OPR</strong> atau <strong>Pergerakan</strong>; penapis tempoh & sektor
-          dikongsi. <strong>Pergerakan</strong> = satu rekod satu kiraan. <strong>OPR</strong> = satu{" "}
-          <strong>OPR siap</strong> satu program (program, fokus…), dikreditkan kepada sektor yang
-          menghantar laporan.
-        </p>
         {isKetua && lockedSektorLabel && (
           <p className="mt-2 text-sm text-brand-800 bg-brand-50 border border-brand-200 rounded-md px-3 py-2">
             Anda melihat analisis sektor: <strong>{lockedSektorLabel}</strong> sahaja.
