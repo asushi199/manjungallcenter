@@ -9,6 +9,7 @@ import SektorFilterDropdown from "@/components/SektorFilterDropdown";
 import type { SektorOption } from "@/components/FilterBar";
 import { cn } from "@/lib/cn";
 import { formatDateTime, TZ } from "@/lib/dates";
+import { LOKASI_PRESETS } from "@/lib/pergerakan-presets";
 import { replaceWithSearchParams } from "@/lib/navigate";
 import { sektorStyle } from "@/lib/sektor-colors";
 import { sektorShortLabel } from "@/lib/analisis-short-labels";
@@ -516,6 +517,13 @@ function TakwimForm({ addSektors, month }: { addSektors: SektorOption[]; month: 
   const [ok, setOk] = useState(false);
   const defaultDate = `${month}-01`;
 
+  const lainLainOption = LOKASI_PRESETS[LOKASI_PRESETS.length - 1];
+  // Lalai "Lain-lain" supaya lokasi kekal pilihan bebas (boleh kosong, "jika ada").
+  const [lokasiSel, setLokasiSel] = useState(lainLainOption);
+  const [lokasiLain, setLokasiLain] = useState("");
+  const isLainLain = lokasiSel === lainLainOption;
+  const lokasi = isLainLain ? lokasiLain.trim() : lokasiSel;
+
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
@@ -524,7 +532,7 @@ function TakwimForm({ addSektors, month }: { addSektors: SektorOption[]; month: 
     const payload = {
       sektorId: Number(form.get("sektorId")),
       urusan: String(form.get("urusan") ?? ""),
-      lokasi: String(form.get("lokasi") ?? ""),
+      lokasi,
       tarikhPergi: `${String(form.get("tarikhPergiDate") ?? defaultDate)}T${String(
         form.get("tarikhPergiTime") ?? "08:00",
       )}`,
@@ -541,6 +549,8 @@ function TakwimForm({ addSektors, month }: { addSektors: SektorOption[]; month: 
       }
       setOk(true);
       e.currentTarget.reset();
+      setLokasiSel(lainLainOption);
+      setLokasiLain("");
       router.refresh();
     });
   }
@@ -564,7 +574,25 @@ function TakwimForm({ addSektors, month }: { addSektors: SektorOption[]; month: 
         </div>
         <div>
           <label className="label">Lokasi</label>
-          <input name="lokasi" className="input" placeholder="Jika ada" />
+          <select
+            className="input"
+            value={lokasiSel}
+            onChange={(e) => setLokasiSel(e.target.value)}
+          >
+            {LOKASI_PRESETS.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+          {isLainLain && (
+            <input
+              className="input mt-2"
+              value={lokasiLain}
+              onChange={(e) => setLokasiLain(e.target.value)}
+              placeholder="Jika ada, taip lokasi"
+            />
+          )}
         </div>
         <div className="grid grid-cols-[1fr_auto] gap-2">
           <div>
