@@ -167,6 +167,7 @@ export default function PergerakanForm({
     if (!d) return;
     const ymd = formatInTimeZone(d, TZ, "yyyy-MM-dd");
 
+    let cancelled = false;
     setCadanganLoading(true);
     const timer = setTimeout(() => {
       Promise.all([
@@ -174,21 +175,27 @@ export default function PergerakanForm({
         roomCode ? listRoomBookingCadanganForDay(roomCode, ymd) : Promise.resolve([]),
       ])
         .then(([peers, room]) => {
+          if (cancelled) return;
           setPeerCadangan(peers);
           setRoomCadangan(room);
         })
         .catch(() => {
+          if (cancelled) return;
           setPeerCadangan([]);
           setRoomCadangan([]);
         })
         .finally(() => {
+          if (cancelled) return;
           setCadanganLoading(false);
           setShowAllPeers(false);
           setUrusanUnlocked(false);
         });
     }, 350);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [jenis, tarikhPergi, roomCode]);
 
   // Gate state.
@@ -484,7 +491,7 @@ export default function PergerakanForm({
           <button
             type="button"
             className="btn-secondary text-xs"
-            disabled={pending || !urusan.trim()}
+            disabled={pending || !urusan.trim() || attended === "NONE"}
             onClick={onBookNow}
           >
             Tempah sekarang
