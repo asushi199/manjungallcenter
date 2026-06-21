@@ -12,6 +12,22 @@ export type TakwimGroupItem = {
   takwimKategori?: TakwimKategori;
   jenis?: "Pergerakan" | "Bercuti";
   tarikhPergi: string | Date;
+  tarikhKembali?: string | Date;
+};
+
+export type TakwimDateGroup<T extends TakwimGroupItem> = {
+  dateKey: string;
+  items: T[];
+};
+
+export type TakwimWeekGroup<T extends TakwimGroupItem> = {
+  weekKey: string;
+  weekNumber: number;
+  label: string;
+  startDateKey: string;
+  endDateKey: string;
+  itemCount: number;
+  days: TakwimDateGroup<T>[];
 };
 
 export function normalizeTakwimMonth(month: string | undefined, fallbackMonth: string): string {
@@ -39,6 +55,10 @@ export function serializeTakwimSektorParam(ids: number[]): string {
     (a, b) => a - b,
   );
   return normalized.length ? normalized.join(",") : "all";
+}
+
+export function normalizeTakwimSearchTerm(search: string | undefined): string {
+  return (search ?? "").trim().replace(/\s+/g, " ");
 }
 
 export function canAddTakwim(peranan: UserPeranan | string | null | undefined): boolean {
@@ -90,16 +110,18 @@ export function compactTakwimTimeLabel(startValue: string | Date, endValue: stri
   return startTime;
 }
 
+function compareTakwimItems<T extends TakwimGroupItem>(a: T, b: T): number {
+  const dateA = new Date(a.tarikhPergi).getTime();
+  const dateB = new Date(b.tarikhPergi).getTime();
+  if (dateA !== dateB) return dateA - dateB;
+  if (a.source !== b.source) return a.source === "bulk" ? -1 : 1;
+  return a.id - b.id;
+}
+
 export function groupTakwimItemsByDate<T extends TakwimGroupItem>(
   items: T[],
-): Array<{ dateKey: string; items: T[] }> {
-  const sorted = [...items].sort((a, b) => {
-    const dateA = new Date(a.tarikhPergi).getTime();
-    const dateB = new Date(b.tarikhPergi).getTime();
-    if (dateA !== dateB) return dateA - dateB;
-    if (a.source !== b.source) return a.source === "bulk" ? -1 : 1;
-    return a.id - b.id;
-  });
+): TakwimDateGroup<T>[] {
+  const sorted = [...items].sort(compareTakwimItems);
 
   const groups = new Map<string, T[]>();
   for (const item of sorted) {
@@ -111,12 +133,126 @@ export function groupTakwimItemsByDate<T extends TakwimGroupItem>(
 
   return [...groups.entries()].map(([dateKey, groupItems]) => ({
     dateKey,
-    items: groupItems.sort((a, b) => {
-      if (a.source !== b.source) return a.source === "bulk" ? -1 : 1;
-      const dateA = new Date(a.tarikhPergi).getTime();
-      const dateB = new Date(b.tarikhPergi).getTime();
-      if (dateA !== dateB) return dateA - dateB;
-      return a.id - b.id;
-    }),
+    items: groupItems.sort(compareTakwimItems),
   }));
+}
+
+function parseMonthParts(month: string): { year: number; monthIndex: number; lastDay: number } | null {
+  if (!/^\d{4}-\d{2}$/.test(month)) return null;
+  const [year, monthNumber] = month.split("-").map(Number);
+  if (!Number.isInteger(year) || !Number.isInteger(monthNumber) || monthNumber < 1 || monthNumber > 12) {
+    return null;
+  }
+
+  return {
+    year,
+    monthIndex: monthNumber - 1,
+    lastDay: new Date(Date.UTC(year, monthNumber, 0)).getUTCDate(),
+  };
+}
+
+function dateKeyForDay(month: string, day: number): string {
+  return `${month}-${String(day).padStart(2, "0")}`;
+}
+
+function mondayBasedWeekday(year: number, monthIndex: number, day: number): number {
+  const sundayBased = new Date(Date.UTC(year, monthIndex, day)).getUTCDay();
+  return sundayBased === 0 ? 7 : sundayBased;
+}
+
+function weekRangeForDay(month: string, day: number): {
+  weekNumber: number;
+  startDateKey: string;
+  endDateKey: string;
+} | null {
+  const parts = parseMonthParts(month);
+  if (!parts || day < 1 || day > parts.lastDay) return null;
+
+  let startDay = 1;
+  let endDay = Math.min(parts.lastDay, 8 - mondayBasedWeekday(parts.year, parts.monthIndex, 1));
+  let weekNumber = 1;
+
+  while (day > endDay) {
+    startDay = endDay + 1;
+    endDay = Math.min(parts.lastDay, startDay + 6);
+    weekNumber += 1;
+  }
+
+  return {
+    weekNumber,
+    startDateKey: dateKeyForDay(month, startDay),
+    endDateKey: dateKeyForDay(month, endDay),
+  };
+}
+
+function displayDateKeyForMonth<T extends TakwimGroupItem>(
+  month: string,
+  lastDay: number,
+  item: T,
+): string | null {
+  const monthStart = dateKeyForDay(month, 1);
+  const monthEnd = dateKeyForDay(month, lastDay);
+  const startKey = ymd(item.tarikhPergi);
+  const endKey = ymd(item.tarikhKembali ?? item.tarikhPergi);
+
+  if (endKey < monthStart || startKey > monthEnd) return null;
+  return startKey < monthStart ? monthStart : startKey;
+}
+
+function groupTakwimItemsByDisplayDateInMonth<T extends TakwimGroupItem>(
+  month: string,
+  lastDay: number,
+  items: T[],
+): TakwimDateGroup<T>[] {
+  const groups = new Map<string, T[]>();
+  for (const item of [...items].sort(compareTakwimItems)) {
+    const key = displayDateKeyForMonth(month, lastDay, item);
+    if (!key) continue;
+    const group = groups.get(key) ?? [];
+    group.push(item);
+    groups.set(key, group);
+  }
+
+  return [...groups.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([dateKey, groupItems]) => ({
+      dateKey,
+      items: groupItems.sort(compareTakwimItems),
+    }));
+}
+
+export function groupTakwimItemsByWeek<T extends TakwimGroupItem>(
+  month: string,
+  items: T[],
+): TakwimWeekGroup<T>[] {
+  const parts = parseMonthParts(month);
+  if (!parts) return [];
+
+  const dateGroups = groupTakwimItemsByDisplayDateInMonth(month, parts.lastDay, items);
+  const weekGroups = new Map<number, TakwimWeekGroup<T>>();
+
+  for (const dateGroup of dateGroups) {
+    const day = Number(dateGroup.dateKey.slice(8, 10));
+    const range = weekRangeForDay(month, day);
+    if (!range) continue;
+
+    const existing = weekGroups.get(range.weekNumber);
+    if (existing) {
+      existing.days.push(dateGroup);
+      existing.itemCount += dateGroup.items.length;
+      continue;
+    }
+
+    weekGroups.set(range.weekNumber, {
+      weekKey: `${month}-W${range.weekNumber}`,
+      weekNumber: range.weekNumber,
+      label: `M${range.weekNumber}`,
+      startDateKey: range.startDateKey,
+      endDateKey: range.endDateKey,
+      itemCount: dateGroup.items.length,
+      days: [dateGroup],
+    });
+  }
+
+  return [...weekGroups.values()].sort((a, b) => a.weekNumber - b.weekNumber);
 }

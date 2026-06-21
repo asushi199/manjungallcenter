@@ -1,9 +1,18 @@
 import { formatInTimeZone } from "date-fns-tz";
-import { listAllowedTakwimCreateSektorIds, listTakwimForMonth } from "@/lib/actions/takwim";
+import {
+  listAllowedTakwimCreateSektorIds,
+  listTakwimForMonth,
+  listTakwimForYearSearch,
+} from "@/lib/actions/takwim";
 import { listAllSektors } from "@/lib/actions/users";
 import { requireUser } from "@/lib/rbac";
 import { TZ } from "@/lib/dates";
-import { canAddTakwim, normalizeTakwimMonth, parseTakwimSektorParam } from "@/lib/takwim-utils";
+import {
+  canAddTakwim,
+  normalizeTakwimMonth,
+  normalizeTakwimSearchTerm,
+  parseTakwimSektorParam,
+} from "@/lib/takwim-utils";
 import TakwimClient from "./TakwimClient";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +21,7 @@ type SearchParams = {
   month?: string;
   sektor?: string;
   lain?: string;
+  q?: string;
 };
 
 export default async function TakwimPage({
@@ -28,12 +38,20 @@ export default async function TakwimPage({
     user.sektorId != null && Number.isFinite(Number(user.sektorId)) ? Number(user.sektorId) : null;
   const sektorSelection = parseTakwimSektorParam(sp.sektor, ownSektorId);
   const showOther = sp.lain === "1";
+  const searchTerm = normalizeTakwimSearchTerm(sp.q);
   const canCreateTakwim = canAddTakwim(user.peranan);
   const allowedAddSektorIds = canCreateTakwim ? await listAllowedTakwimCreateSektorIds() : [];
-  const items = await listTakwimForMonth({
-    month,
-    sektorIds: sektorSelection,
-  });
+  const items = searchTerm
+    ? await listTakwimForYearSearch({
+        year: month.slice(0, 4),
+        sektorIds: sektorSelection,
+        search: searchTerm,
+        includeOther: showOther,
+      })
+    : await listTakwimForMonth({
+        month,
+        sektorIds: sektorSelection,
+      });
 
   return (
     <TakwimClient
@@ -43,6 +61,7 @@ export default async function TakwimPage({
       isAllSectors={sektorSelection === "all"}
       hasOwnSektor={ownSektorId != null}
       showOther={showOther}
+      searchTerm={searchTerm}
       canCreateTakwim={canCreateTakwim}
       addSektors={sektors
         .filter((s) => allowedAddSektorIds == null || allowedAddSektorIds.includes(s.id))

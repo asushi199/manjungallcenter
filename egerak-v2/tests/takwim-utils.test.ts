@@ -4,6 +4,8 @@ import {
   canAddTakwim,
   compactTakwimTimeLabel,
   groupTakwimItemsByDate,
+  groupTakwimItemsByWeek,
+  normalizeTakwimSearchTerm,
   normalizeTakwimMonth,
   parseTakwimSektorParam,
   serializeTakwimSektorParam,
@@ -28,6 +30,11 @@ test("serializeTakwimSektorParam uses all for an empty selection", () => {
   assert.equal(serializeTakwimSektorParam([3, 1, 3]), "1,3");
 });
 
+test("normalizeTakwimSearchTerm trims and collapses whitespace", () => {
+  assert.equal(normalizeTakwimSearchTerm("  mesyuarat   pengurusan  "), "mesyuarat pengurusan");
+  assert.equal(normalizeTakwimSearchTerm("   "), "");
+});
+
 test("groupTakwimItemsByDate groups by Kuala Lumpur calendar date and sorts agenda items", () => {
   const groups = groupTakwimItemsByDate([
     { id: 2, source: "web", tarikhPergi: "2026-05-11T01:00:00.000Z" },
@@ -40,6 +47,68 @@ test("groupTakwimItemsByDate groups by Kuala Lumpur calendar date and sorts agen
     groups.map((g) => g.items.map((it) => it.id)),
     [[3], [1, 2]],
   );
+});
+
+test("groupTakwimItemsByWeek groups by calendar weeks within the selected month", () => {
+  const groups = groupTakwimItemsByWeek("2026-05", [
+    { id: 3, source: "web", tarikhPergi: "2026-05-04T01:00:00.000Z" },
+    { id: 2, source: "bulk", tarikhPergi: "2026-05-02T01:00:00.000Z" },
+    { id: 1, source: "bulk", tarikhPergi: "2026-05-01T01:00:00.000Z" },
+  ]);
+
+  assert.deepEqual(
+    groups.map((g) => ({
+      weekKey: g.weekKey,
+      label: g.label,
+      startDateKey: g.startDateKey,
+      endDateKey: g.endDateKey,
+      itemCount: g.itemCount,
+      dateKeys: g.days.map((d) => d.dateKey),
+    })),
+    [
+      {
+        weekKey: "2026-05-W1",
+        label: "M1",
+        startDateKey: "2026-05-01",
+        endDateKey: "2026-05-03",
+        itemCount: 2,
+        dateKeys: ["2026-05-01", "2026-05-02"],
+      },
+      {
+        weekKey: "2026-05-W2",
+        label: "M2",
+        startDateKey: "2026-05-04",
+        endDateKey: "2026-05-10",
+        itemCount: 1,
+        dateKeys: ["2026-05-04"],
+      },
+    ],
+  );
+});
+
+test("groupTakwimItemsByWeek caps the last week at month end", () => {
+  const groups = groupTakwimItemsByWeek("2026-08", [
+    { id: 1, source: "bulk", tarikhPergi: "2026-08-31T01:00:00.000Z" },
+  ]);
+
+  assert.equal(groups[0]?.label, "M6");
+  assert.equal(groups[0]?.startDateKey, "2026-08-31");
+  assert.equal(groups[0]?.endDateKey, "2026-08-31");
+});
+
+test("groupTakwimItemsByWeek keeps overlapping cross-month items in the selected month", () => {
+  const groups = groupTakwimItemsByWeek("2026-05", [
+    {
+      id: 1,
+      source: "bulk",
+      tarikhPergi: "2026-04-30T01:00:00.000Z",
+      tarikhKembali: "2026-05-02T01:00:00.000Z",
+    },
+  ]);
+
+  assert.equal(groups[0]?.label, "M1");
+  assert.deepEqual(groups[0]?.days.map((day) => day.dateKey), ["2026-05-01"]);
+  assert.deepEqual(groups[0]?.days[0]?.items.map((item) => item.id), [1]);
 });
 
 test("takwimDisplayKind separates rancangan, tambahan, lain-lain, and cuti", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState, useTransition } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { addMonths, format, parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
@@ -13,10 +13,13 @@ import { replaceWithSearchParams } from "@/lib/navigate";
 import { sektorStyle } from "@/lib/sektor-colors";
 import {
   compactTakwimTimeLabel,
-  groupTakwimItemsByDate,
+  groupTakwimItemsByWeek,
   isTakwimUtama,
+  normalizeTakwimSearchTerm,
   serializeTakwimSektorParam,
   takwimDisplayKind,
+  type TakwimDateGroup,
+  type TakwimWeekGroup,
 } from "@/lib/takwim-utils";
 import { createTakwimTambahan } from "@/lib/actions/takwim";
 
@@ -40,6 +43,7 @@ type Props = {
   isAllSectors: boolean;
   hasOwnSektor: boolean;
   showOther: boolean;
+  searchTerm: string;
   canCreateTakwim: boolean;
   addSektors: SektorOption[];
   items: SerializedTakwimItem[];
@@ -61,6 +65,20 @@ function dateHeaderLabel(dateKey: string) {
   };
 }
 
+function rangeLabel(startDateKey: string, endDateKey: string) {
+  const start = parseISO(`${startDateKey}T00:00:00`);
+  const end = parseISO(`${endDateKey}T00:00:00`);
+  if (startDateKey === endDateKey) return format(start, "d MMM", { locale: ms });
+  if (startDateKey.slice(0, 7) === endDateKey.slice(0, 7)) {
+    return `${format(start, "d", { locale: ms })} - ${format(end, "d MMM", { locale: ms })}`;
+  }
+  return `${format(start, "d MMM", { locale: ms })} - ${format(end, "d MMM", { locale: ms })}`;
+}
+
+function monthKeyForItem(item: SerializedTakwimItem) {
+  return formatInTimeZone(new Date(item.tarikhPergi), TZ, "yyyy-MM");
+}
+
 function fullTimeLabel(item: SerializedTakwimItem) {
   const start = new Date(item.tarikhPergi);
   const end = new Date(item.tarikhKembali);
@@ -79,6 +97,7 @@ export default function TakwimClient({
   isAllSectors,
   hasOwnSektor,
   showOther,
+  searchTerm,
   canCreateTakwim,
   addSektors,
   items,
@@ -87,36 +106,87 @@ export default function TakwimClient({
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [formOpen, setFormOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState(searchTerm);
+  const searchYear = month.slice(0, 4);
+  const isSearchMode = searchTerm.length > 0;
 
   const visibleItems = useMemo(
     () => (showOther ? items : items.filter((it) => isTakwimUtama(it))),
     [items, showOther],
   );
-  const groups = useMemo(() => groupTakwimItemsByDate(visibleItems), [visibleItems]);
+  const weekGroups = useMemo(
+    () => groupTakwimItemsByWeek(month, visibleItems),
+    [month, visibleItems],
+  );
+  const monthGroups = useMemo(() => {
+    const byMonth = new Map<string, SerializedTakwimItem[]>();
+    for (const item of visibleItems) {
+      const ym = monthKeyForItem(item);
+      const group = byMonth.get(ym) ?? [];
+      group.push(item);
+      byMonth.set(ym, group);
+    }
+
+    return [...byMonth.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([ym, monthItems]) => ({
+        month: ym,
+        label: monthLabel(ym),
+        itemCount: monthItems.length,
+        weeks: groupTakwimItemsByWeek(ym, monthItems),
+      }));
+  }, [visibleItems]);
   const takwimCount = items.filter((it) => isTakwimUtama(it)).length;
   const otherCount = items.filter((it) => takwimDisplayKind(it) === "lain").length;
 
-  function updateUrl(patch: {
+  const updateUrl = useCallback((patch: {
     month?: string;
     sektorIds?: number[];
     showOther?: boolean;
-  }) {
+    search?: string;
+  }) => {
     const next = new URLSearchParams(searchParams?.toString());
     next.set("month", patch.month ?? month);
     if (patch.sektorIds) next.set("sektor", serializeTakwimSektorParam(patch.sektorIds));
     if (patch.showOther === true) next.set("lain", "1");
     else if (patch.showOther === false) next.delete("lain");
+    if (patch.search != null) {
+      const normalized = normalizeTakwimSearchTerm(patch.search);
+      if (normalized) next.set("q", normalized);
+      else next.delete("q");
+    }
 
     startTransition(() => {
       replaceWithSearchParams(router, "/takwim", next);
     });
-  }
+  }, [month, router, searchParams, startTransition]);
+
+  useEffect(() => {
+    setSearchInput(searchTerm);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    const nextSearch = normalizeTakwimSearchTerm(searchInput);
+    if (nextSearch === searchTerm) return;
+
+    const handle = window.setTimeout(() => {
+      updateUrl({ search: nextSearch });
+    }, 400);
+
+    return () => window.clearTimeout(handle);
+  }, [searchInput, searchTerm, updateUrl]);
 
   function navigateMonth(offset: number) {
     updateUrl({ month: format(addMonths(monthDate(month), offset), "yyyy-MM") });
   }
 
   const hasNoDefaultSektor = !hasOwnSektor && !isAllSectors && selectedSektorIds.length === 0;
+  const todayKey = formatInTimeZone(new Date(), TZ, "yyyy-MM-dd");
+  const currentWeekKey =
+    todayKey.startsWith(`${month}-`)
+      ? weekGroups.find((group) => group.startDateKey <= todayKey && todayKey <= group.endDateKey)
+          ?.weekKey
+      : null;
 
   return (
     <div className="mx-auto max-w-4xl p-3 sm:p-4 space-y-3">
@@ -191,12 +261,41 @@ export default function TakwimClient({
           </label>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="min-w-[14rem] flex-1">
+            <label className="sr-only" htmlFor="takwim-search">
+              Cari aktiviti
+            </label>
+            <input
+              id="takwim-search"
+              type="search"
+              className="input h-10"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Cari aktiviti tahun ini..."
+            />
+          </div>
+          {searchTerm && (
+            <button
+              type="button"
+              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              onClick={() => {
+                setSearchInput("");
+                updateUrl({ search: "" });
+              }}
+              disabled={isPending}
+            >
+              Kosongkan
+            </button>
+          )}
+        </div>
+
         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
           <span className="font-semibold text-slate-700">
-            {takwimCount} takwim
+            {isSearchMode ? `${visibleItems.length} padanan` : `${takwimCount} takwim`}
           </span>
           <span aria-hidden>·</span>
-          <span>{otherCount} lain-lain</span>
+          <span>{isSearchMode ? `Padanan tahun ${searchYear}` : `${otherCount} lain-lain`}</span>
           {isAllSectors && <span className="badge bg-brand-50 text-brand-700">Semua sektor</span>}
           {isPending && (
             <span className="ml-auto font-medium text-brand-700" role="status">
@@ -211,37 +310,97 @@ export default function TakwimClient({
           title="Sektor belum ditetapkan"
           body="Akaun anda belum dikaitkan dengan sektor. Pilih sektor atau semua sektor untuk melihat takwim."
         />
-      ) : groups.length === 0 ? (
+      ) : isSearchMode && monthGroups.length === 0 ? (
+        <EmptyState
+          title="Tiada aktiviti sepadan"
+          body={`Tiada padanan takwim untuk carian "${searchTerm}" dalam tahun ${searchYear}.`}
+        />
+      ) : !isSearchMode && weekGroups.length === 0 ? (
         <EmptyState
           title="Tiada aktiviti"
           body="Tiada rekod takwim untuk bulan dan sektor yang dipilih."
         />
+      ) : isSearchMode ? (
+        <div className="space-y-4">
+          {monthGroups.map((monthGroup) => (
+            <section key={monthGroup.month} className="space-y-2">
+              <div className="flex flex-wrap items-baseline gap-2 border-b border-slate-200 pb-1">
+                <h2 className="text-base font-semibold text-slate-900">{monthGroup.label}</h2>
+                <span className="text-xs text-slate-500">{monthGroup.itemCount} padanan</span>
+              </div>
+              <div className="space-y-2">
+                {monthGroup.weeks.map((week) => (
+                  <WeekDetails key={week.weekKey} week={week} defaultOpen />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
       ) : (
-        <div className="space-y-3">
-          {groups.map((group) => {
-            const header = dateHeaderLabel(group.dateKey);
-            return (
-              <section key={group.dateKey} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-                <div className="sticky top-2 z-10 flex items-baseline gap-2 border-b border-slate-100 bg-white/95 px-3 py-2 backdrop-blur">
-                  <span className="text-xl font-bold leading-none text-brand-700">
-                    {header.day}
-                  </span>
-                  <span className="text-sm font-semibold text-slate-700">{header.rest}</span>
-                  <span className="ml-auto text-xs text-slate-400">
-                    {group.items.length} rekod
-                  </span>
-                </div>
-                <div className="divide-y divide-slate-100">
-                  {group.items.map((item) => (
-                    <AgendaRow key={item.id} item={item} />
-                  ))}
-                </div>
-              </section>
-            );
-          })}
+        <div className="space-y-2">
+          {weekGroups.map((week) => (
+            <WeekDetails
+              key={week.weekKey}
+              week={week}
+              defaultOpen={week.weekKey === (currentWeekKey ?? weekGroups[0]?.weekKey)}
+            />
+          ))}
         </div>
       )}
     </div>
+  );
+}
+
+function WeekDetails({
+  week,
+  defaultOpen,
+}: {
+  week: TakwimWeekGroup<SerializedTakwimItem>;
+  defaultOpen: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  useEffect(() => {
+    setOpen(defaultOpen);
+  }, [defaultOpen, week.weekKey]);
+
+  return (
+    <details
+      className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+      open={open}
+      onToggle={(e) => setOpen(e.currentTarget.open)}
+    >
+      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2 text-sm hover:bg-slate-100">
+        <span className="font-bold text-brand-700">{week.label}</span>
+        <span className="font-semibold text-slate-800">
+          {rangeLabel(week.startDateKey, week.endDateKey)}
+        </span>
+        <span className="ml-auto text-xs text-slate-500">{week.itemCount} rekod</span>
+      </summary>
+      <div className="divide-y divide-slate-100">
+        {week.days.map((day) => (
+          <DateGroupSection key={day.dateKey} group={day} />
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function DateGroupSection({ group }: { group: TakwimDateGroup<SerializedTakwimItem> }) {
+  const header = dateHeaderLabel(group.dateKey);
+  return (
+    <section>
+      <div className="flex items-baseline gap-2 bg-white px-3 py-2">
+        <span className="text-xl font-bold leading-none text-brand-700">{header.day}</span>
+        <span className="text-sm font-semibold text-slate-700">{header.rest}</span>
+        <span className="ml-auto text-xs text-slate-400">{group.items.length} rekod</span>
+      </div>
+      <div className="divide-y divide-slate-100 border-t border-slate-100">
+        {group.items.map((item) => (
+          <AgendaRow key={`${item.source}-${item.takwimKategori ?? "none"}-${item.id}`} item={item} />
+        ))}
+      </div>
+    </section>
   );
 }
 
