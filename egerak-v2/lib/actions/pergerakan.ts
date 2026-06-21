@@ -12,6 +12,7 @@ import {
   auditLog,
   opr,
   roomBookings,
+  rooms,
   takwimAktiviti,
 } from "@/lib/schema";
 import type { OprStatus } from "@/lib/opr-status";
@@ -20,7 +21,7 @@ import { isSektorIdInScope, resolveUserSektorScope } from "@/lib/sektor-admin-sc
 import { canSectorDeletePergerakan, isFullAdmin } from "@/lib/roles";
 import { parseLocalInput, toLocalInput, TZ, ymd, formatDateTime } from "@/lib/dates";
 import { formatInTimeZone } from "date-fns-tz";
-import { buildDayUrusanCadangan } from "@/lib/analisis/day-activity-templates";
+import { buildDayUrusanCadangan, rankCadanganBySektor } from "@/lib/analisis/day-activity-templates";
 import { addDays, parseISO } from "date-fns";
 import {
   resolveBookableRoomCode,
@@ -745,7 +746,7 @@ export type UrusanTemplate = {
  * aktiviti rancangan walaupun tiada owner. Tidak pulang nama pegawai.
  */
 export async function listUrusanTemplatesForDay(ymdDate: string): Promise<UrusanTemplate[]> {
-  await requireUser();
+  const user = await requireUser();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ymdDate)) return [];
 
   const start = new Date(`${ymdDate}T00:00:00+08:00`);
@@ -757,6 +758,7 @@ export async function listUrusanTemplatesForDay(ymdDate: string): Promise<Urusan
         lokasi: pergerakan.lokasi,
         tarikhPergi: pergerakan.tarikhPergi,
         tarikhKembali: pergerakan.tarikhKembali,
+        sektorId: pergerakan.sektorId,
       })
       .from(pergerakan)
       .where(
@@ -780,6 +782,7 @@ export async function listUrusanTemplatesForDay(ymdDate: string): Promise<Urusan
         lokasi: takwimAktiviti.lokasi,
         tarikhPergi: takwimAktiviti.tarikhPergi,
         tarikhKembali: takwimAktiviti.tarikhKembali,
+        sektorId: takwimAktiviti.sektorId,
       })
       .from(takwimAktiviti)
       .where(
@@ -800,10 +803,16 @@ export async function listUrusanTemplatesForDay(ymdDate: string): Promise<Urusan
       lokasi: String(r.lokasi || ""),
       tarikhPergi: new Date(r.tarikhPergi),
       tarikhKembali: new Date(r.tarikhKembali),
+      sektorId: r.sektorId ?? null,
     })),
   );
 
-  return templates.map((g) => ({
+  const ownSektorId =
+    user.sektorId != null && Number.isFinite(Number(user.sektorId))
+      ? Number(user.sektorId)
+      : null;
+
+  return rankCadanganBySektor(templates, ownSektorId).map((g) => ({
     urusan: g.urusan,
     lokasi: g.lokasi,
     tarikhPergi: toLocalInput(g.tarikhPergi),
@@ -959,4 +968,38 @@ export async function countToday(): Promise<{ pergerakan: number; bercuti: numbe
     else c += Number(r.count);
   }
   return { pergerakan: p, bercuti: c, total: p + c };
+}
+
+export type RoomCadangan = { title: string; kind: "AM" | "PM" | "FULL" };
+
+/** Cadangan urusan untuk Budiman/Bestari = tempahan sebenar bilik pada hari itu. */
+export async function listRoomBookingCadanganForDay(
+  roomCode: "BILIK_BUDIMAN" | "DEWAN_BESTARI",
+  ymdDate: string,
+): Promise<RoomCadangan[]> {
+  await requireUser();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymdDate)) return [];
+
+  const room = await db.query.rooms.findFirst({ where: eq(rooms.code, roomCode) });
+  if (!room) return [];
+
+  const rows = await db
+    .select({ slot: roomBookings.slot, title: roomBookings.title })
+    .from(roomBookings)
+    .where(
+      and(
+        eq(roomBookings.roomId, room.id),
+        eq(roomBookings.tarikh, ymdDate),
+        eq(roomBookings.status, "BOOKED"),
+      ),
+    );
+
+  const am = rows.find((r) => r.slot === "AM");
+  const pm = rows.find((r) => r.slot === "PM");
+  // Sepanjang hari (tajuk AM == PM) → satu entri.
+  if (am && pm && am.title === pm.title) return [{ title: am.title, kind: "FULL" }];
+  const out: RoomCadangan[] = [];
+  if (am) out.push({ title: am.title, kind: "AM" });
+  if (pm) out.push({ title: pm.title, kind: "PM" });
+  return out;
 }
