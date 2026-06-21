@@ -133,7 +133,11 @@ export type AnalisisAggregates = {
   totalPrograms: number;
   totalRecords: number;
   byMonth: { month: string; label: string; count: number }[];
+  /** Trend bulanan (Jan-Dis): kiraan setiap sektor bagi setiap bulan. */
+  byMonthSektor: { month: string; label: string; counts: Record<string, number> }[];
   bySektor: { sektorId: number | null; code: string; name: string; count: number }[];
+  /** Nama sektor yang muncul dalam trend, disusun terbanyak dahulu. */
+  sektorKeys: string[];
 };
 
 /** Agregat OPR siap mengikut Fokus (klasifikasi pelaksanaan program). */
@@ -224,6 +228,31 @@ export function aggregatePrograms(
   }
 
   const bySektor = [...sektorMap.values()].sort((a, b) => b.count - a.count);
+  const sektorKeys = bySektor.map((s) => s.name);
 
-  return { totalPrograms, totalRecords, byMonth, bySektor };
+  const monthSektorCounts = new Map<number, Record<string, number>>();
+  for (const p of chartQualifying) {
+    const m = Number(p.month.slice(5, 7));
+    if (m < 1 || m > 12) continue;
+
+    const counts = monthSektorCounts.get(m) ?? {};
+    for (const s of p.qualifyingSectors) {
+      const key = s.name;
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    monthSektorCounts.set(m, counts);
+  }
+
+  const byMonthSektor: AnalisisAggregates["byMonthSektor"] = [];
+  for (let m = 1; m <= 12; m++) {
+    const counts = { ...(monthSektorCounts.get(m) ?? {}) };
+    for (const key of sektorKeys) counts[key] ??= 0;
+    byMonthSektor.push({
+      month: `${opts.year}-${String(m).padStart(2, "0")}`,
+      label: MONTH_LABELS_MS[m - 1],
+      counts,
+    });
+  }
+
+  return { totalPrograms, totalRecords, byMonth, byMonthSektor, bySektor, sektorKeys };
 }

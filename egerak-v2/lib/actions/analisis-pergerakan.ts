@@ -187,7 +187,31 @@ function aggregateAnalisis(
   }
 
   const bySektor = [...sektorMap.values()].sort((a, b) => b.count - a.count);
-  return { totalPrograms, totalRecords, byMonth, bySektor };
+  const sektorKeys = bySektor.map((s) => s.name);
+
+  const monthSektorCounts = new Map<number, Record<string, number>>();
+  for (const r of chartSource) {
+    const month = Number(formatInTimeZone(r.tarikhPergi, TZ, "MM"));
+    if (month < 1 || month > 12) continue;
+
+    const counts = monthSektorCounts.get(month) ?? {};
+    const key = r.sektorName ?? "Tidak ditetapkan";
+    counts[key] = (counts[key] ?? 0) + 1;
+    monthSektorCounts.set(month, counts);
+  }
+
+  const byMonthSektor: AnalisisAggregates["byMonthSektor"] = [];
+  for (let m = 1; m <= 12; m++) {
+    const counts = { ...(monthSektorCounts.get(m) ?? {}) };
+    for (const key of sektorKeys) counts[key] ??= 0;
+    byMonthSektor.push({
+      month: `${opts.year}-${String(m).padStart(2, "0")}`,
+      label: MONTH_LABELS_MS[m - 1],
+      counts,
+    });
+  }
+
+  return { totalPrograms, totalRecords, byMonth, byMonthSektor, bySektor, sektorKeys };
 }
 
 function emptyAggregates(opts: {

@@ -119,6 +119,14 @@ function toLineData(aggregates: AnalisisAggregates) {
   }));
 }
 
+function toSektorTrendData(aggregates: AnalisisAggregates) {
+  return aggregates.byMonthSektor.map((m) => ({
+    label: m.label,
+    fullMonth: m.month,
+    ...m.counts,
+  }));
+}
+
 const MONTH_NAMES = [
   "Jan",
   "Feb",
@@ -328,50 +336,143 @@ function ChartsBlock({
   }));
 
   return (
-    <div className="grid lg:grid-cols-2 gap-4 min-w-0">
-      <div className="card p-4 min-w-0">
-        <h3 className="text-sm font-semibold text-slate-800 mb-1">{lineLabel}</h3>
-        <p className="text-xs text-slate-500 mb-4">
-          {range === "all" ? "Semua tahun, mengikut bulan kalendar" : `Tahun ${chartYear}`}
-        </p>
-        <div className="h-[260px] w-full min-w-0 overflow-x-hidden">
+    <div className="space-y-4 min-w-0">
+      <div className="grid lg:grid-cols-2 gap-4 min-w-0">
+        <div className="card p-4 min-w-0">
+          <h3 className="text-sm font-semibold text-slate-800 mb-1">{lineLabel}</h3>
+          <p className="text-xs text-slate-500 mb-4">
+            {range === "all" ? "Semua tahun, mengikut bulan kalendar" : `Tahun ${chartYear}`}
+          </p>
+          <div className="h-[260px] w-full min-w-0 overflow-x-hidden">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={lineData} margin={{ top: 12, right: 16, left: 0, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 11 }}
+                  interval={0}
+                  tickFormatter={compactMonths ? monthNumberLabel : undefined}
+                />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={32} />
+                <Tooltip
+                  formatter={(value: number) => [value, lineLabel]}
+                  labelFormatter={(_, payload) => {
+                    const p = payload?.[0]?.payload as { fullMonth?: string } | undefined;
+                    return p?.fullMonth ?? "";
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="count"
+                  stroke={BRAND}
+                  strokeWidth={2}
+                  dot={{ fill: "#fff", stroke: BRAND, strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6 }}
+                >
+                  <LabelList
+                    dataKey="count"
+                    position="top"
+                    style={{ fontSize: 10, fill: "#64748b" }}
+                  />
+                </Line>
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="card p-4 min-w-0">
+          <h3 className="text-sm font-semibold text-slate-800 mb-1">{barLabel}</h3>
+          <p className="text-xs text-slate-500 mb-4">{barHint}</p>
+          <RankedBars items={sektorItems} />
+        </div>
+      </div>
+      <SektorTrendBlock
+        aggregates={aggregates}
+        title={`Trend ${lineLabel.toLowerCase()} mengikut bulan dan sektor`}
+        hint="Setahun penuh (Jan-Dis) - satu garisan setiap sektor"
+      />
+    </div>
+  );
+}
+
+function SektorTrendBlock({
+  aggregates,
+  title,
+  hint,
+}: {
+  aggregates: AnalisisAggregates;
+  title: string;
+  hint: string;
+}) {
+  const compactMonths = useIsNarrow();
+  const trendData = toSektorTrendData(aggregates);
+  const sektorColorByName = new Map(
+    aggregates.bySektor.map((s) => [s.name, sektorStyle(s.code).chip]),
+  );
+
+  return (
+    <div className="card p-4 min-w-0">
+      <h3 className="text-sm font-semibold text-slate-800 mb-1">{title}</h3>
+      <p className="text-xs text-slate-500 mb-4">{hint}</p>
+      {aggregates.sektorKeys.length === 0 ? (
+        <p className="text-sm text-slate-500 text-center py-6">Tiada data dalam tempoh ini.</p>
+      ) : (
+        <div className="h-[280px] w-full min-w-0 overflow-x-hidden">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={lineData} margin={{ top: 12, right: 16, left: 0, bottom: 4 }}>
+            <LineChart data={trendData} margin={{ top: 18, right: 16, left: 0, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis
-                dataKey="name"
+                dataKey="label"
                 tick={{ fontSize: 11 }}
                 interval={0}
                 tickFormatter={compactMonths ? monthNumberLabel : undefined}
               />
               <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={32} />
               <Tooltip
-                formatter={(value: number) => [value, lineLabel]}
                 labelFormatter={(_, payload) => {
                   const p = payload?.[0]?.payload as { fullMonth?: string } | undefined;
                   return p?.fullMonth ?? "";
                 }}
               />
-              <Line
-                type="monotone"
-                dataKey="count"
-                stroke={BRAND}
-                strokeWidth={2}
-                dot={{ fill: "#fff", stroke: BRAND, strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6 }}
-              >
-                <LabelList dataKey="count" position="top" style={{ fontSize: 10, fill: "#64748b" }} />
-              </Line>
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              {aggregates.sektorKeys.map((k) => {
+                const color = sektorColorByName.get(k) ?? "#64748b";
+                return (
+                  <Line
+                    key={k}
+                    type="monotone"
+                    dataKey={k}
+                    stroke={color}
+                    strokeWidth={2}
+                    dot={{ r: 2.5 }}
+                    activeDot={{ r: 5 }}
+                  >
+                    <LabelList
+                      dataKey={k}
+                      content={(props) => {
+                        const v = Number(props.value);
+                        if (!v) return null;
+                        return (
+                          <text
+                            x={Number(props.x)}
+                            y={Number(props.y) - 6}
+                            textAnchor="middle"
+                            fontSize={10}
+                            fontWeight={600}
+                            fill={color}
+                          >
+                            {v}
+                          </text>
+                        );
+                      }}
+                    />
+                  </Line>
+                );
+              })}
             </LineChart>
           </ResponsiveContainer>
         </div>
-      </div>
-
-      <div className="card p-4 min-w-0">
-        <h3 className="text-sm font-semibold text-slate-800 mb-1">{barLabel}</h3>
-        <p className="text-xs text-slate-500 mb-4">{barHint}</p>
-        <RankedBars items={sektorItems} />
-      </div>
+      )}
     </div>
   );
 }
@@ -518,6 +619,12 @@ export default function AnalisisPergerakanClient({
       row("Bulan", "Bilangan");
       pergerakanAggregates.byMonth.forEach((m) => row(m.month, m.count));
       lines.push("");
+      row("Pergerakan mengikut bulan dan sektor");
+      row("Bulan", ...pergerakanAggregates.sektorKeys);
+      pergerakanAggregates.byMonthSektor.forEach((m) =>
+        row(m.month, ...pergerakanAggregates.sektorKeys.map((k) => m.counts[k] ?? 0)),
+      );
+      lines.push("");
       row("Pergerakan mengikut sektor");
       row("Sektor", "Bilangan");
       pergerakanAggregates.bySektor.forEach((s) => row(s.name, s.count));
@@ -527,6 +634,12 @@ export default function AnalisisPergerakanClient({
       row("Program mengikut bulan");
       row("Bulan", "Bilangan");
       programAggregates.byMonth.forEach((m) => row(m.month, m.count));
+      lines.push("");
+      row("Program mengikut bulan dan sektor");
+      row("Bulan", ...programAggregates.sektorKeys);
+      programAggregates.byMonthSektor.forEach((m) =>
+        row(m.month, ...programAggregates.sektorKeys.map((k) => m.counts[k] ?? 0)),
+      );
       lines.push("");
       row("Program mengikut sektor");
       row("Sektor", "Bilangan");
