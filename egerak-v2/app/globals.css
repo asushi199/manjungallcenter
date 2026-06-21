@@ -407,8 +407,9 @@ body.bilik-print-page .app-site-footer {
 }
 
 .opr-print {
-  /* Pratonton skrin sepadan dengan cetakan: jidar atas dikecilkan, sisi & bawah 1". */
-  padding: 12mm 1in 1in;
+  /* Pratonton skrin sepadan dengan cetakan: kiri/kanan 1" (untuk fail/lubang),
+     atas & bawah dikecilkan (12mm). */
+  padding: 12mm 1in;
 }
 
 .opr-print-footer {
