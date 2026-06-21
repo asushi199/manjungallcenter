@@ -840,19 +840,23 @@ export async function listRoomBookingCadanganForDay(
   await requireUser();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ymdDate)) return [];
 
-  const room = await db.query.rooms.findFirst({ where: eq(rooms.code, roomCode) });
+  const room = await withDbTimeout(
+    db.query.rooms.findFirst({ where: eq(rooms.code, roomCode) }),
+  );
   if (!room) return [];
 
-  const rows = await db
-    .select({ slot: roomBookings.slot, title: roomBookings.title })
-    .from(roomBookings)
-    .where(
-      and(
-        eq(roomBookings.roomId, room.id),
-        eq(roomBookings.tarikh, ymdDate),
-        eq(roomBookings.status, "BOOKED"),
+  const rows = await withDbTimeout(
+    db
+      .select({ slot: roomBookings.slot, title: roomBookings.title })
+      .from(roomBookings)
+      .where(
+        and(
+          eq(roomBookings.roomId, room.id),
+          eq(roomBookings.tarikh, ymdDate),
+          eq(roomBookings.status, "BOOKED"),
+        ),
       ),
-    );
+  );
 
   const am = rows.find((r) => r.slot === "AM");
   const pm = rows.find((r) => r.slot === "PM");

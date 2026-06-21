@@ -153,6 +153,8 @@ export default function PergerakanForm({
     return () => clearTimeout(timer);
   }, [tarikhPergi, urusanSuggestDay, isEdit, editId]);
 
+  const [cadanganRefresh, setCadanganRefresh] = useState(0);
+
   // Cadangan urusan (peer + tempahan bilik), keyed on tarikh + roomCode.
   useEffect(() => {
     if (jenis !== "Pergerakan" || !tarikhPergi) {
@@ -196,7 +198,7 @@ export default function PergerakanForm({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [jenis, tarikhPergi, roomCode]);
+  }, [jenis, tarikhPergi, roomCode, cadanganRefresh]);
 
   // Gate state.
   const hasRoomBookings = roomCadangan.length > 0;
@@ -204,7 +206,7 @@ export default function PergerakanForm({
   // Mode C hanya untuk bilik YANG ada tempahan: mesti pilih atau tanda "tiada dalam senarai".
   const modeCActive = roomCode != null && hasRoomBookings && !urusanUnlocked;
   // Gate lembut (kunci urusan semasa memuat) terpakai bila cadangan sedang diambil.
-  const urusanDisabled = cadanganLoading || modeCActive;
+  const urusanDisabled = !isEdit && (cadanganLoading || modeCActive);
 
   const attended = (() => {
     const p = parseLocalInput(tarikhPergi);
@@ -255,6 +257,7 @@ export default function PergerakanForm({
         }
         // muat semula cadangan supaya tempahan baharu muncul & mode C aktif
         setOkMsg("Tempahan bilik dibuat.");
+        setCadanganRefresh((n) => n + 1);
         router.refresh();
       } catch {
         setError("Gagal membuat tempahan. Sila cuba lagi.");
