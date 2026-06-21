@@ -4,7 +4,7 @@ export default function OprPrintRouteLayout({ children }: { children: React.Reac
     <>
       <style
         dangerouslySetInnerHTML={{
-          __html: `@media print { @page { size: A4 portrait; margin: 0; } }`,
+          __html: `@media print { @page { size: A4 portrait; margin: 8mm; } }`,
         }}
       />
       <div className="opr-print-route">{children}</div>

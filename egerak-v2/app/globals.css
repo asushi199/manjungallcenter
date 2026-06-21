@@ -81,12 +81,10 @@
     page: bilik-sheet;
   }
 
-  /* OPR — saiz A4. Jidar 1" disuntik sebagai padding .opr-print (bukan @page margin)
-     supaya konsisten merentas peranti (telefon/desktop, pratonton/cetak) — banyak
-     pelayar mudah alih mengabaikan @page margin. */
+  /* OPR — saiz & jidar piawai dokumen Word (A4, jidar 1"). */
   @page opr-sheet {
     size: A4 portrait;
-    margin: 0;
+    margin: 1in;
   }
 
   html,
@@ -126,8 +124,7 @@
     page: opr-sheet;
     width: 100% !important;
     max-width: none !important;
-    /* Jidar 1" sebenar dokumen — sepadan dengan pratonton skrin. */
-    padding: 1in !important;
+    padding: 0 !important;
     margin: 0 !important;
     font-size: 9pt;
     line-height: 1.3;
