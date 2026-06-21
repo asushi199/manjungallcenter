@@ -407,8 +407,8 @@ body.bilik-print-page .app-site-footer {
 }
 
 .opr-print {
-  /* Pratonton skrin meniru jidar Word 1" supaya sepadan dengan cetakan. */
-  padding: 1in;
+  /* Pratonton skrin sepadan dengan cetakan: jidar atas dikecilkan, sisi & bawah 1". */
+  padding: 12mm 1in 1in;
 }
 
 .opr-print-footer {
