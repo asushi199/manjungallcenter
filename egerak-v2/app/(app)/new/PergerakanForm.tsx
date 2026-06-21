@@ -7,16 +7,18 @@ import { formatInTimeZone } from "date-fns-tz";
 import {
   submitPergerakan,
   updatePergerakan,
-  checkPergerakanRoomAvailability,
-  type RoomAvailabilityCheck,
   type PergerakanEditData,
   listUrusanTemplatesForDay,
   listMyPergerakanOnDay,
+  listRoomBookingCadanganForDay,
   type UrusanTemplate,
+  type RoomCadangan,
   type MyDayPergerakan,
 } from "@/lib/actions/pergerakan";
+import { bookRoom } from "@/lib/actions/rooms";
+import { attendanceKind } from "@/lib/pergerakan-slot";
 import { resolveLokasiFields } from "@/lib/pergerakan-presets";
-import { formatTarikhBm } from "@/lib/room-slots";
+import { cn } from "@/lib/cn";
 import DateTimeField from "@/components/DateTimeField";
 import {
   DEFAULT_TIME_KEMBALI,
@@ -30,18 +32,10 @@ import {
 } from "@/lib/datetime-picker";
 import { parseLocalInput, TZ } from "@/lib/dates";
 
-const emptyAvailability: RoomAvailabilityCheck = {
-  checking: false,
-  applies: false,
-  neededSlots: [],
-  conflicts: [],
-  fullDayBlockedDates: [],
-  canBook: true,
-  summary: null,
-};
-
 type Props = {
   lokasiPresets: string[];
+  /** Bilik untuk peta roomCode → id (butang "Tempah sekarang"). */
+  rooms?: { id: number; code: string }[];
   mode?: "create" | "edit";
   editId?: number;
   initial?: PergerakanEditData;
@@ -51,6 +45,7 @@ type Props = {
 
 export default function PergerakanForm({
   lokasiPresets,
+  rooms = [],
   mode = "create",
   editId,
   initial,
@@ -65,12 +60,7 @@ export default function PergerakanForm({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
-  const [showBilikLink, setShowBilikLink] = useState(false);
-  const [availability, setAvailability] = useState<RoomAvailabilityCheck>(emptyAvailability);
-  const [checkingRoom, setCheckingRoom] = useState(false);
   const [urusanSuggestDay, setUrusanSuggestDay] = useState<string | null>(null);
-  const [urusanSuggest, setUrusanSuggest] = useState<UrusanTemplate[]>([]);
-  const [urusanSuggestPending, setUrusanSuggestPending] = useState(false);
   const [myDayRegs, setMyDayRegs] = useState<MyDayPergerakan[]>([]);
   const [myDayRegsPending, setMyDayRegsPending] = useState(false);
 
@@ -80,16 +70,22 @@ export default function PergerakanForm({
   const [urusan, setUrusan] = useState(initial?.urusan ?? "");
   const [tarikhPergi, setTarikhPergi] = useState(initial?.tarikhPergi ?? "");
   const [tarikhKembali, setTarikhKembali] = useState(initial?.tarikhKembali ?? "");
-  const [sepenuhHari, setSepenuhHari] = useState(initial?.sepenuhHari ?? false);
-  /** true = penganjur tempah slot; false = sertai aktiviti sedia ada */
-  const [tempahBilik, setTempahBilik] = useState(initial?.tempahBilik ?? true);
-  /** Sertai aktiviti — laporan oleh penganjur lain */
+  /** Sertai aktiviti — laporan oleh penganjur lain (cipta OPR status TIADA). */
   const [tidakPerluOpr, setTidakPerluOpr] = useState(false);
 
   const isLainLain = lokasiSel === lokasiPresets[lokasiPresets.length - 1];
   const lokasi = isLainLain ? lokasiLain : lokasiSel;
-  const needsRoom = /budiman|bestari/i.test(lokasi) && jenis === "Pergerakan";
-  const willBookRoom = needsRoom && tempahBilik;
+  const roomCode =
+    /budiman/i.test(lokasi) ? "BILIK_BUDIMAN" : /bestari/i.test(lokasi) ? "DEWAN_BESTARI" : null;
+  const roomIdForCode = (code: "BILIK_BUDIMAN" | "DEWAN_BESTARI") =>
+    rooms.find((r) => r.code === code)?.id;
+
+  // Cadangan (dua sumber) + gate lembut.
+  const [cadanganLoading, setCadanganLoading] = useState(false);
+  const [peerCadangan, setPeerCadangan] = useState<UrusanTemplate[]>([]);
+  const [roomCadangan, setRoomCadangan] = useState<RoomCadangan[]>([]);
+  const [showAllPeers, setShowAllPeers] = useState(false);
+  const [urusanUnlocked, setUrusanUnlocked] = useState(false); // mode C escape (rooms with bookings)
 
   const tarikhPergiDate = splitDateTime(tarikhPergi).date;
   const tarikhKembaliDate = splitDateTime(tarikhKembali).date;
@@ -127,11 +123,10 @@ export default function PergerakanForm({
     if (fixed !== tarikhKembali) setTarikhKembali(fixed);
   }, [tarikhPergi, tarikhKembali]);
 
+  // Rekod sendiri pada hari dipilih (peringatan).
   useEffect(() => {
     if (!tarikhPergi) {
       setUrusanSuggestDay(null);
-      setUrusanSuggest([]);
-      setUrusanSuggestPending(false);
       setMyDayRegs([]);
       setMyDayRegsPending(false);
       return;
@@ -141,67 +136,75 @@ export default function PergerakanForm({
     const ymd = formatInTimeZone(d, TZ, "yyyy-MM-dd");
     if (ymd === urusanSuggestDay) return;
 
-    setUrusanSuggestPending(true);
     setMyDayRegsPending(true);
     const timer = setTimeout(() => {
-      Promise.all([
-        listUrusanTemplatesForDay(ymd),
-        listMyPergerakanOnDay(ymd, isEdit ? editId : undefined),
-      ])
-        .then(([templates, mine]) => {
+      listMyPergerakanOnDay(ymd, isEdit ? editId : undefined)
+        .then((mine) => {
           setUrusanSuggestDay(ymd);
-          setUrusanSuggest(templates);
           setMyDayRegs(mine);
         })
         .catch(() => {
           setUrusanSuggestDay(ymd);
-          setUrusanSuggest([]);
           setMyDayRegs([]);
         })
-        .finally(() => {
-          setUrusanSuggestPending(false);
-          setMyDayRegsPending(false);
-        });
+        .finally(() => setMyDayRegsPending(false));
     }, 350);
 
     return () => clearTimeout(timer);
   }, [tarikhPergi, urusanSuggestDay, isEdit, editId]);
 
+  // Cadangan urusan (peer + tempahan bilik), keyed on tarikh + roomCode.
   useEffect(() => {
-    if (!willBookRoom || !tarikhPergi || !tarikhKembali) {
-      setAvailability(emptyAvailability);
-      setCheckingRoom(false);
+    if (jenis !== "Pergerakan" || !tarikhPergi) {
+      setCadanganLoading(false);
+      setPeerCadangan([]);
+      setRoomCadangan([]);
+      setShowAllPeers(false);
+      setUrusanUnlocked(false);
       return;
     }
+    const d = parseLocalInput(tarikhPergi);
+    if (!d) return;
+    const ymd = formatInTimeZone(d, TZ, "yyyy-MM-dd");
 
-    setCheckingRoom(true);
+    setCadanganLoading(true);
     const timer = setTimeout(() => {
-      checkPergerakanRoomAvailability({
-        jenis,
-        lokasi,
-        tarikhPergi,
-        tarikhKembali,
-        sepenuhHari,
-        tempahBilik: true,
-        excludePergerakanId: isEdit ? editId : undefined,
-      })
-        .then(setAvailability)
-        .catch(() =>
-          setAvailability({
-            ...emptyAvailability,
-            applies: true,
-            canBook: false,
-            summary: "Gagal menyemak slot bilik. Cuba lagi.",
-          }),
-        )
-        .finally(() => setCheckingRoom(false));
-    }, 400);
+      Promise.all([
+        listUrusanTemplatesForDay(ymd),
+        roomCode ? listRoomBookingCadanganForDay(roomCode, ymd) : Promise.resolve([]),
+      ])
+        .then(([peers, room]) => {
+          setPeerCadangan(peers);
+          setRoomCadangan(room);
+        })
+        .catch(() => {
+          setPeerCadangan([]);
+          setRoomCadangan([]);
+        })
+        .finally(() => {
+          setCadanganLoading(false);
+          setShowAllPeers(false);
+          setUrusanUnlocked(false);
+        });
+    }, 350);
 
     return () => clearTimeout(timer);
-  }, [willBookRoom, jenis, lokasi, tarikhPergi, tarikhKembali, sepenuhHari, isEdit, editId]);
+  }, [jenis, tarikhPergi, roomCode]);
 
-  const hasRoomConflict = willBookRoom && availability.applies && !availability.canBook;
-  const slotCount = availability.neededSlots.length;
+  // Gate state.
+  const hasRoomBookings = roomCadangan.length > 0;
+  const roomNoBooking = roomCode != null && !cadanganLoading && !hasRoomBookings;
+  // Mode C hanya untuk bilik YANG ada tempahan: mesti pilih atau tanda "tiada dalam senarai".
+  const modeCActive = roomCode != null && hasRoomBookings && !urusanUnlocked;
+  // Gate lembut (kunci urusan semasa memuat) terpakai bila cadangan sedang diambil.
+  const urusanDisabled = cadanganLoading || modeCActive;
+
+  const attended = (() => {
+    const p = parseLocalInput(tarikhPergi);
+    const k = parseLocalInput(tarikhKembali);
+    const day = p ? formatInTimeZone(p, TZ, "yyyy-MM-dd") : null;
+    return p && k && day ? attendanceKind(p, k, day) : "NONE";
+  })();
 
   function applyLokasi(loc: string) {
     const resolved = resolveLokasiFields(loc, lokasiPresets);
@@ -215,28 +218,47 @@ export default function PergerakanForm({
     applyLokasi(t.lokasi);
     setTarikhPergi(t.tarikhPergi);
     setTarikhKembali(t.tarikhKembali);
-    if (/budiman|bestari/i.test(t.lokasi)) {
-      setTempahBilik(false);
-      setTidakPerluOpr(true);
-    }
   }
 
-  useEffect(() => {
-    if (isEdit) return;
-    if (needsRoom && !tempahBilik) setTidakPerluOpr(true);
-    else if (needsRoom && tempahBilik) setTidakPerluOpr(false);
-  }, [isEdit, needsRoom, tempahBilik]);
+  function onBookNow() {
+    if (!roomCode || !urusan.trim()) return;
+    const roomId = roomIdForCode(roomCode);
+    if (roomId == null) {
+      setError("Bilik tidak dijumpai. Sila tempah di Tempahan Bilik.");
+      return;
+    }
+    const p = parseLocalInput(tarikhPergi);
+    const day = p ? formatInTimeZone(p, TZ, "yyyy-MM-dd") : null;
+    if (!day) return;
+    const kind = attended; // "AM" | "PM" | "FULL" | "NONE"
+    setError(null);
+    setOkMsg(null);
+    startTransition(async () => {
+      try {
+        const res = await bookRoom({
+          roomId,
+          tarikh: day,
+          title: urusan.trim(),
+          fullDay: kind === "FULL",
+          slot: kind === "PM" ? "PM" : "AM",
+        });
+        if (!res.ok) {
+          setError(res.error);
+          return;
+        }
+        // muat semula cadangan supaya tempahan baharu muncul & mode C aktif
+        setOkMsg("Tempahan bilik dibuat.");
+        router.refresh();
+      } catch {
+        setError("Gagal membuat tempahan. Sila cuba lagi.");
+      }
+    });
+  }
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setOkMsg(null);
-    setShowBilikLink(false);
-
-    if (hasRoomConflict) {
-      setError(availability.summary ?? "Slot bilik/dewan bertembung. Sila ubah tarikh atau masa.");
-      return;
-    }
 
     startTransition(async () => {
       const payload = {
@@ -245,55 +267,40 @@ export default function PergerakanForm({
         lokasi,
         tarikhPergi,
         tarikhKembali,
-        sepenuhHari,
-        tempahBilik: needsRoom ? tempahBilik : undefined,
-        tidakPerluOpr:
-          !isEdit && jenis === "Pergerakan" && needsRoom && !tempahBilik && tidakPerluOpr
-            ? true
-            : undefined,
+        tidakPerluOpr: jenis === "Pergerakan" ? tidakPerluOpr : undefined,
       };
-      const res = isEdit
-        ? await updatePergerakan(editId, payload)
-        : await submitPergerakan(payload);
-      if (!res.ok) {
-        setError(res.error);
-        return;
-      }
-      setShowBilikLink(Boolean(willBookRoom && res.roomSlotsBooked));
-      if (isEdit) {
+      try {
+        const res = isEdit
+          ? await updatePergerakan(editId, payload)
+          : await submitPergerakan(payload);
+        if (!res.ok) {
+          setError(res.error);
+          return;
+        }
+        if (isEdit) {
+          setOkMsg("Rekod dikemas kini.");
+          setTimeout(() => {
+            router.push(returnTo);
+            router.refresh();
+          }, 800);
+          return;
+        }
         setOkMsg(
-          needsRoom && !tempahBilik
-            ? "Rekod dikemas kini (sertai aktiviti — tiada tempahan slot baharu)."
-            : needsRoom && res.roomSlotsBooked
-              ? `Rekod dikemas kini. ${res.roomSlotsBooked} slot bilik/dewan diselaraskan.`
-              : "Rekod dikemas kini.",
+          jenis === "Bercuti"
+            ? "Cuti direkodkan."
+            : "Pergerakan direkodkan dan akan muncul di kalendar.",
         );
+        setUrusan("");
+        setTarikhPergi("");
+        setTarikhKembali("");
+        setTidakPerluOpr(false);
         setTimeout(() => {
-          router.push(returnTo);
+          router.push("/dashboard");
           router.refresh();
         }, 800);
-        return;
+      } catch {
+        setError("Gagal menyimpan rekod. Sila cuba lagi.");
       }
-      setOkMsg(
-        jenis === "Bercuti"
-          ? "Cuti direkodkan."
-          : needsRoom && !tempahBilik
-            ? "Pergerakan direkodkan (sertai aktiviti sedia ada — slot bilik/dewan tidak ditempah)."
-            : needsRoom && res.roomSlotsBooked
-              ? `Pergerakan direkodkan. ${res.roomSlotsBooked} slot bilik/dewan telah ditempah automatik.`
-              : needsRoom
-                ? "Pergerakan direkodkan."
-                : "Pergerakan direkodkan dan akan muncul di kalendar.",
-      );
-      setUrusan("");
-      setTarikhPergi("");
-      setTarikhKembali("");
-      setSepenuhHari(false);
-      setTempahBilik(true);
-      setTimeout(() => {
-        router.push("/dashboard");
-        router.refresh();
-      }, 800);
     });
   }
 
@@ -354,40 +361,6 @@ export default function PergerakanForm({
         </div>
       ) : null}
 
-      {urusanSuggestPending ? (
-        <p className="text-xs text-slate-500">Mencari aktiviti pada tarikh ini…</p>
-      ) : urusanSuggest.length > 0 ? (
-        <div className="space-y-2">
-          <details className="rounded-md border border-slate-200 bg-slate-50/80 group">
-            <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-slate-800 flex items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
-              <span>Cadangan urusan ({urusanSuggest.length})</span>
-              <span className="text-xs font-normal text-slate-500 group-open:hidden">Lihat</span>
-              <span className="text-xs font-normal text-slate-500 hidden group-open:inline">
-                Tutup
-              </span>
-            </summary>
-            <div className="border-t border-slate-200 px-3 pb-3 pt-2">
-              <div className="flex flex-col gap-2 max-h-[min(50vh,320px)] overflow-y-auto">
-              {urusanSuggest.map((t) => (
-                <button
-                  key={`${t.urusan}|${t.lokasi}|${t.tarikhPergi}`}
-                  type="button"
-                  className="rounded-md border border-slate-200 bg-white px-3 py-2 text-left hover:bg-slate-50 shrink-0"
-                  onClick={() => applyTemplate(t)}
-                  title={`${t.count} rekod`}
-                >
-                  <div className="text-sm font-semibold text-slate-900">{t.urusan}</div>
-                  <div className="text-xs text-slate-600 mt-0.5">
-                    {t.lokasi} · {t.count} rekod
-                  </div>
-                </button>
-              ))}
-              </div>
-            </div>
-          </details>
-        </div>
-      ) : null}
-
       <div>
         <div className="label">Jenis</div>
         <div className="flex gap-4">
@@ -440,126 +413,118 @@ export default function PergerakanForm({
         )}
       </div>
 
-      {needsRoom && (
-        <fieldset className="rounded-md border border-slate-200 bg-slate-50/80 px-3 py-3 space-y-2">
-          <legend className="text-sm font-semibold text-slate-800 px-1">
-            Bilik / Dewan
-          </legend>
-          <label className="flex items-start gap-2 text-sm cursor-pointer">
-            <input
-              type="radio"
-              name="tempah-bilik"
-              className="mt-0.5"
-              checked={tempahBilik}
-              onChange={() => setTempahBilik(true)}
-            />
-            <span>
-              <strong>Tempah bilik/dewan (penganjur)</strong>
-              <span className="block text-xs text-slate-600 mt-0.5">
-                Slot Pagi / Petang ditempah automatik.
-              </span>
-            </span>
-          </label>
-          <label className="flex items-start gap-2 text-sm cursor-pointer">
-            <input
-              type="radio"
-              name="tempah-bilik"
-              className="mt-0.5"
-              checked={!tempahBilik}
-              onChange={() => setTempahBilik(false)}
-            />
-            <span>
-              <strong>Sertai aktiviti sedia ada</strong>
-              <span className="block text-xs text-slate-600 mt-0.5">
-                Rekod pergerakan anda tanpa menempah slot.
-              </span>
-            </span>
-          </label>
-        </fieldset>
-      )}
-
-      {willBookRoom && (
-        <label className="flex items-start gap-2 text-sm cursor-pointer">
+      {jenis === "Pergerakan" && (
+        <label className="flex items-start gap-2 text-sm cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
           <input
             type="checkbox"
-            className="mt-1"
-            checked={sepenuhHari}
-            onChange={(e) => setSepenuhHari(e.target.checked)}
+            className="mt-0.5"
+            checked={tidakPerluOpr}
+            onChange={(e) => setTidakPerluOpr(e.target.checked)}
           />
           <span>
-            <strong>Aktiviti sepanjang hari</strong> — tempah Pagi & Petang.
+            <strong>Tidak perlu tulis OPR</strong>
+            <span className="block text-xs text-slate-600 mt-0.5">
+              OPR aktiviti ini ditulis oleh orang lain (penganjur atau rakan yang turut hadir).
+            </span>
           </span>
         </label>
       )}
 
-      {needsRoom && !tempahBilik && (
-        <div className="space-y-2">
-          <p className="text-sm text-brand-800 bg-brand-50 border border-brand-200 rounded-md px-3 py-2">
-            Anda menyertai aktiviti di <strong>{lokasi}</strong> tanpa menempah slot.
+      {jenis === "Pergerakan" && cadanganLoading && (
+        <p className="text-xs text-slate-500">Mencari aktiviti hari ini…</p>
+      )}
+
+      {/* Budiman/Bestari WITH bookings → mode C list */}
+      {roomCode && hasRoomBookings && (
+        <div className="rounded-md border border-brand-200 bg-brand-50/60 p-3 space-y-2">
+          <p className="text-xs font-medium text-brand-900">
+            Pilih aktiviti tempahan bilik ini (nama diseragamkan):
           </p>
-          {!isEdit && jenis === "Pergerakan" ? (
-            <label className="flex items-start gap-2 text-sm cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={tidakPerluOpr}
-                onChange={(e) => setTidakPerluOpr(e.target.checked)}
-              />
-              <span>
-                <strong>Tidak perlu OPR</strong>
-                <span className="block text-xs text-slate-600 mt-0.5">
-                  Tandakan jika laporan ditulis oleh penganjur atau rakan sektor yang sama.
+          {roomCadangan.map((c) => {
+            const highlight =
+              c.kind === "FULL" || attended === "FULL" || attended === c.kind;
+            return (
+              <button
+                key={`${c.kind}-${c.title}`}
+                type="button"
+                onClick={() => {
+                  setUrusan(c.title);
+                }}
+                className={cn(
+                  "block w-full text-left rounded-md border px-3 py-2 text-sm",
+                  urusan === c.title ? "border-brand-500 bg-white" : "border-slate-200 bg-white",
+                  highlight ? "" : "opacity-60",
+                )}
+              >
+                <span className="font-semibold">{c.title}</span>
+                <span className="ml-2 text-xs text-slate-500">
+                  {c.kind === "FULL" ? "Sepanjang hari" : c.kind === "AM" ? "Pagi" : "Petang"}
                 </span>
-              </span>
-            </label>
-          ) : null}
+              </button>
+            );
+          })}
+          <label className="flex items-center gap-2 text-xs text-slate-600">
+            <input
+              type="checkbox"
+              checked={urusanUnlocked}
+              onChange={(e) => setUrusanUnlocked(e.target.checked)}
+            />
+            Aktiviti tiada dalam senarai (taip sendiri)
+          </label>
         </div>
       )}
 
-      {willBookRoom && tarikhPergi && tarikhKembali && (
-        <div
-          className={`rounded-md border text-sm px-3 py-2 space-y-1 ${
-            checkingRoom
-              ? "bg-slate-50 border-slate-200 text-slate-600"
-              : hasRoomConflict
-                ? "bg-red-50 border-red-200 text-red-800"
-                : availability.applies && slotCount > 0
-                  ? "bg-amber-50 border-amber-200 text-amber-900"
-                  : "bg-slate-50 border-slate-200 text-slate-600"
-          }`}
-        >
-          {checkingRoom ? (
-            <p>Menyemak ketersediaan {availability.roomName ?? "bilik/dewan"}…</p>
-          ) : hasRoomConflict ? (
-            <>
-              <p className="font-semibold">Slot bertembung — tidak boleh dihantar</p>
-              <p>{availability.summary}</p>
-              {availability.fullDayBlockedDates.length > 0 && (
-                <ul className="list-disc list-inside text-xs mt-1">
-                  {availability.fullDayBlockedDates.map((d) => (
-                    <li key={d}>
-                      {formatTarikhBm(d)}: sepanjang hari penuh (Pagi & Petang sudah ditempah)
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <Link href="/bilik" className="inline-block text-xs font-medium underline mt-1">
-                Lihat kalendar Tempahan Bilik →
-              </Link>
-            </>
-          ) : availability.applies && slotCount > 0 ? (
-            <p>
-              <strong>{availability.roomName}</strong>: {slotCount} slot akan ditempah automatik
-              {availability.fullDayBlockedDates.length === 0 &&
-                sepenuhHari &&
-                " (termasuk sepanjang hari bagi setiap tarikh)"}
-              . Tiada konflik.
-            </p>
-          ) : availability.summary ? (
-            <p>{availability.summary}</p>
-          ) : null}
+      {/* Budiman/Bestari WITHOUT booking → lenient reminder + book-now */}
+      {roomNoBooking && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 space-y-2">
+          <p>
+            Bilik ini tiada tempahan rasmi pada hari ini. Jika aktiviti rasmi, sila tempah di
+            Tempahan Bilik.
+          </p>
+          <button
+            type="button"
+            className="btn-secondary text-xs"
+            disabled={pending || !urusan.trim()}
+            onClick={onBookNow}
+          >
+            Tempah sekarang
+          </button>
         </div>
       )}
+
+      {/* Peer cadangan (other locations, and the no-booking room fallback) */}
+      {jenis === "Pergerakan" &&
+        !cadanganLoading &&
+        !hasRoomBookings &&
+        peerCadangan.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-slate-700">Cadangan urusan hari ini:</p>
+            <div className="flex flex-col gap-2">
+              {(showAllPeers ? peerCadangan : peerCadangan.slice(0, 6)).map((t) => (
+                <button
+                  key={`${t.urusan}|${t.lokasi}|${t.tarikhPergi}`}
+                  type="button"
+                  className="rounded-md border border-slate-200 bg-white px-3 py-2 text-left hover:bg-slate-50"
+                  onClick={() => applyTemplate(t)}
+                >
+                  <div className="text-sm font-semibold text-slate-900">{t.urusan}</div>
+                  <div className="text-xs text-slate-600 mt-0.5">
+                    {t.lokasi} · {t.count} rekod
+                  </div>
+                </button>
+              ))}
+            </div>
+            {peerCadangan.length > 6 && !showAllPeers && (
+              <button
+                type="button"
+                className="text-xs underline text-slate-600"
+                onClick={() => setShowAllPeers(true)}
+              >
+                Lihat lagi ({peerCadangan.length - 6})
+              </button>
+            )}
+          </div>
+        )}
 
       <div>
         <label className="label" htmlFor="urusan">
@@ -569,9 +534,14 @@ export default function PergerakanForm({
           id="urusan"
           className="input min-h-[96px]"
           required
+          disabled={urusanDisabled}
           value={urusan}
           onChange={(e) => setUrusan(e.target.value)}
-          placeholder="Contoh: Mesyuarat Pengurusan Kewangan PPD Manjung"
+          placeholder={
+            urusanDisabled
+              ? "Pilih cadangan di atas, atau tunggu sebentar…"
+              : "Contoh: Mesyuarat Pengurusan Kewangan PPD Manjung"
+          }
         />
       </div>
 
@@ -583,11 +553,6 @@ export default function PergerakanForm({
       {okMsg && (
         <div className="rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm px-3 py-2 space-y-2">
           <p>{okMsg}</p>
-          {showBilikLink && (
-            <Link href="/bilik" className="inline-block font-medium underline">
-              Lihat di Tempahan Bilik →
-            </Link>
-          )}
         </div>
       )}
 
@@ -601,18 +566,8 @@ export default function PergerakanForm({
             Reset
           </button>
         )}
-        <button
-          type="submit"
-          className="btn-primary"
-          disabled={pending || checkingRoom || hasRoomConflict}
-        >
-          {pending
-            ? "Memproses..."
-            : hasRoomConflict
-              ? "Slot penuh"
-              : isEdit
-                ? "Simpan"
-                : "Hantar"}
+        <button type="submit" className="btn-primary" disabled={pending}>
+          {pending ? "Memproses..." : isEdit ? "Simpan" : "Hantar"}
         </button>
       </div>
     </form>

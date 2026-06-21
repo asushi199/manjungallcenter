@@ -23,12 +23,7 @@ import { parseLocalInput, toLocalInput, TZ, ymd, formatDateTime } from "@/lib/da
 import { formatInTimeZone } from "date-fns-tz";
 import { buildDayUrusanCadangan, rankCadanganBySektor } from "@/lib/analisis/day-activity-templates";
 import { addDays, parseISO } from "date-fns";
-import {
-  resolveBookableRoomCode,
-  cancelRoomBookingsForPergerakan,
-  previewRoomBookingsForPergerakan,
-  type RoomBookingPreview,
-} from "@/lib/sync-room-bookings";
+import { cancelRoomBookingsForPergerakan } from "@/lib/sync-room-bookings";
 import { formatTitleCase } from "@/lib/format-display-text";
 
 function normalizePergerakanText(urusan: string, lokasi: string) {
@@ -138,64 +133,6 @@ export async function submitPergerakan(input: unknown): Promise<SubmitResult> {
   } catch (e) {
     throw e;
   }
-}
-
-export type RoomAvailabilityCheck = RoomBookingPreview & { checking: false };
-
-/** Semak slot bilik sebelum hantar (paparan amaran pada borang). */
-export async function checkPergerakanRoomAvailability(input: {
-  jenis: "Pergerakan" | "Bercuti";
-  lokasi: string;
-  tarikhPergi: string;
-  tarikhKembali: string;
-  sepenuhHari?: boolean;
-  tempahBilik?: boolean;
-  excludePergerakanId?: number;
-}): Promise<RoomAvailabilityCheck> {
-  await requireUser();
-  const empty: RoomAvailabilityCheck = {
-    checking: false,
-    applies: false,
-    neededSlots: [],
-    conflicts: [],
-    fullDayBlockedDates: [],
-    canBook: true,
-    summary: null,
-  };
-
-  if (input.jenis !== "Pergerakan") return empty;
-  const roomCode = resolveBookableRoomCode(input.lokasi);
-  if (!roomCode) return empty;
-
-  if (input.tempahBilik === false) {
-    return {
-      ...empty,
-      applies: true,
-      roomName: roomCode === "DEWAN_BESTARI" ? "Dewan Bestari" : "Bilik Budiman",
-      canBook: true,
-      summary: null,
-    };
-  }
-
-  const pergi = parseLocalInput(input.tarikhPergi);
-  const kembali = parseLocalInput(input.tarikhKembali);
-  if (!pergi || !kembali || kembali.getTime() < pergi.getTime()) {
-    return {
-      ...empty,
-      applies: true,
-      canBook: false,
-      summary: "Tarikh pergi / kembali tidak sah.",
-    };
-  }
-
-  const preview = await previewRoomBookingsForPergerakan(db, {
-    roomCode,
-    pergi,
-    kembali,
-    fullDay: input.sepenuhHari === true,
-    excludePergerakanId: input.excludePergerakanId,
-  });
-  return { ...preview, checking: false };
 }
 
 export type PergerakanEditData = {
