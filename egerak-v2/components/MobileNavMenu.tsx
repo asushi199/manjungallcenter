@@ -55,13 +55,13 @@ export default function MobileNavMenu({
   adminLinks,
   showAdminSection,
   userNama,
-  userUsername,
+  userJawatan,
 }: {
   mainLinks: AppNavLink[];
   adminLinks: AppNavLink[];
   showAdminSection: boolean;
   userNama?: string;
-  userUsername?: string;
+  userJawatan?: string;
 }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
@@ -125,7 +125,7 @@ export default function MobileNavMenu({
                   {userNama && (
                     <p className="mt-2 text-xs text-white/80 truncate max-w-[14rem]">
                       {userNama}
-                      {userUsername ? ` · ${userUsername}` : ""}
+                      {userJawatan ? ` · ${userJawatan}` : ""}
                     </p>
                   )}
                 </div>

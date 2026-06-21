@@ -56,7 +56,7 @@ export default function Navbar() {
           adminLinks={adminMenuLinks}
           showAdminSection={adminMenuLinks.length > 0}
           userNama={user?.nama}
-          userUsername={user?.username}
+          userJawatan={user?.jawatan}
         />
       </div>
 
@@ -83,7 +83,9 @@ export default function Navbar() {
         <div className="flex items-center gap-2 shrink-0 text-sm">
           <div className="hidden lg:block text-right leading-tight">
             <div className="font-medium">{user?.nama}</div>
-            <div className="text-xs text-white/80">{user?.username}</div>
+            {user?.jawatan && (
+              <div className="text-xs text-white/80">{user.jawatan}</div>
+            )}
           </div>
           <PwaInstallButton variant="nav-link" />
           {logoutBtn}
