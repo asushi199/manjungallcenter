@@ -221,32 +221,20 @@
   }
 
   .opr-print-footer {
-    margin-top: 3mm;
+    margin-top: 4mm;
     padding-top: 1.5mm;
     border-top: 0.3pt solid #94a3b8;
     text-align: center;
   }
 
   .opr-print-logo {
-    width: 20mm !important;
+    width: 30mm !important;
     height: auto !important;
-    max-height: 22mm;
+    max-height: 34mm;
     object-fit: contain;
     display: block;
     margin-left: auto;
     margin-right: auto;
-  }
-
-  /* Header lebih ringkas supaya semua muat satu halaman. */
-  .opr-print-header {
-    padding-bottom: 1mm !important;
-    margin-bottom: 1.5mm !important;
-  }
-  .opr-print-header h1 {
-    font-size: 9.5pt !important;
-  }
-  .opr-print-header p {
-    font-size: 7pt !important;
   }
 
   #egerak-app-shell,
@@ -415,7 +403,7 @@ body.bilik-print-page .app-site-footer {
 
 /* Pratonton skrin — susun atur sama seperti cetak */
 .opr-print-logo {
-  @apply w-[88px] h-auto max-h-[96px] object-contain mx-auto block;
+  @apply w-[132px] h-auto max-h-[140px] object-contain mx-auto block;
 }
 
 .opr-print {
@@ -424,7 +412,7 @@ body.bilik-print-page .app-site-footer {
 }
 
 .opr-print-footer {
-  margin-top: 12px;
+  margin-top: 16px;
   padding-top: 4px;
   border-top: 1px solid #cbd5e1;
   text-align: center;
