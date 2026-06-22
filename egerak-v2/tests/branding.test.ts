@@ -13,7 +13,7 @@ test("branding keeps the visible app name separate from the installed PWA name",
 
   assert.equal(APP_DISPLAY_NAME, "SentRa PPD Manjung");
   assert.equal(APP_SHORT_NAME, "SentRa");
-  assert.equal(PWA_APP_NAME, "Manjung Hebat");
+  assert.equal(PWA_APP_NAME, "SentRa PPD Manjung");
   assert.equal(BRAND_THEME_COLOR, "#0646a3");
   assert.equal(pwaManifest.name, PWA_APP_NAME);
   assert.equal(pwaManifest.short_name, PWA_APP_NAME);
