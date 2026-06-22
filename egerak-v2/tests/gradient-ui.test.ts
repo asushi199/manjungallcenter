@@ -6,9 +6,9 @@ const navbarSource = readFileSync("components/Navbar.tsx", "utf8");
 const dashboardPageSource = readFileSync("app/(app)/dashboard/page.tsx", "utf8");
 const todayStatsSource = readFileSync("app/(app)/dashboard/DashboardTodayStats.tsx", "utf8");
 
-test("header keeps official blue while logo gets a restrained gradient icon treatment", () => {
+test("header keeps official blue and shows the SentRa logo on a clean tile", () => {
   assert.match(navbarSource, /<header className="bg-brand-700 text-white shadow sticky top-0 z-40">/);
-  assert.match(navbarSource, /bg-gradient-to-br from-white\/20 via-white\/10 to-cyan-300\/20/);
+  assert.match(navbarSource, /SentraLogo/);
 });
 
 test("dashboard primary action uses an icon-led gradient button", () => {

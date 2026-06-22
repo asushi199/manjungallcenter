@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import PpdLogo from "@/components/PpdLogo";
+import SentraLogo from "@/components/SentraLogo";
 import PwaInstallButton from "@/components/PwaInstallButton";
 import HeaderNavDropdown from "@/components/HeaderNavDropdown";
 import MobileNavMenu from "@/components/MobileNavMenu";
@@ -43,8 +43,8 @@ export default function Navbar() {
     <header className="bg-brand-700 text-white shadow sticky top-0 z-40">
       <div className="mx-auto max-w-7xl md:hidden flex items-center gap-2 px-3 py-2.5 min-h-[3.25rem]">
         <Link href="/dashboard" className="flex items-center gap-2 min-w-0 flex-1">
-          <span className="inline-flex h-10 w-12 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-white/20 via-white/10 to-cyan-300/20 ring-1 ring-white/20 shadow-sm">
-            <PpdLogo width={40} className="object-contain" />
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-white/20 shadow-sm">
+            <SentraLogo size={40} />
           </span>
           <span className="min-w-0 leading-tight">
             <span className="block font-bold text-[15px] tracking-tight">{APP_SHORT_NAME}</span>
@@ -62,8 +62,8 @@ export default function Navbar() {
 
       <div className="mx-auto max-w-7xl hidden md:flex items-center justify-between gap-3 px-4 py-2.5">
         <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
-          <span className="inline-flex h-12 w-16 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-white/20 via-white/10 to-cyan-300/20 ring-1 ring-white/20 shadow-sm">
-            <PpdLogo width={58} className="object-contain" />
+          <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-white/20 shadow-sm">
+            <SentraLogo size={48} />
           </span>
           <span className="text-lg font-bold leading-tight whitespace-nowrap">
             {APP_SHORT_NAME} <span className="font-normal opacity-90">PPD Manjung</span>
