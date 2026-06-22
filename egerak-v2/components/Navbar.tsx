@@ -6,7 +6,6 @@ import { signOut, useSession } from "next-auth/react";
 import SentraLogo from "@/components/SentraLogo";
 import PwaInstallButton from "@/components/PwaInstallButton";
 import HeaderNavDropdown from "@/components/HeaderNavDropdown";
-import MobileNavMenu from "@/components/MobileNavMenu";
 import AdminRequestsBadge from "@/components/AdminRequestsBadge";
 import {
   adminMenuLinksForPeranan,
@@ -14,6 +13,20 @@ import {
 } from "@/lib/app-nav";
 import { isFullAdmin } from "@/lib/roles";
 import { APP_SHORT_NAME } from "@/lib/branding";
+import { cn } from "@/lib/cn";
+
+function isActive(path: string | null, href: string) {
+  return path === href || (path?.startsWith(href + "/") ?? false);
+}
+
+/** Label ringkas untuk tab desktop (sepadan dengan bar bawah telefon). */
+const TAB_SHORT_LABELS: Record<string, string> = {
+  "/dashboard": "Utama",
+  "/new": "Daftar",
+  "/my": "Saya",
+  "/takwim": "Takwim",
+  "/bilik": "Bilik",
+};
 
 export default function Navbar() {
   const path = usePathname();
@@ -51,13 +64,6 @@ export default function Navbar() {
             <span className="block text-[11px] font-semibold text-white/90">PPD Manjung</span>
           </span>
         </Link>
-        <MobileNavMenu
-          mainLinks={mainLinks}
-          adminLinks={adminMenuLinks}
-          showAdminSection={adminMenuLinks.length > 0}
-          userNama={user?.nama}
-          userJawatan={user?.jawatan}
-        />
       </div>
 
       <div className="mx-auto max-w-7xl hidden md:flex items-center justify-between gap-3 px-4 py-2.5">
@@ -71,7 +77,20 @@ export default function Navbar() {
         </Link>
 
         <nav className="flex items-center gap-1 flex-wrap justify-center flex-1 min-w-0">
-          <HeaderNavDropdown label="Utama" links={mainLinks} />
+          {mainLinks.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm font-medium",
+                isActive(path, l.href)
+                  ? "bg-white text-brand-700"
+                  : "text-white/90 hover:bg-white/10",
+              )}
+            >
+              {TAB_SHORT_LABELS[l.href] ?? l.label}
+            </Link>
+          ))}
           {adminMenuLinks.length > 0 && (
             <span className="relative inline-flex">
               <HeaderNavDropdown label="Admin" links={adminMenuLinks} />
