@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   canAddTakwim,
+  canModifyTakwimItem,
   compactTakwimTimeLabel,
   groupTakwimItemsByDate,
   groupTakwimItemsByWeek,
@@ -145,10 +146,47 @@ test("compactTakwimTimeLabel keeps useful time without showing full details", ()
   );
 });
 
-test("canAddTakwim allows only Admin, Ketua Unit, and Timbalan PPD", () => {
-  assert.equal(canAddTakwim("Admin"), true);
-  assert.equal(canAddTakwim("Ketua_Unit"), true);
-  assert.equal(canAddTakwim("Timbalan_PPD"), true);
-  assert.equal(canAddTakwim("Penyelia"), false);
-  assert.equal(canAddTakwim("Pengguna"), false);
+test("canAddTakwim is open to every logged-in role (sektor scope enforced separately)", () => {
+  for (const peranan of ["Admin", "Penyelia", "Timbalan_PPD", "Ketua_Unit", "Pengguna"]) {
+    assert.equal(canAddTakwim(peranan), true);
+  }
+});
+
+const TAMBAHAN_OWN = { kategori: "tambahan" as const, sektorId: 9, createdByUserId: 100 };
+const TAMBAHAN_OTHER_SEKTOR = { kategori: "tambahan" as const, sektorId: 3, createdByUserId: 200 };
+const RANCANGAN_OWN_SEKTOR = { kategori: "rancangan" as const, sektorId: 5, createdByUserId: 200 };
+const RANCANGAN_OTHER_SEKTOR = { kategori: "rancangan" as const, sektorId: 3, createdByUserId: 200 };
+
+test("anyone can modify the tambahan they created", () => {
+  const pengguna = { peranan: "Pengguna", id: 100, sektorId: 9 };
+  assert.equal(canModifyTakwimItem(pengguna, TAMBAHAN_OWN), true);
+  // ...but not someone else's tambahan
+  assert.equal(canModifyTakwimItem(pengguna, TAMBAHAN_OTHER_SEKTOR), false);
+});
+
+test("Ketua Unit manages only its own sektor (tambahan and rancangan)", () => {
+  const ketua = { peranan: "Ketua_Unit", id: 1, sektorId: 5 };
+  assert.equal(canModifyTakwimItem(ketua, RANCANGAN_OWN_SEKTOR), true);
+  assert.equal(canModifyTakwimItem(ketua, RANCANGAN_OTHER_SEKTOR), false);
+  assert.equal(canModifyTakwimItem(ketua, { ...TAMBAHAN_OTHER_SEKTOR, sektorId: 5 }), true);
+  assert.equal(canModifyTakwimItem(ketua, TAMBAHAN_OTHER_SEKTOR), false);
+});
+
+test("Admin and Timbalan manage everything across all sektors", () => {
+  for (const peranan of ["Admin", "Timbalan_PPD"]) {
+    const u = { peranan, id: 1, sektorId: null };
+    assert.equal(canModifyTakwimItem(u, RANCANGAN_OTHER_SEKTOR), true);
+    assert.equal(canModifyTakwimItem(u, TAMBAHAN_OTHER_SEKTOR), true);
+  }
+});
+
+test("Penyelia (pemantau) manages all tambahan but never rancangan", () => {
+  const penyelia = { peranan: "Penyelia", id: 1, sektorId: null };
+  assert.equal(canModifyTakwimItem(penyelia, TAMBAHAN_OTHER_SEKTOR), true);
+  assert.equal(canModifyTakwimItem(penyelia, RANCANGAN_OTHER_SEKTOR), false);
+});
+
+test("Pengguna cannot touch rancangan at all", () => {
+  const pengguna = { peranan: "Pengguna", id: 100, sektorId: 5 };
+  assert.equal(canModifyTakwimItem(pengguna, RANCANGAN_OWN_SEKTOR), false);
 });

@@ -5,14 +5,14 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { withDbTimeout } from "@/lib/db-timeout";
-import { auditLog, pergerakan, sektors, takwimAktiviti, users } from "@/lib/schema";
+import { auditLog, pergerakan, sektors, takwimAktiviti } from "@/lib/schema";
 import { parseLocalInput } from "@/lib/dates";
 import { requireUser } from "@/lib/rbac";
-import { normalizeLaporanSektorIds } from "@/lib/laporan-sektor-scope";
 import {
-  canAddTakwim,
+  canModifyTakwimItem,
   normalizeTakwimSearchTerm,
   type TakwimKategori,
+  type TakwimModUser,
 } from "@/lib/takwim-utils";
 
 export type TakwimItem = {
@@ -23,10 +23,13 @@ export type TakwimItem = {
   jenis: "Pergerakan";
   urusan: string;
   lokasi: string;
+  sektorId: number | null;
   sektorCode: string | null;
   sektorName: string | null;
   tarikhPergi: Date;
   tarikhKembali: Date;
+  /** Boleh edit/padam oleh pengguna semasa (hanya baris takwim_aktiviti). */
+  canManage: boolean;
 };
 
 function monthRangeUtc(month: string): { start: Date; end: Date } | null {
@@ -47,31 +50,32 @@ function yearRangeUtc(year: string): { start: Date; end: Date } | null {
 }
 
 async function allowedTakwimSektorIds(user: Awaited<ReturnType<typeof requireUser>>) {
-  if (!canAddTakwim(user.peranan)) return { allowed: false as const, ids: [] as number[] };
-
-  if (user.peranan === "Admin") {
+  // Admin / Penyelia / Timbalan — semua sektor.
+  if (
+    user.peranan === "Admin" ||
+    user.peranan === "Penyelia" ||
+    user.peranan === "Timbalan_PPD"
+  ) {
     return { allowed: true as const, ids: null as number[] | null };
   }
 
-  if (user.peranan === "Ketua_Unit") {
+  // Ketua Unit / Pengguna — sektor sendiri sahaja.
+  if (user.peranan === "Ketua_Unit" || user.peranan === "Pengguna") {
     const sid = user.sektorId != null ? Number(user.sektorId) : null;
     return sid && Number.isFinite(sid)
       ? { allowed: true as const, ids: [sid] }
       : { allowed: false as const, ids: [] };
   }
 
-  if (user.peranan === "Timbalan_PPD") {
-    const row = await db.query.users.findFirst({
-      where: eq(users.id, Number(user.id)),
-      columns: { laporanSektorIds: true },
-    });
-    const ids = normalizeLaporanSektorIds(row?.laporanSektorIds);
-    return ids.length
-      ? { allowed: true as const, ids }
-      : { allowed: false as const, ids: [] };
-  }
-
   return { allowed: false as const, ids: [] };
+}
+
+function toModUser(user: Awaited<ReturnType<typeof requireUser>>): TakwimModUser {
+  return {
+    peranan: user.peranan,
+    id: Number(user.id),
+    sektorId: user.sektorId != null ? Number(user.sektorId) : null,
+  };
 }
 
 export async function listAllowedTakwimCreateSektorIds(): Promise<number[] | null> {
@@ -90,7 +94,8 @@ export async function listTakwimForMonth(opts: {
   month: string;
   sektorIds: number[] | "all";
 }): Promise<TakwimItem[]> {
-  await requireUser();
+  const user = await requireUser();
+  const modUser = toModUser(user);
 
   const range = monthRangeUtc(opts.month);
   if (!range) return [];
@@ -122,8 +127,10 @@ export async function listTakwimForMonth(opts: {
         kategori: takwimAktiviti.kategori,
         urusan: takwimAktiviti.urusan,
         lokasi: takwimAktiviti.lokasi,
+        sektorId: takwimAktiviti.sektorId,
         sektorCode: sektors.code,
         sektorName: sektors.name,
+        createdByUserId: takwimAktiviti.createdByUserId,
         tarikhPergi: takwimAktiviti.tarikhPergi,
         tarikhKembali: takwimAktiviti.tarikhKembali,
       })
@@ -140,6 +147,7 @@ export async function listTakwimForMonth(opts: {
         jenis: pergerakan.jenis,
         urusan: pergerakan.urusan,
         lokasi: pergerakan.lokasi,
+        sektorId: pergerakan.sektorId,
         sektorCode: sektors.code,
         sektorName: sektors.name,
         tarikhPergi: pergerakan.tarikhPergi,
@@ -152,18 +160,28 @@ export async function listTakwimForMonth(opts: {
   );
 
   return [
-    ...masterRows.map((r) => ({
-      id: r.id,
-      source: r.kategori === "rancangan" ? ("bulk" as const) : ("web" as const),
-      takwimKategori: r.kategori === "tambahan" ? ("tambahan" as const) : null,
-      jenis: "Pergerakan" as const,
-      urusan: r.urusan,
-      lokasi: r.lokasi,
-      sektorCode: r.sektorCode,
-      sektorName: r.sektorName,
-      tarikhPergi: new Date(r.tarikhPergi),
-      tarikhKembali: new Date(r.tarikhKembali),
-    })),
+    ...masterRows.map((r) => {
+      const kategori: "rancangan" | "tambahan" =
+        r.kategori === "rancangan" ? "rancangan" : "tambahan";
+      return {
+        id: r.id,
+        source: (kategori === "rancangan" ? "bulk" : "web") as "web" | "bulk",
+        takwimKategori: (kategori === "tambahan" ? "tambahan" : null) as TakwimKategori,
+        jenis: "Pergerakan" as const,
+        urusan: r.urusan,
+        lokasi: r.lokasi,
+        sektorId: r.sektorId,
+        sektorCode: r.sektorCode,
+        sektorName: r.sektorName,
+        tarikhPergi: new Date(r.tarikhPergi),
+        tarikhKembali: new Date(r.tarikhKembali),
+        canManage: canModifyTakwimItem(modUser, {
+          kategori,
+          sektorId: r.sektorId,
+          createdByUserId: r.createdByUserId,
+        }),
+      };
+    }),
     ...otherRows.map((r) => ({
       id: r.id,
       source: "web" as const,
@@ -171,10 +189,12 @@ export async function listTakwimForMonth(opts: {
       jenis: "Pergerakan" as const,
       urusan: r.urusan,
       lokasi: r.lokasi,
+      sektorId: r.sektorId,
       sektorCode: r.sektorCode,
       sektorName: r.sektorName,
       tarikhPergi: new Date(r.tarikhPergi),
       tarikhKembali: new Date(r.tarikhKembali),
+      canManage: false,
     })),
   ].sort((a, b) => a.tarikhPergi.getTime() - b.tarikhPergi.getTime());
 }
@@ -185,7 +205,8 @@ export async function listTakwimForYearSearch(opts: {
   search: string;
   includeOther: boolean;
 }): Promise<TakwimItem[]> {
-  await requireUser();
+  const user = await requireUser();
+  const modUser = toModUser(user);
 
   const range = yearRangeUtc(opts.year);
   const search = normalizeTakwimSearchTerm(opts.search);
@@ -237,8 +258,10 @@ export async function listTakwimForYearSearch(opts: {
         kategori: takwimAktiviti.kategori,
         urusan: takwimAktiviti.urusan,
         lokasi: takwimAktiviti.lokasi,
+        sektorId: takwimAktiviti.sektorId,
         sektorCode: sektors.code,
         sektorName: sektors.name,
+        createdByUserId: takwimAktiviti.createdByUserId,
         tarikhPergi: takwimAktiviti.tarikhPergi,
         tarikhKembali: takwimAktiviti.tarikhKembali,
       })
@@ -256,6 +279,7 @@ export async function listTakwimForYearSearch(opts: {
             jenis: pergerakan.jenis,
             urusan: pergerakan.urusan,
             lokasi: pergerakan.lokasi,
+            sektorId: pergerakan.sektorId,
             sektorCode: sektors.code,
             sektorName: sektors.name,
             tarikhPergi: pergerakan.tarikhPergi,
@@ -269,18 +293,28 @@ export async function listTakwimForYearSearch(opts: {
     : [];
 
   return [
-    ...masterRows.map((r) => ({
-      id: r.id,
-      source: r.kategori === "rancangan" ? ("bulk" as const) : ("web" as const),
-      takwimKategori: r.kategori === "tambahan" ? ("tambahan" as const) : null,
-      jenis: "Pergerakan" as const,
-      urusan: r.urusan,
-      lokasi: r.lokasi,
-      sektorCode: r.sektorCode,
-      sektorName: r.sektorName,
-      tarikhPergi: new Date(r.tarikhPergi),
-      tarikhKembali: new Date(r.tarikhKembali),
-    })),
+    ...masterRows.map((r) => {
+      const kategori: "rancangan" | "tambahan" =
+        r.kategori === "rancangan" ? "rancangan" : "tambahan";
+      return {
+        id: r.id,
+        source: (kategori === "rancangan" ? "bulk" : "web") as "web" | "bulk",
+        takwimKategori: (kategori === "tambahan" ? "tambahan" : null) as TakwimKategori,
+        jenis: "Pergerakan" as const,
+        urusan: r.urusan,
+        lokasi: r.lokasi,
+        sektorId: r.sektorId,
+        sektorCode: r.sektorCode,
+        sektorName: r.sektorName,
+        tarikhPergi: new Date(r.tarikhPergi),
+        tarikhKembali: new Date(r.tarikhKembali),
+        canManage: canModifyTakwimItem(modUser, {
+          kategori,
+          sektorId: r.sektorId,
+          createdByUserId: r.createdByUserId,
+        }),
+      };
+    }),
     ...otherRows.map((r) => ({
       id: r.id,
       source: "web" as const,
@@ -288,10 +322,12 @@ export async function listTakwimForYearSearch(opts: {
       jenis: "Pergerakan" as const,
       urusan: r.urusan,
       lokasi: r.lokasi,
+      sektorId: r.sektorId,
       sektorCode: r.sektorCode,
       sektorName: r.sektorName,
       tarikhPergi: new Date(r.tarikhPergi),
       tarikhKembali: new Date(r.tarikhKembali),
+      canManage: false,
     })),
   ].sort((a, b) => a.tarikhPergi.getTime() - b.tarikhPergi.getTime());
 }
@@ -368,6 +404,141 @@ export async function createTakwimTambahan(input: unknown): Promise<CreateTakwim
     action: "CREATE_TAKWIM_TAMBAHAN",
     userId: Number(user.id),
     detail: { takwimAktivitiId: inserted[0]?.id, sektorId: data.sektorId },
+  });
+
+  revalidatePath("/takwim");
+  return { ok: true };
+}
+
+const editTakwimSchema = z
+  .object({
+    id: z.coerce.number().int().positive("ID tidak sah"),
+    sektorId: z.coerce.number().int().positive("Sektor diperlukan"),
+    urusan: z.string().trim().min(1, "Nama aktiviti diperlukan"),
+    lokasi: z.string().trim().default(""),
+    tarikhPergi: z.string().min(1, "Tarikh mula diperlukan"),
+    tarikhKembali: z.string().min(1, "Tarikh tamat diperlukan"),
+  })
+  .superRefine((value, ctx) => {
+    const pergi = parseLocalInput(value.tarikhPergi);
+    const kembali = parseLocalInput(value.tarikhKembali);
+    if (!pergi) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["tarikhPergi"], message: "Tarikh mula tidak sah" });
+    }
+    if (!kembali) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["tarikhKembali"], message: "Tarikh tamat tidak sah" });
+    }
+    if (pergi && kembali && kembali < pergi) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["tarikhKembali"],
+        message: "Tarikh tamat mesti selepas tarikh mula",
+      });
+    }
+  });
+
+export async function updateTakwim(input: unknown): Promise<CreateTakwimResult> {
+  const user = await requireUser();
+
+  const parsed = editTakwimSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak sah" };
+  }
+  const data = parsed.data;
+
+  const row = await db.query.takwimAktiviti.findFirst({
+    where: and(eq(takwimAktiviti.id, data.id), eq(takwimAktiviti.aktif, true)),
+    columns: { id: true, kategori: true, sektorId: true, createdByUserId: true },
+  });
+  if (!row) return { ok: false, error: "Aktiviti tidak dijumpai." };
+
+  const kategori: "rancangan" | "tambahan" =
+    row.kategori === "rancangan" ? "rancangan" : "tambahan";
+  if (
+    !canModifyTakwimItem(toModUser(user), {
+      kategori,
+      sektorId: row.sektorId,
+      createdByUserId: row.createdByUserId,
+    })
+  ) {
+    return { ok: false, error: "Anda tiada kebenaran mengubah aktiviti ini." };
+  }
+
+  // Hanya sahkan skop jika sektor benar-benar ditukar.
+  if (data.sektorId !== row.sektorId) {
+    const scope = await allowedTakwimSektorIds(user);
+    if (!scope.allowed || (scope.ids && !scope.ids.includes(data.sektorId))) {
+      return { ok: false, error: "Sektor di luar skop kebenaran anda." };
+    }
+  }
+
+  const sektor = await db.query.sektors.findFirst({
+    where: eq(sektors.id, data.sektorId),
+    columns: { id: true },
+  });
+  if (!sektor) return { ok: false, error: "Sektor tidak sah." };
+
+  const pergi = parseLocalInput(data.tarikhPergi);
+  const kembali = parseLocalInput(data.tarikhKembali);
+  if (!pergi || !kembali || kembali < pergi) {
+    return { ok: false, error: "Julat tarikh tidak sah." };
+  }
+
+  await db
+    .update(takwimAktiviti)
+    .set({
+      sektorId: data.sektorId,
+      urusan: data.urusan,
+      lokasi: data.lokasi,
+      tarikhPergi: pergi,
+      tarikhKembali: kembali,
+      updatedAt: new Date(),
+    })
+    .where(eq(takwimAktiviti.id, data.id));
+
+  await db.insert(auditLog).values({
+    action: "UPDATE_TAKWIM",
+    userId: Number(user.id),
+    detail: { takwimAktivitiId: data.id, kategori, sektorId: data.sektorId },
+  });
+
+  revalidatePath("/takwim");
+  return { ok: true };
+}
+
+export async function deleteTakwim(input: { id: number }): Promise<CreateTakwimResult> {
+  const user = await requireUser();
+
+  const id = Number(input?.id);
+  if (!Number.isInteger(id) || id <= 0) return { ok: false, error: "ID tidak sah." };
+
+  const row = await db.query.takwimAktiviti.findFirst({
+    where: and(eq(takwimAktiviti.id, id), eq(takwimAktiviti.aktif, true)),
+    columns: { id: true, kategori: true, sektorId: true, createdByUserId: true },
+  });
+  if (!row) return { ok: false, error: "Aktiviti tidak dijumpai." };
+
+  const kategori: "rancangan" | "tambahan" =
+    row.kategori === "rancangan" ? "rancangan" : "tambahan";
+  if (
+    !canModifyTakwimItem(toModUser(user), {
+      kategori,
+      sektorId: row.sektorId,
+      createdByUserId: row.createdByUserId,
+    })
+  ) {
+    return { ok: false, error: "Anda tiada kebenaran memadam aktiviti ini." };
+  }
+
+  await db
+    .update(takwimAktiviti)
+    .set({ aktif: false, updatedAt: new Date() })
+    .where(eq(takwimAktiviti.id, id));
+
+  await db.insert(auditLog).values({
+    action: "DELETE_TAKWIM",
+    userId: Number(user.id),
+    detail: { takwimAktivitiId: id, kategori },
   });
 
   revalidatePath("/takwim");

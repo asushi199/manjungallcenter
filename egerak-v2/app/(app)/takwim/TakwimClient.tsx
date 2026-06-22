@@ -23,7 +23,7 @@ import {
   type TakwimDateGroup,
   type TakwimWeekGroup,
 } from "@/lib/takwim-utils";
-import { createTakwimTambahan } from "@/lib/actions/takwim";
+import { createTakwimTambahan, deleteTakwim, updateTakwim } from "@/lib/actions/takwim";
 
 type SerializedTakwimItem = {
   id: number;
@@ -32,10 +32,12 @@ type SerializedTakwimItem = {
   jenis: "Pergerakan";
   urusan: string;
   lokasi: string;
+  sektorId: number | null;
   sektorCode: string | null;
   sektorName: string | null;
   tarikhPergi: string;
   tarikhKembali: string;
+  canManage: boolean;
 };
 
 type Props = {
@@ -335,7 +337,7 @@ export default function TakwimClient({
               </div>
               <div className="space-y-2">
                 {monthGroup.weeks.map((week) => (
-                  <WeekDetails key={week.weekKey} week={week} defaultOpen />
+                  <WeekDetails key={week.weekKey} week={week} defaultOpen addSektors={addSektors} />
                 ))}
               </div>
             </section>
@@ -344,7 +346,7 @@ export default function TakwimClient({
       ) : (
         <div className="space-y-2">
           {weekGroups.map((week) => (
-            <WeekDetails key={week.weekKey} week={week} defaultOpen />
+            <WeekDetails key={week.weekKey} week={week} defaultOpen addSektors={addSektors} />
           ))}
         </div>
       )}
@@ -355,9 +357,11 @@ export default function TakwimClient({
 function WeekDetails({
   week,
   defaultOpen,
+  addSektors,
 }: {
   week: TakwimWeekGroup<SerializedTakwimItem>;
   defaultOpen: boolean;
+  addSektors: SektorOption[];
 }) {
   const [open, setOpen] = useState(defaultOpen);
 
@@ -396,14 +400,20 @@ function WeekDetails({
       </summary>
       <div className="divide-y divide-slate-100">
         {week.days.map((day) => (
-          <DateGroupSection key={day.dateKey} group={day} />
+          <DateGroupSection key={day.dateKey} group={day} addSektors={addSektors} />
         ))}
       </div>
     </details>
   );
 }
 
-function DateGroupSection({ group }: { group: TakwimDateGroup<SerializedTakwimItem> }) {
+function DateGroupSection({
+  group,
+  addSektors,
+}: {
+  group: TakwimDateGroup<SerializedTakwimItem>;
+  addSektors: SektorOption[];
+}) {
   const header = dateHeaderLabel(group.dateKey);
   return (
     <section className="flex gap-3 px-3 py-3">
@@ -414,17 +424,41 @@ function DateGroupSection({ group }: { group: TakwimDateGroup<SerializedTakwimIt
       </div>
       <div className="min-w-0 flex-1 border-l border-slate-200 pl-3">
         {group.items.map((item) => (
-          <AgendaRow key={`${item.source}-${item.takwimKategori ?? "none"}-${item.id}`} item={item} />
+          <AgendaRow
+            key={`${item.source}-${item.takwimKategori ?? "none"}-${item.id}`}
+            item={item}
+            addSektors={addSektors}
+          />
         ))}
       </div>
     </section>
   );
 }
 
-function AgendaRow({ item }: { item: SerializedTakwimItem }) {
+function AgendaRow({ item, addSektors }: { item: SerializedTakwimItem; addSektors: SektorOption[] }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [isDeleting, startDelete] = useTransition();
+  const [actionError, setActionError] = useState<string | null>(null);
   const kind = takwimDisplayKind(item);
   const isTakwim = kind === "rancangan" || kind === "tambahan";
+  const canManage = isTakwim && item.canManage;
+
+  function onDelete() {
+    if (!window.confirm(`Padam aktiviti "${item.urusan}"? Tindakan ini tidak boleh diundur.`)) {
+      return;
+    }
+    setActionError(null);
+    startDelete(async () => {
+      const result = await deleteTakwim({ id: item.id });
+      if (!result.ok) {
+        setActionError(result.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
   const st = sektorStyle(item.sektorCode, item.jenis);
   const sektorFullLabel = item.sektorName ?? item.sektorCode ?? "Tanpa sektor";
   const sektorCompactLabel = sektorShortLabel(item.sektorCode, sektorFullLabel);
@@ -487,23 +521,61 @@ function AgendaRow({ item }: { item: SerializedTakwimItem }) {
       </button>
       {open && (
         <div className="px-3 pb-3 pl-4 sm:pl-[5.9rem] text-xs text-slate-500">
-          <div className="space-y-1 rounded-md border border-slate-100 bg-white px-3 py-2">
-            <p>
-              <span className="font-semibold text-slate-600">Aktiviti:</span>{" "}
-              <span className="break-words text-slate-700">{item.urusan}</span>
-            </p>
-            <p>
-              <span className="font-semibold text-slate-600">Masa:</span> {fullTimeLabel(item)}
-            </p>
-            <p>
-              <span className="font-semibold text-slate-600">Lokasi:</span>{" "}
-              <span className="break-words">{item.lokasi || "Tiada lokasi"}</span>
-            </p>
-            <p>
-              <span className="font-semibold text-slate-600">Sektor:</span>{" "}
-              <span className="break-words">{sektorFullLabel}</span>
-            </p>
-          </div>
+          {editing ? (
+            <EditTakwimForm
+              item={item}
+              addSektors={addSektors}
+              onCancel={() => setEditing(false)}
+              onSaved={() => {
+                setEditing(false);
+                router.refresh();
+              }}
+            />
+          ) : (
+            <div className="space-y-1 rounded-md border border-slate-100 bg-white px-3 py-2">
+              <p>
+                <span className="font-semibold text-slate-600">Aktiviti:</span>{" "}
+                <span className="break-words text-slate-700">{item.urusan}</span>
+              </p>
+              <p>
+                <span className="font-semibold text-slate-600">Masa:</span> {fullTimeLabel(item)}
+              </p>
+              <p>
+                <span className="font-semibold text-slate-600">Lokasi:</span>{" "}
+                <span className="break-words">{item.lokasi || "Tiada lokasi"}</span>
+              </p>
+              <p>
+                <span className="font-semibold text-slate-600">Sektor:</span>{" "}
+                <span className="break-words">{sektorFullLabel}</span>
+              </p>
+              {canManage && (
+                <div className="flex flex-wrap items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    className="rounded-md border border-brand-200 bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:opacity-50"
+                    onClick={() => {
+                      setActionError(null);
+                      setEditing(true);
+                    }}
+                    disabled={isDeleting}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md border border-red-200 bg-white px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                    onClick={onDelete}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? "Memadam..." : "Padam"}
+                  </button>
+                  {actionError && (
+                    <span className="text-xs font-medium text-red-700">{actionError}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </article>
@@ -627,6 +699,126 @@ function TakwimForm({ addSektors, month }: { addSektors: SektorOption[]; month: 
         </div>
       </form>
     </section>
+  );
+}
+
+function EditTakwimForm({
+  item,
+  addSektors,
+  onCancel,
+  onSaved,
+}: {
+  item: SerializedTakwimItem;
+  addSektors: SektorOption[];
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const [isSubmitting, startSubmit] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const start = new Date(item.tarikhPergi);
+  const end = new Date(item.tarikhKembali);
+  const startDate = formatInTimeZone(start, TZ, "yyyy-MM-dd");
+  const startTime = formatInTimeZone(start, TZ, "HH:mm");
+  const endDate = formatInTimeZone(end, TZ, "yyyy-MM-dd");
+  const endTime = formatInTimeZone(end, TZ, "HH:mm");
+
+  const sektorOptions = useMemo(() => {
+    if (item.sektorId != null && !addSektors.some((s) => s.id === item.sektorId)) {
+      return [
+        { id: item.sektorId, code: "", name: item.sektorName ?? `Sektor ${item.sektorId}` },
+        ...addSektors,
+      ];
+    }
+    return addSektors;
+  }, [addSektors, item.sektorId, item.sektorName]);
+
+  function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    const form = new FormData(e.currentTarget);
+    const payload = {
+      id: item.id,
+      sektorId: Number(form.get("sektorId")),
+      urusan: String(form.get("urusan") ?? ""),
+      lokasi: String(form.get("lokasi") ?? "").trim(),
+      tarikhPergi: `${String(form.get("tarikhPergiDate") ?? startDate)}T${String(
+        form.get("tarikhPergiTime") ?? startTime,
+      )}`,
+      tarikhKembali: `${String(form.get("tarikhKembaliDate") ?? endDate)}T${String(
+        form.get("tarikhKembaliTime") ?? endTime,
+      )}`,
+    };
+
+    startSubmit(async () => {
+      const result = await updateTakwim(payload);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      onSaved();
+    });
+  }
+
+  return (
+    <form className="grid gap-3 rounded-md border border-brand-200 bg-brand-50/50 p-3 sm:grid-cols-2" onSubmit={onSubmit}>
+      <div className="sm:col-span-2">
+        <label className="label">Aktiviti</label>
+        <input name="urusan" className="input" required defaultValue={item.urusan} />
+      </div>
+      <div>
+        <label className="label">Sektor</label>
+        <select name="sektorId" className="input" required defaultValue={item.sektorId ?? sektorOptions[0]?.id ?? ""}>
+          {sektorOptions.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="label">Lokasi</label>
+        <input name="lokasi" className="input" defaultValue={item.lokasi} placeholder="Jika ada, taip lokasi" />
+      </div>
+      <div className="grid grid-cols-[1fr_auto] gap-2">
+        <div>
+          <label className="label">Mula</label>
+          <input name="tarikhPergiDate" type="date" className="input" defaultValue={startDate} required />
+        </div>
+        <div>
+          <label className="label">Masa</label>
+          <input name="tarikhPergiTime" type="time" className="input w-28" defaultValue={startTime} required />
+        </div>
+      </div>
+      <div className="grid grid-cols-[1fr_auto] gap-2">
+        <div>
+          <label className="label">Tamat</label>
+          <input name="tarikhKembaliDate" type="date" className="input" defaultValue={endDate} required />
+        </div>
+        <div>
+          <label className="label">Masa</label>
+          <input name="tarikhKembaliTime" type="time" className="input w-28" defaultValue={endTime} required />
+        </div>
+      </div>
+      <div className="sm:col-span-2 flex flex-wrap items-center gap-2">
+        <button
+          type="submit"
+          className="rounded-md bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
+        </button>
+        <button
+          type="button"
+          className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+          onClick={onCancel}
+          disabled={isSubmitting}
+        >
+          Batal
+        </button>
+        {error && <span className="text-sm font-medium text-red-700">{error}</span>}
+      </div>
+    </form>
   );
 }
 

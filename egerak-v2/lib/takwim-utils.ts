@@ -61,8 +61,56 @@ export function normalizeTakwimSearchTerm(search: string | undefined): string {
   return (search ?? "").trim().replace(/\s+/g, " ");
 }
 
-export function canAddTakwim(peranan: UserPeranan | string | null | undefined): boolean {
-  return peranan === "Admin" || peranan === "Ketua_Unit" || peranan === "Timbalan_PPD";
+export type TakwimActorPeranan = UserPeranan | string | null | undefined;
+
+/**
+ * Semua pengguna log masuk boleh menambah takwim (tambahan).
+ * Skop sektor sebenar (sektor sendiri vs semua) dikawal berasingan di server.
+ */
+export function canAddTakwim(_peranan: TakwimActorPeranan): boolean {
+  return true;
+}
+
+export type TakwimModUser = {
+  peranan: TakwimActorPeranan;
+  id: number;
+  sektorId: number | null;
+};
+
+export type TakwimModItem = {
+  kategori: "rancangan" | "tambahan";
+  sektorId: number | null;
+  createdByUserId: number | null;
+};
+
+/**
+ * Kebenaran edit/padam satu aktiviti takwim (jadual takwim_aktiviti).
+ * - Tambahan: pencipta sendiri sentiasa boleh; selain itu ikut skop sektor.
+ * - Rancangan: hanya Admin/Timbalan (semua sektor) & Ketua Unit (sektor sendiri).
+ *   Penyelia ialah pemantau — tidak menyentuh rancangan.
+ *
+ * Skop edit dan padam adalah sama.
+ */
+export function canModifyTakwimItem(user: TakwimModUser, item: TakwimModItem): boolean {
+  if (
+    item.kategori === "tambahan" &&
+    item.createdByUserId != null &&
+    item.createdByUserId === user.id
+  ) {
+    return true;
+  }
+
+  switch (user.peranan) {
+    case "Admin":
+    case "Timbalan_PPD":
+      return true;
+    case "Penyelia":
+      return item.kategori === "tambahan";
+    case "Ketua_Unit":
+      return user.sektorId != null && item.sektorId === user.sektorId;
+    default:
+      return false;
+  }
 }
 
 export function takwimDisplayKind(item: {
