@@ -12,7 +12,7 @@ import {
 import Link from "next/link";
 import { compressImageForOpr } from "@/lib/client/compress-image";
 import { OPR_MAX_PHOTOS } from "@/lib/opr-photos";
-import { OPR_FOKUS_OPTIONS } from "@/lib/opr-fokus";
+import { OPR_FOKUS_OPTIONS, OPR_FOKUS_HINTS } from "@/lib/opr-fokus";
 import { oprStatusBadge } from "@/lib/opr-status";
 import { buildOprGenerateKey } from "@/lib/opr-generate-lock";
 import { cn } from "@/lib/cn";
@@ -370,7 +370,7 @@ export default function OprFormClient({
                 <option value="">— Pilih fokus —</option>
                 {OPR_FOKUS_OPTIONS.map((f) => (
                   <option key={f} value={f}>
-                    {f}
+                    {OPR_FOKUS_HINTS[f] ? `${f} (${OPR_FOKUS_HINTS[f]})` : f}
                   </option>
                 ))}
               </select>

@@ -33,7 +33,7 @@ const ACCENT_PROGRAM = BRAND_TEAL_COLOR;
 const ACCENT_FOKUS = "#7c3aed";
 
 /** Warna tetap bagi setiap kategori fokus (konsisten antara carta taburan & trend). */
-const FOKUS_PALETTE = ["#7c3aed", BRAND_TEAL_COLOR, BRAND_GOLD_COLOR, "#ea580c", "#0369a1", "#65a30d"];
+const FOKUS_PALETTE = ["#7c3aed", BRAND_TEAL_COLOR, BRAND_GOLD_COLOR, "#ea580c", "#0369a1", "#65a30d", "#db2777", "#475569"];
 const FOKUS_NONE_COLOR = "#94a3b8";
 
 function fokusColor(name: string): string {

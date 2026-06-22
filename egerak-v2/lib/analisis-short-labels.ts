@@ -17,6 +17,8 @@ const FOKUS_SHORT_LABELS: Record<string, string> = {
   "Program Sokongan": "PS",
   Perasmian: "RAS",
   Pemantauan: "PMT",
+  Mesyuarat: "MSY",
+  "Latihan/Taklimat": "LT",
 };
 
 const INITIALS_IGNORE = new Set(["dan", "dengan", "di", "ke"]);

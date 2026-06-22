@@ -10,9 +10,19 @@ export const OPR_FOKUS_OPTIONS = [
   "Runding Cara/Konsultansi",
   "Pemantauan",
   "Program Sokongan",
+  "Mesyuarat",
+  "Latihan/Taklimat",
 ] as const;
 
 export type OprFokus = (typeof OPR_FOKUS_OPTIONS)[number];
+
+/**
+ * Petunjuk contoh untuk fokus tertentu — dipaparkan dalam dropdown borang OPR
+ * sahaja (nilai disimpan & analisis kekal nama penuh, tidak terjejas).
+ */
+export const OPR_FOKUS_HINTS: Partial<Record<OprFokus, string>> = {
+  "Latihan/Taklimat": "taklimat, bengkel, ceramah, seminar",
+};
 
 export function isOprFokus(value: unknown): value is OprFokus {
   return (
