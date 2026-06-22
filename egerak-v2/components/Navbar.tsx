@@ -6,7 +6,6 @@ import { signOut, useSession } from "next-auth/react";
 import SentraLogo from "@/components/SentraLogo";
 import PwaInstallButton from "@/components/PwaInstallButton";
 import HeaderNavDropdown from "@/components/HeaderNavDropdown";
-import MobileNavMenu from "@/components/MobileNavMenu";
 import AdminRequestsBadge from "@/components/AdminRequestsBadge";
 import {
   adminMenuLinksForPeranan,
@@ -51,13 +50,6 @@ export default function Navbar() {
             <span className="block text-[11px] font-semibold text-white/90">PPD Manjung</span>
           </span>
         </Link>
-        <MobileNavMenu
-          mainLinks={mainLinks}
-          adminLinks={adminMenuLinks}
-          showAdminSection={adminMenuLinks.length > 0}
-          userNama={user?.nama}
-          userJawatan={user?.jawatan}
-        />
       </div>
 
       <div className="mx-auto max-w-7xl hidden md:flex items-center justify-between gap-3 px-4 py-2.5">
