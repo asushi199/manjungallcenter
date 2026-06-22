@@ -187,17 +187,18 @@ export default function BottomTabBar() {
               </div>
             </div>
 
-            <p className="px-4 pt-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Pintasan
-            </p>
-            <SheetLink href="/bilik" label="Tempahan Bilik" path={path} onNavigate={() => setSheetOpen(false)} />
-
-            <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Admin
-            </p>
-            {adminLinks.map((l) => (
-              <SheetLink key={l.href} href={l.href} label={l.label} path={path} onNavigate={() => setSheetOpen(false)} />
-            ))}
+            <div className="grid grid-cols-2 gap-3 p-4">
+              <AdminTile href="/bilik" label="Tempahan Bilik" active={isActive(path, "/bilik")} onNavigate={() => setSheetOpen(false)} />
+              {adminLinks.map((l) => (
+                <AdminTile
+                  key={l.href}
+                  href={l.href}
+                  label={l.label}
+                  active={isActive(path, l.href)}
+                  onNavigate={() => setSheetOpen(false)}
+                />
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -205,27 +206,141 @@ export default function BottomTabBar() {
   );
 }
 
-function SheetLink({
+type GlyphName =
+  | "door"
+  | "users"
+  | "chart"
+  | "search"
+  | "file"
+  | "inbox"
+  | "trash"
+  | "upload"
+  | "grid";
+
+const ADMIN_META: Record<string, { glyph: GlyphName; danger?: boolean }> = {
+  "/bilik": { glyph: "door" },
+  "/admin/users": { glyph: "users" },
+  "/admin/analisis-pergerakan": { glyph: "chart" },
+  "/jejak-pegawai": { glyph: "search" },
+  "/admin/laporan-opr": { glyph: "file" },
+  "/admin/bilik-permohonan": { glyph: "inbox" },
+  "/admin/pergerakan": { glyph: "trash", danger: true },
+  "/admin/import": { glyph: "upload" },
+};
+
+function AdminTile({
   href,
   label,
-  path,
+  active,
   onNavigate,
 }: {
   href: string;
   label: string;
-  path: string | null;
+  active: boolean;
   onNavigate: () => void;
 }) {
+  const meta = ADMIN_META[href] ?? { glyph: "grid" as GlyphName };
   return (
     <Link
       href={href}
       onClick={onNavigate}
       className={cn(
-        "block border-l-4 border-transparent px-4 py-3 text-base text-slate-800",
-        isActive(path, href) && "border-brand-600 bg-brand-50 font-semibold text-brand-800",
+        "flex flex-col gap-2 rounded-2xl border bg-white p-3 shadow-sm transition active:scale-[0.97]",
+        active ? "border-brand-300 ring-1 ring-brand-200" : "border-slate-200 hover:shadow-md",
       )}
     >
-      {label}
+      <span
+        className={cn(
+          "flex h-11 w-11 items-center justify-center rounded-xl text-white shadow-sm",
+          meta.danger
+            ? "bg-gradient-to-br from-rose-500 to-red-600"
+            : "bg-gradient-to-br from-brand-600 to-cyan-600",
+        )}
+      >
+        <Glyph name={meta.glyph} className="h-5 w-5" />
+      </span>
+      <span className="text-[13px] font-semibold leading-tight text-slate-800">{label}</span>
     </Link>
   );
+}
+
+function Glyph({ name, className }: { name: GlyphName; className?: string }) {
+  const p = {
+    className,
+    width: 20,
+    height: 20,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+  switch (name) {
+    case "door":
+      return (
+        <svg {...p}>
+          <path d="M5 21V4a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v17" />
+          <path d="M3 21h18M12.5 12v1.5" />
+        </svg>
+      );
+    case "users":
+      return (
+        <svg {...p}>
+          <circle cx="9" cy="8" r="3" />
+          <path d="M3 20c0-3 2.7-5 6-5s6 2 6 5" />
+          <path d="M16 6a3 3 0 0 1 0 6M19 20c0-2-1-3.6-3-4.4" />
+        </svg>
+      );
+    case "chart":
+      return (
+        <svg {...p}>
+          <path d="M4 20V11M10 20V4M16 20v-6M2 20h20" />
+        </svg>
+      );
+    case "search":
+      return (
+        <svg {...p}>
+          <circle cx="11" cy="11" r="7" />
+          <path d="m21 21-4-4" />
+        </svg>
+      );
+    case "file":
+      return (
+        <svg {...p}>
+          <path d="M14 3v5h5" />
+          <path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z" />
+          <path d="M9 13h6M9 17h6" />
+        </svg>
+      );
+    case "inbox":
+      return (
+        <svg {...p}>
+          <path d="M4 13h4l1 2h6l1-2h4" />
+          <path d="M5 5h14l2 8v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5z" />
+        </svg>
+      );
+    case "trash":
+      return (
+        <svg {...p}>
+          <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
+        </svg>
+      );
+    case "upload":
+      return (
+        <svg {...p}>
+          <path d="M12 15V3M7 8l5-5 5 5M5 21h14" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...p}>
+          <rect x="4" y="4" width="7" height="7" rx="1" />
+          <rect x="13" y="4" width="7" height="7" rx="1" />
+          <rect x="4" y="13" width="7" height="7" rx="1" />
+          <rect x="13" y="13" width="7" height="7" rx="1" />
+        </svg>
+      );
+  }
 }
