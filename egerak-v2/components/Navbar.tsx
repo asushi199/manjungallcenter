@@ -64,6 +64,21 @@ export default function Navbar() {
             <span className="block text-[11px] font-semibold text-white/90">PPD Manjung</span>
           </span>
         </Link>
+        <PwaInstallButton variant="nav-link" className="shrink-0" />
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm("Log keluar dari SentRa?")) signOut({ redirectTo: "/login" });
+          }}
+          className="shrink-0 rounded-md bg-white/15 hover:bg-white/25 p-2"
+          aria-label="Log Keluar"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <path d="M16 17l5-5-5-5" />
+            <path d="M21 12H9" />
+          </svg>
+        </button>
       </div>
 
       <div className="mx-auto max-w-7xl hidden md:flex items-center justify-between gap-3 px-4 py-2.5">

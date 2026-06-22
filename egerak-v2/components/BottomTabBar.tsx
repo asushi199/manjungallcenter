@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useEffect, useState, type ReactElement } from "react";
 import { cn } from "@/lib/cn";
 import { adminMenuLinksForPeranan } from "@/lib/app-nav";
-import PwaInstallButton from "@/components/PwaInstallButton";
 
 function isActive(path: string | null, href: string) {
   return path === href || (path?.startsWith(href + "/") ?? false);
@@ -42,20 +41,29 @@ function CalendarIcon({ className }: IconProps) {
   );
 }
 
-function PlusIcon({ className }: IconProps) {
+function DoorIcon({ className }: IconProps) {
   return (
-    <svg className={className} width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M12 5v14M5 12h14" />
+    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M5 21V4a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v17" />
+      <path d="M3 21h18" />
+      <path d="M12.5 12v1.5" />
     </svg>
   );
 }
 
-function MoreIcon({ className }: IconProps) {
+function AdminIcon({ className }: IconProps) {
   return (
     <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="5" cy="12" r="1.4" />
-      <circle cx="12" cy="12" r="1.4" />
-      <circle cx="19" cy="12" r="1.4" />
+      <path d="M12 3 4 6v5c0 4.5 3.2 7.8 8 10 4.8-2.2 8-5.5 8-10V6l-8-3Z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+function PlusIcon({ className }: IconProps) {
+  return (
+    <svg className={className} width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 5v14M5 12h14" />
     </svg>
   );
 }
@@ -90,6 +98,7 @@ export default function BottomTabBar() {
   const { data } = useSession();
   const peranan = data?.user?.peranan;
   const adminLinks = adminMenuLinksForPeranan(peranan);
+  const hasAdmin = adminLinks.length > 0;
   const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => {
@@ -108,7 +117,7 @@ export default function BottomTabBar() {
 
   if (path?.endsWith("/opr/print")) return null;
 
-  const lagiActive =
+  const adminActive =
     isActive(path, "/bilik") || adminLinks.some((l) => isActive(path, l.href));
 
   return (
@@ -133,22 +142,26 @@ export default function BottomTabBar() {
 
         <Tab href="/takwim" label="Takwim" Icon={CalendarIcon} active={isActive(path, "/takwim")} />
 
-        <button
-          type="button"
-          onClick={() => setSheetOpen(true)}
-          aria-expanded={sheetOpen}
-          aria-haspopup="menu"
-          className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1.5 text-[11px]",
-            lagiActive || sheetOpen ? "text-brand-700 font-semibold" : "text-slate-400",
-          )}
-        >
-          <MoreIcon className="h-6 w-6" />
-          <span>Lagi</span>
-        </button>
+        {hasAdmin ? (
+          <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            aria-expanded={sheetOpen}
+            aria-haspopup="menu"
+            className={cn(
+              "flex flex-1 flex-col items-center gap-0.5 py-1.5 text-[11px]",
+              adminActive || sheetOpen ? "text-brand-700 font-semibold" : "text-slate-400",
+            )}
+          >
+            <AdminIcon className="h-6 w-6" />
+            <span>Admin</span>
+          </button>
+        ) : (
+          <Tab href="/bilik" label="Bilik" Icon={DoorIcon} active={isActive(path, "/bilik")} />
+        )}
       </nav>
 
-      {sheetOpen && (
+      {sheetOpen && hasAdmin && (
         <div className="fixed inset-0 z-[100] md:hidden" role="dialog" aria-modal>
           <button
             type="button"
@@ -160,7 +173,7 @@ export default function BottomTabBar() {
             <div className="sticky top-0 bg-white pt-2">
               <div className="mx-auto mb-1 h-1 w-10 rounded-full bg-slate-300" />
               <div className="flex items-center justify-between px-4 py-2">
-                <p className="text-sm font-semibold text-slate-700">Lagi</p>
+                <p className="text-sm font-semibold text-slate-700">Admin</p>
                 <button
                   type="button"
                   onClick={() => setSheetOpen(false)}
@@ -174,32 +187,17 @@ export default function BottomTabBar() {
               </div>
             </div>
 
+            <p className="px-4 pt-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Pintasan
+            </p>
             <SheetLink href="/bilik" label="Tempahan Bilik" path={path} onNavigate={() => setSheetOpen(false)} />
 
-            {adminLinks.length > 0 && (
-              <>
-                <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Admin
-                </p>
-                {adminLinks.map((l) => (
-                  <SheetLink key={l.href} href={l.href} label={l.label} path={path} onNavigate={() => setSheetOpen(false)} />
-                ))}
-              </>
-            )}
-
-            <div className="mt-3 space-y-3 border-t px-4 pt-3">
-              <PwaInstallButton variant="menu-block" />
-              <button
-                type="button"
-                className="btn-secondary w-full justify-center"
-                onClick={() => {
-                  setSheetOpen(false);
-                  signOut({ redirectTo: "/login" });
-                }}
-              >
-                Log Keluar
-              </button>
-            </div>
+            <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Admin
+            </p>
+            {adminLinks.map((l) => (
+              <SheetLink key={l.href} href={l.href} label={l.label} path={path} onNavigate={() => setSheetOpen(false)} />
+            ))}
           </div>
         </div>
       )}
