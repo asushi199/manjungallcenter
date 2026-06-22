@@ -286,15 +286,6 @@ function StackedRankedBars({
         </summary>
         <div className="mt-2 space-y-1">
           <p>
-            Sektor:{" "}
-            {rows.map((r, index) => (
-              <span key={r.label}>
-                <strong>{r.label}</strong>={r.title ?? r.label}
-                {index < rows.length - 1 ? " · " : ""}
-              </span>
-            ))}
-          </p>
-          <p>
             Fokus:{" "}
             {series.map((s, index) => (
               <span key={s.key}>
