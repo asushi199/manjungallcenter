@@ -47,8 +47,8 @@ const OPR_FILTER_STYLE: Record<string, { active: string; idle: string }> = {
     idle: "bg-white text-slate-700 border-slate-200 hover:border-slate-300",
   },
   perlu: {
-    active: "bg-rose-600 text-white border-rose-600",
-    idle: "bg-rose-50 text-rose-700 border-rose-200 hover:border-rose-300",
+    active: "bg-red-600 text-white border-red-600",
+    idle: "bg-red-100 text-red-700 border-red-300 hover:border-red-400",
   },
   draf: {
     active: "bg-amber-500 text-white border-amber-500",
