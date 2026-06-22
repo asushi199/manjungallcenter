@@ -1,5 +1,4 @@
-import SentraLogo from "@/components/SentraLogo";
-import { APP_DISPLAY_NAME } from "@/lib/branding";
+import Image from "next/image";
 import LoginForm from "./LoginForm";
 
 export const dynamic = "force-dynamic";
@@ -12,9 +11,18 @@ export default async function LoginPage({
   const sp = await searchParams;
   return (
     <div className="card p-8 pt-7">
-      <header className="flex flex-col items-center gap-1 border-b border-slate-100 pb-5 mb-6">
-        <SentraLogo size={132} priority className="drop-shadow-sm" />
-        <h1 className="text-xl font-bold text-brand-700 leading-tight">{APP_DISPLAY_NAME}</h1>
+      <header className="flex flex-col items-center gap-1.5 border-b border-slate-100 pb-5 mb-6">
+        <Image
+          src="/logo/sentra-full.png"
+          alt="Logo SentRa ManjungHebat"
+          width={768}
+          height={768}
+          priority
+          className="h-auto w-44 drop-shadow-sm"
+        />
+        <h1 className="text-base font-bold text-brand-700 leading-tight">
+          Pejabat Pendidikan Daerah Manjung
+        </h1>
       </header>
       <p className="text-sm text-slate-600 mb-6">
         Sila log masuk dengan ID dan kata laluan anda.
