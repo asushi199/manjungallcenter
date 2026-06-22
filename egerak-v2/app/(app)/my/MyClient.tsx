@@ -40,6 +40,30 @@ const OPR_FILTERS: { key: OprTodoFilter; label: string }[] = [
   { key: "tiada", label: "Tidak perlu" },
 ];
 
+/** Warna bermakna bagi setiap status OPR (cip penapis). */
+const OPR_FILTER_STYLE: Record<string, { active: string; idle: string }> = {
+  all: {
+    active: "bg-brand-600 text-white border-brand-600",
+    idle: "bg-white text-slate-700 border-slate-200 hover:border-slate-300",
+  },
+  perlu: {
+    active: "bg-rose-600 text-white border-rose-600",
+    idle: "bg-rose-50 text-rose-700 border-rose-200 hover:border-rose-300",
+  },
+  draf: {
+    active: "bg-amber-500 text-white border-amber-500",
+    idle: "bg-amber-50 text-amber-700 border-amber-200 hover:border-amber-300",
+  },
+  siap: {
+    active: "bg-emerald-600 text-white border-emerald-600",
+    idle: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-300",
+  },
+  tiada: {
+    active: "bg-slate-600 text-white border-slate-600",
+    idle: "bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300",
+  },
+};
+
 function compareItems(a: MyItem, b: MyItem, key: SortKey): number {
   switch (key) {
     case "urusan":
@@ -84,6 +108,8 @@ export default function MyClient({ items }: { items: MyItem[] }) {
   const [openMonths, setOpenMonths] = useState<Set<string>>(() => new Set());
 
   const oprCounts = useMemo(() => countByOprCategory(items), [items]);
+  const oprNeedTotal = oprCounts.perlu + oprCounts.draf + oprCounts.siap;
+  const oprDonePct = oprNeedTotal ? Math.round((oprCounts.siap / oprNeedTotal) * 100) : 0;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -187,12 +213,28 @@ export default function MyClient({ items }: { items: MyItem[] }) {
   return (
     <div className="space-y-4">
       <div className="card p-3 space-y-3">
+        {oprNeedTotal > 0 && (
+          <div className="flex items-center gap-2.5">
+            <span className="whitespace-nowrap text-xs text-slate-500">OPR siap</span>
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all"
+                style={{ width: `${oprDonePct}%` }}
+              />
+            </div>
+            <span className="whitespace-nowrap text-xs font-medium tabular-nums text-slate-700">
+              {oprCounts.siap} / {oprNeedTotal} · {oprDonePct}%
+            </span>
+          </div>
+        )}
         <div className="flex flex-wrap gap-1.5">
           {OPR_FILTERS.map((f) => {
             const count =
               f.key === "all"
                 ? items.length
                 : oprCounts[f.key as keyof typeof oprCounts] ?? 0;
+            const style = OPR_FILTER_STYLE[f.key] ?? OPR_FILTER_STYLE.all;
+            const isActive = oprFilter === f.key;
             return (
               <button
                 key={f.key}
@@ -200,9 +242,8 @@ export default function MyClient({ items }: { items: MyItem[] }) {
                 onClick={() => setOprFilter(f.key)}
                 className={cn(
                   "rounded-full px-3 py-1 text-xs font-medium border transition-colors",
-                  oprFilter === f.key
-                    ? "bg-brand-600 text-white border-brand-600"
-                    : "bg-white text-slate-700 border-slate-200 hover:border-slate-300",
+                  isActive ? style.active : style.idle,
+                  !isActive && count === 0 && "opacity-50",
                 )}
               >
                 {f.label}
