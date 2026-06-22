@@ -172,18 +172,12 @@ test("Ketua Unit manages only its own sektor (tambahan and rancangan)", () => {
   assert.equal(canModifyTakwimItem(ketua, TAMBAHAN_OTHER_SEKTOR), false);
 });
 
-test("Admin and Timbalan manage everything across all sektors", () => {
-  for (const peranan of ["Admin", "Timbalan_PPD"]) {
+test("Admin, Penyelia, and Timbalan manage everything across all sektors", () => {
+  for (const peranan of ["Admin", "Penyelia", "Timbalan_PPD"]) {
     const u = { peranan, id: 1, sektorId: null };
     assert.equal(canModifyTakwimItem(u, RANCANGAN_OTHER_SEKTOR), true);
     assert.equal(canModifyTakwimItem(u, TAMBAHAN_OTHER_SEKTOR), true);
   }
-});
-
-test("Penyelia (pemantau) manages all tambahan but never rancangan", () => {
-  const penyelia = { peranan: "Penyelia", id: 1, sektorId: null };
-  assert.equal(canModifyTakwimItem(penyelia, TAMBAHAN_OTHER_SEKTOR), true);
-  assert.equal(canModifyTakwimItem(penyelia, RANCANGAN_OTHER_SEKTOR), false);
 });
 
 test("Pengguna cannot touch rancangan at all", () => {

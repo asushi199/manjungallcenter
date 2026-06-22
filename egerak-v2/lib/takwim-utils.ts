@@ -86,8 +86,9 @@ export type TakwimModItem = {
 /**
  * Kebenaran edit/padam satu aktiviti takwim (jadual takwim_aktiviti).
  * - Tambahan: pencipta sendiri sentiasa boleh; selain itu ikut skop sektor.
- * - Rancangan: hanya Admin/Timbalan (semua sektor) & Ketua Unit (sektor sendiri).
- *   Penyelia ialah pemantau — tidak menyentuh rancangan.
+ * - Admin/Penyelia/Timbalan: semua sektor, kedua-dua tambahan & rancangan.
+ *   (Penyelia boleh edit/padam tetapi tiada kebenaran import rancangan.)
+ * - Ketua Unit: sektor sendiri sahaja.
  *
  * Skop edit dan padam adalah sama.
  */
@@ -102,10 +103,9 @@ export function canModifyTakwimItem(user: TakwimModUser, item: TakwimModItem): b
 
   switch (user.peranan) {
     case "Admin":
+    case "Penyelia":
     case "Timbalan_PPD":
       return true;
-    case "Penyelia":
-      return item.kategori === "tambahan";
     case "Ketua_Unit":
       return user.sektorId != null && item.sektorId === user.sektorId;
     default:
