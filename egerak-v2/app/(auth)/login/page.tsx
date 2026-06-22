@@ -20,7 +20,7 @@ export default async function LoginPage({
           priority
           className="h-auto w-44 drop-shadow-sm"
         />
-        <h1 className="text-base font-bold text-brand-700 leading-tight">
+        <h1 className="text-center text-sm font-semibold uppercase tracking-wide text-brand-700 leading-snug">
           Pejabat Pendidikan Daerah Manjung
         </h1>
       </header>
