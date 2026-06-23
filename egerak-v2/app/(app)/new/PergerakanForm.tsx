@@ -23,7 +23,6 @@ import DateTimeField from "@/components/DateTimeField";
 import {
   DEFAULT_TIME_KEMBALI,
   DEFAULT_TIME_PERGI,
-  addMinutesToDateTime,
   combineDateAndTime,
   ensureReturnAfterDeparture,
   getReturnTimeOptions,
@@ -93,9 +92,7 @@ export default function PergerakanForm({
     () => getReturnTimeOptions(tarikhPergi, tarikhKembaliDate || tarikhPergiDate || ""),
     [tarikhPergi, tarikhKembaliDate, tarikhPergiDate],
   );
-  const defaultKembaliTime = tarikhPergi
-    ? splitDateTime(addMinutesToDateTime(tarikhPergi, 30)).time
-    : DEFAULT_TIME_KEMBALI;
+  const defaultKembaliTime = DEFAULT_TIME_KEMBALI;
 
   function handleTarikhPergiChange(v: string) {
     const prevDepart = tarikhPergi;

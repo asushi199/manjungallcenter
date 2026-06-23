@@ -137,7 +137,7 @@ export function ensureReturnAfterDeparture(depart: string, ret: string): string 
 }
 
 /**
- * Apabila tarikh pergi berubah → kembali = hari sama + 30 min (lalai).
+ * Apabila tarikh pergi berubah → kembali = hari sama pada DEFAULT_TIME_KEMBALI (17:00).
  * Hanya masa pergi berubah (hari sama) → kekalkan tarikh kembali jika masih sah.
  */
 export function syncReturnWhenDepartChanges(
@@ -149,7 +149,10 @@ export function syncReturnWhenDepartChanges(
   const prevDate = splitDateTime(prevDepart).date;
   const nextDate = splitDateTime(nextDepart).date;
   if (!prevDate || prevDate !== nextDate) {
-    return addMinutesToDateTime(nextDepart, REGISTER_TIME_STEP_MINUTES);
+    return ensureReturnAfterDeparture(
+      nextDepart,
+      combineDateAndTime(nextDate, DEFAULT_TIME_KEMBALI),
+    );
   }
   return ensureReturnAfterDeparture(nextDepart, currentReturn);
 }
