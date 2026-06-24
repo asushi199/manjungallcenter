@@ -597,6 +597,15 @@ function TakwimForm({ addSektors, month }: { addSektors: SektorOption[]; month: 
   const isLainLain = lokasiSel === lainLainOption;
   const lokasi = isLainLain ? lokasiLain.trim() : lokasiSel;
 
+  // Tarikh terkawal supaya "Tamat" melompat ke hari sama bila "Mula" ditukar (seperti Pergerakan).
+  const [startDate, setStartDate] = useState(defaultDate);
+  const [endDate, setEndDate] = useState(defaultDate);
+
+  function handleStartDateChange(v: string) {
+    setStartDate(v);
+    if (v) setEndDate(v);
+  }
+
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
@@ -628,6 +637,8 @@ function TakwimForm({ addSektors, month }: { addSektors: SektorOption[]; month: 
       e.currentTarget.reset();
       setLokasiSel(LOKASI_PRESETS[0]);
       setLokasiLain("");
+      setStartDate(defaultDate);
+      setEndDate(defaultDate);
       router.refresh();
     });
   }
@@ -674,7 +685,14 @@ function TakwimForm({ addSektors, month }: { addSektors: SektorOption[]; month: 
         <div className="grid grid-cols-[1fr_auto] gap-2">
           <div>
             <label className="label">Mula</label>
-            <input name="tarikhPergiDate" type="date" className="input" defaultValue={defaultDate} required />
+            <input
+              name="tarikhPergiDate"
+              type="date"
+              className="input"
+              value={startDate}
+              onChange={(e) => handleStartDateChange(e.target.value)}
+              required
+            />
           </div>
           <div>
             <label className="label">Masa</label>
@@ -684,7 +702,15 @@ function TakwimForm({ addSektors, month }: { addSektors: SektorOption[]; month: 
         <div className="grid grid-cols-[1fr_auto] gap-2">
           <div>
             <label className="label">Tamat</label>
-            <input name="tarikhKembaliDate" type="date" className="input" defaultValue={defaultDate} required />
+            <input
+              name="tarikhKembaliDate"
+              type="date"
+              className="input"
+              value={endDate}
+              min={startDate || undefined}
+              onChange={(e) => setEndDate(e.target.value)}
+              required
+            />
           </div>
           <div>
             <label className="label">Masa</label>

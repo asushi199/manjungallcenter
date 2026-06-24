@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
@@ -35,6 +35,26 @@ const ACCENT_FOKUS = "#7c3aed";
 /** Warna tetap bagi setiap kategori fokus (konsisten antara carta taburan & trend). */
 const FOKUS_PALETTE = ["#7c3aed", BRAND_TEAL_COLOR, BRAND_GOLD_COLOR, "#ea580c", "#0369a1", "#65a30d", "#db2777", "#475569"];
 const FOKUS_NONE_COLOR = "#94a3b8";
+
+// Tooltip carta: hadkan lebar + benarkan teks panjang (nama sektor/fokus) membalut,
+// supaya tidak terkeluar bingkai & terpotong pada skrin telefon.
+const CHART_TOOLTIP_CONTENT_STYLE: CSSProperties = {
+  maxWidth: "min(15rem, 75vw)",
+  whiteSpace: "normal",
+  fontSize: 11,
+  lineHeight: 1.35,
+  borderRadius: 8,
+  border: "1px solid #e2e8f0",
+  boxShadow: "0 4px 12px rgba(15,23,42,0.08)",
+  padding: "6px 10px",
+};
+const CHART_TOOLTIP_ITEM_STYLE: CSSProperties = { whiteSpace: "normal", padding: 0 };
+const CHART_TOOLTIP_LABEL_STYLE: CSSProperties = {
+  whiteSpace: "normal",
+  fontWeight: 600,
+  marginBottom: 2,
+};
+const CHART_TOOLTIP_WRAPPER_STYLE: CSSProperties = { zIndex: 50 };
 
 function fokusColor(name: string): string {
   if (name === "Tidak ditetapkan") return FOKUS_NONE_COLOR;
@@ -369,6 +389,10 @@ function ChartsBlock({
                     const p = payload?.[0]?.payload as { fullMonth?: string } | undefined;
                     return p?.fullMonth ?? "";
                   }}
+                  wrapperStyle={CHART_TOOLTIP_WRAPPER_STYLE}
+                  contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+                  itemStyle={CHART_TOOLTIP_ITEM_STYLE}
+                  labelStyle={CHART_TOOLTIP_LABEL_STYLE}
                 />
                 <Line
                   type="monotone"
@@ -439,6 +463,10 @@ function SektorTrendBlock({
                   const p = payload?.[0]?.payload as { fullMonth?: string } | undefined;
                   return p?.fullMonth ?? "";
                 }}
+                wrapperStyle={CHART_TOOLTIP_WRAPPER_STYLE}
+                contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+                itemStyle={CHART_TOOLTIP_ITEM_STYLE}
+                labelStyle={CHART_TOOLTIP_LABEL_STYLE}
               />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               {aggregates.sektorKeys.map((k) => {
@@ -535,7 +563,12 @@ function FokusBlock({ aggregates }: { aggregates: FokusAggregates }) {
                 tickFormatter={compactMonths ? monthNumberLabel : undefined}
               />
               <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={32} />
-              <Tooltip />
+              <Tooltip
+                wrapperStyle={CHART_TOOLTIP_WRAPPER_STYLE}
+                contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+                itemStyle={CHART_TOOLTIP_ITEM_STYLE}
+                labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+              />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               {fokusKeys.map((k) => (
                 <Line
