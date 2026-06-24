@@ -9,6 +9,9 @@ node_modules
 secrets/
 .npm-cache/
 
+# CodeGraph index (local, regenerated)
+.codegraph/
+
 # PWA (generated at build)
 public/sw.js
 public/sw.js.map
