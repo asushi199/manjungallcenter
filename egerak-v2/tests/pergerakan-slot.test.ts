@@ -29,8 +29,8 @@ test("other day → NONE", () => {
   assert.equal(attendanceKind(d("2026-06-25T08:30"), d("2026-06-25T11:30"), "2026-06-26"), "NONE");
 });
 
-test("movement ending exactly at PM boundary (13:00) occupies both", () => {
-  assert.equal(attendanceKind(d("2026-06-25T08:00"), d("2026-06-25T13:00"), "2026-06-25"), "FULL");
+test("movement ending exactly at 13:00 occupies only AM (Pagi 8:00–13:00)", () => {
+  assert.equal(attendanceKind(d("2026-06-25T08:00"), d("2026-06-25T13:00"), "2026-06-25"), "AM");
 });
 
 test("movement starting exactly at PM boundary (13:00) occupies only PM", () => {

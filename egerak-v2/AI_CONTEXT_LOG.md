@@ -278,3 +278,19 @@ Pelan: docs/superpowers/plans/2026-06-21-pergerakan-decouple-booking-cadangan.md
 - Ujian baharu: `tests/pergerakan-slot.test.ts`, `tests/day-activity-templates.test.ts`.
 - Belum dibuat (di luar skop): pengecaman/kitaran hayat tempahan import takwim
   (baki bug #5). Dropdown lokasi Tambah Takwim sudah disiapkan (commit 9f5a4d5).
+
+## Tempahan bilik: slot 8-13 / 13:01-17 + ubah slot (2026-06-24)
+- **Label slot** (`lib/room-slots.ts`): Pagi "8:00 pagi – 1:00 petang", Petang
+  "1:01 petang – 5:00 petang". `slotTimeRange` selaras (AM 08:00–13:00, PM
+  13:01–17:00). Hanya kosmetik/dokumentasi — `computeRoomSlotsForRange`
+  (overlap auto-tempah & `attendanceKind`) kekal berpaksi 13:00, tiada gap,
+  tiada perubahan kelakuan kehadiran (ujian sedia ada tidak terjejas).
+- **Ubah slot semasa "Ubah / Mohon ubah"** (`lib/actions/rooms.ts`): boleh tukar
+  slot tunggal ↔ sepanjang hari. `modifySchema` kini terima `fullDay`. Helper
+  baharu `reconcileBookingSlots` menyelaras baris sedia ada kepada slot sasaran:
+  guna semula, batal lebihan (dahulu — elak langgar `room_bookings_active_unique`),
+  sisip yang kurang. Dipakai oleh `modifyBooking` (swakhidmat) & approval
+  `decideBookingRequest` (MODIFY). Semantik permohonan: `newSlot` = slot sasaran,
+  `null` = sepanjang hari (serasi data lama). UI `BilikClient` ModifyEditor kini
+  ada pemilih Slot (Pagi/Petang/Sepanjang hari) untuk semua tempahan;
+  `BilikPermohonanClient` papar "Tukar ke" ikut `newSlot` sasaran.

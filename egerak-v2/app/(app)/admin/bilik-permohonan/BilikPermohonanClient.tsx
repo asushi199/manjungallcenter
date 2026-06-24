@@ -84,7 +84,7 @@ export default function BilikPermohonanClient({ requests }: { requests: Req[] })
               <div className="mt-0.5 text-emerald-800">
                 <span className="text-slate-500">Tukar ke: </span>
                 <strong>{r.newRoomName ?? r.currentRoomName}</strong> · {r.newTarikh} ·{" "}
-                {slotLabel(r.newSlot, r.bookingId2 != null)}
+                {slotLabel(r.newSlot, r.newSlot == null)}
               </div>
             )}
           </div>

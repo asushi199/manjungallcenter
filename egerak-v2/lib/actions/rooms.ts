@@ -25,13 +25,21 @@ const bookSchema = z
     }
   });
 
-const modifySchema = z.object({
-  bookingIds: z.array(z.number().int().positive()).min(1).max(2),
-  roomId: z.number().int().positive(),
-  tarikh: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  /** Wajib bagi tempahan satu slot; diabaikan untuk sepanjang hari. */
-  slot: z.enum(["AM", "PM"]).optional(),
-});
+const modifySchema = z
+  .object({
+    bookingIds: z.array(z.number().int().positive()).min(1).max(2),
+    roomId: z.number().int().positive(),
+    tarikh: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    /** Slot sasaran. Wajib apabila `fullDay` palsu; diabaikan apabila sepanjang hari. */
+    slot: z.enum(["AM", "PM"]).optional(),
+    /** Sasaran sepanjang hari (Pagi + Petang). Boleh tukar slot tunggal ↔ sepanjang hari. */
+    fullDay: z.boolean().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.fullDay && !data.slot) {
+      ctx.addIssue({ code: "custom", message: "Pilih slot", path: ["slot"] });
+    }
+  });
 
 export type BookResult =
   | { ok: true; id: number; slotsBooked?: 1 | 2 }
@@ -235,9 +243,72 @@ export async function cancelBooking(bookingIds: number[]): Promise<ActionResult>
   return { ok: true, mode: "applied" };
 }
 
+type GroupRow = typeof roomBookings.$inferSelect;
+
 /**
- * Ubah tempahan (tukar bilik / tarikh; slot bagi tempahan satu slot).
- * Sepanjang hari: kedua-dua slot berpindah bersama (AM & PM kekal).
+ * Selaraskan baris tempahan sedia ada kepada set slot sasaran:
+ * guna semula baris yang ada, batalkan lebihan, sisip slot yang kurang.
+ * Menyokong tukar slot tunggal ↔ sepanjang hari. Lebihan dibatalkan dahulu
+ * supaya tidak melanggar keunikan slot aktif (room_bookings_active_unique).
+ */
+async function reconcileBookingSlots(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  group: GroupRow[],
+  target: { roomId: number; tarikh: string; slots: Array<"AM" | "PM"> },
+): Promise<void> {
+  const needed = [...new Set(target.slots)];
+  const used = new Set<number>();
+  const assignments: Array<{ id: number | null; slot: "AM" | "PM" }> = [];
+
+  // Utamakan baris yang sudah pada slot yang diperlukan (kurangkan perubahan).
+  for (const slot of needed) {
+    const match = group.find((b) => b.slot === slot && !used.has(b.id));
+    if (match) {
+      assignments.push({ id: match.id, slot });
+      used.add(match.id);
+    }
+  }
+  // Baki slot: guna semula baris bebas, atau sisip baris baharu.
+  for (const slot of needed) {
+    if (assignments.some((a) => a.slot === slot)) continue;
+    const free = group.find((b) => !used.has(b.id));
+    assignments.push({ id: free ? free.id : null, slot });
+    if (free) used.add(free.id);
+  }
+
+  const surplus = group.filter((b) => !used.has(b.id));
+  if (surplus.length > 0) {
+    await tx
+      .update(roomBookings)
+      .set({ status: "CANCELLED", updatedAt: new Date() })
+      .where(inArray(roomBookings.id, surplus.map((b) => b.id)));
+  }
+
+  const template = group[0]!;
+  for (const a of assignments) {
+    if (a.id != null) {
+      await tx
+        .update(roomBookings)
+        .set({ roomId: target.roomId, tarikh: target.tarikh, slot: a.slot, updatedAt: new Date() })
+        .where(eq(roomBookings.id, a.id));
+    } else {
+      await tx.insert(roomBookings).values({
+        roomId: target.roomId,
+        tarikh: target.tarikh,
+        slot: a.slot,
+        title: template.title,
+        userId: template.userId,
+        pergerakanId: template.pergerakanId,
+        takwimAktivitiId: template.takwimAktivitiId,
+        status: "BOOKED",
+      });
+    }
+  }
+}
+
+/**
+ * Ubah tempahan (tukar bilik / tarikh / slot). Slot boleh ditukar antara
+ * Pagi, Petang dan Sepanjang hari (slot tunggal ↔ sepanjang hari).
  * - Admin atau pemilik dalam 24 jam: ubah terus.
  * - Pemilik selepas 24 jam: hantar permohonan ubah; tempahan asal kekal sehingga diluluskan.
  */
@@ -248,37 +319,25 @@ export async function modifyBooking(input: unknown): Promise<ActionResult> {
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak sah" };
   }
-  const { bookingIds, roomId, tarikh } = parsed.data;
+  const { bookingIds, roomId, tarikh, fullDay } = parsed.data;
   const ids = [...new Set(bookingIds)];
-  const fullDay = ids.length === 2;
-  if (!fullDay && !parsed.data.slot) {
-    return { ok: false, error: "Pilih slot" };
-  }
+  const targetSlots: Array<"AM" | "PM"> = fullDay ? ["AM", "PM"] : [parsed.data.slot!];
 
   const isAdmin = user.peranan === "Admin";
   const loaded = await loadGroup(ids, userId, isAdmin);
   if (!loaded.ok) return loaded;
   const rows = loaded.rows;
 
-  if (fullDay && !(rows.some((r) => r.slot === "AM") && rows.some((r) => r.slot === "PM"))) {
-    return { ok: false, error: "Tempahan sepanjang hari tidak sah" };
+  const currentSlots = new Set(rows.map((r) => r.slot));
+  const sameRoomDate = rows.every((r) => r.roomId === roomId && r.tarikh === tarikh);
+  const sameSlots =
+    currentSlots.size === targetSlots.length && targetSlots.every((s) => currentSlots.has(s));
+  if (sameRoomDate && sameSlots) {
+    return { ok: false, error: "Tiada perubahan pada tempahan." };
   }
 
-  // Slot sasaran setiap baris (sepanjang hari kekalkan slot sendiri).
-  const targets = fullDay
-    ? rows.map((r) => ({ id: r.id, slot: r.slot }))
-    : [{ id: ids[0]!, slot: parsed.data.slot! }];
-
-  const unchanged = rows.every(
-    (r) =>
-      r.roomId === roomId &&
-      r.tarikh === tarikh &&
-      (fullDay || r.slot === parsed.data.slot),
-  );
-  if (unchanged) return { ok: false, error: "Tiada perubahan pada tempahan." };
-
-  for (const t of targets) {
-    if (await slotTaken(roomId, tarikh, t.slot, ids)) {
+  for (const slot of targetSlots) {
+    if (await slotTaken(roomId, tarikh, slot, ids)) {
       return { ok: false, error: "Slot baharu sudah ditempah. Pilih tarikh atau slot lain." };
     }
   }
@@ -299,12 +358,7 @@ export async function modifyBooking(input: unknown): Promise<ActionResult> {
 
   try {
     await db.transaction(async (tx) => {
-      for (const t of targets) {
-        await tx
-          .update(roomBookings)
-          .set({ roomId, tarikh, slot: t.slot, updatedAt: new Date() })
-          .where(eq(roomBookings.id, t.id));
-      }
+      await reconcileBookingSlots(tx, rows, { roomId, tarikh, slots: targetSlots });
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
@@ -317,7 +371,7 @@ export async function modifyBooking(input: unknown): Promise<ActionResult> {
   await db.insert(auditLog).values({
     action: "ROOM_MODIFY",
     userId,
-    detail: { bookingIds: ids, roomId, tarikh, fullDay },
+    detail: { bookingIds: ids, roomId, tarikh, slots: targetSlots },
   });
 
   revalidatePath("/bilik");
@@ -508,7 +562,8 @@ export async function decideBookingRequest(
   if (req.status !== "PENDING") return { ok: false, error: "Permohonan telah diproses" };
 
   const ids = [req.bookingId, ...(req.bookingId2 != null ? [req.bookingId2] : [])];
-  const fullDay = req.bookingId2 != null;
+  // Slot sasaran (null = sepanjang hari). Boleh berbeza bilangan slot daripada tempahan asal.
+  const targetSlots: Array<"AM" | "PM"> = req.newSlot ? [req.newSlot] : ["AM", "PM"];
   const bookings = await db.select().from(roomBookings).where(inArray(roomBookings.id, ids));
   if (bookings.length !== ids.length) return { ok: false, error: "Tempahan tidak dijumpai" };
 
@@ -533,12 +588,11 @@ export async function decideBookingRequest(
   }
 
   if (req.type === "MODIFY") {
-    if (!req.newRoomId || !req.newTarikh || (!fullDay && !req.newSlot)) {
+    if (!req.newRoomId || !req.newTarikh) {
       return { ok: false, error: "Permohonan ubah tidak lengkap" };
     }
-    for (const b of bookings) {
-      const targetSlot = fullDay ? b.slot : req.newSlot!;
-      if (await slotTaken(req.newRoomId, req.newTarikh, targetSlot, ids)) {
+    for (const slot of targetSlots) {
+      if (await slotTaken(req.newRoomId, req.newTarikh, slot, ids)) {
         return { ok: false, error: "Slot baharu kini sudah ditempah. Tolak atau minta tarikh lain." };
       }
     }
@@ -552,18 +606,11 @@ export async function decideBookingRequest(
           .set({ status: "CANCELLED", updatedAt: new Date() })
           .where(inArray(roomBookings.id, ids));
       } else {
-        for (const b of bookings) {
-          const targetSlot = fullDay ? b.slot : req.newSlot!;
-          await tx
-            .update(roomBookings)
-            .set({
-              roomId: req.newRoomId!,
-              tarikh: req.newTarikh!,
-              slot: targetSlot,
-              updatedAt: new Date(),
-            })
-            .where(eq(roomBookings.id, b.id));
-        }
+        await reconcileBookingSlots(tx, bookings, {
+          roomId: req.newRoomId!,
+          tarikh: req.newTarikh!,
+          slots: targetSlots,
+        });
       }
       await tx
         .update(bookingRequests)

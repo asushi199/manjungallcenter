@@ -138,7 +138,7 @@ export default function BilikClient({
 
   function onModify(
     ids: number[],
-    target: { roomId: number; tarikh: string; slot?: "AM" | "PM" },
+    target: { roomId: number; tarikh: string; slot?: "AM" | "PM"; fullDay?: boolean },
   ) {
     startTransition(async () => {
       const res = await modifyBooking({ bookingIds: ids, ...target });
@@ -525,20 +525,22 @@ function ModifyEditor({
   pending: boolean;
   selfService: boolean;
   onCancel: () => void;
-  onSubmit: (target: { roomId: number; tarikh: string; slot?: "AM" | "PM" }) => void;
+  onSubmit: (target: {
+    roomId: number;
+    tarikh: string;
+    slot?: "AM" | "PM";
+    fullDay?: boolean;
+  }) => void;
 }) {
-  const fullDay = booking.fullDay;
   const [roomId, setRoomId] = useState(booking.roomId);
   const [tarikh, setTarikh] = useState(booking.tarikh);
-  const [slot, setSlot] = useState<"AM" | "PM">(fullDay ? "AM" : (booking.slot as "AM" | "PM"));
+  const [mode, setMode] = useState<"AM" | "PM" | "FULL">(booking.slot);
   const unchanged =
-    roomId === booking.roomId &&
-    tarikh === booking.tarikh &&
-    (fullDay || slot === booking.slot);
+    roomId === booking.roomId && tarikh === booking.tarikh && mode === booking.slot;
 
   return (
     <div className="rounded-md border bg-slate-50 p-3 space-y-3">
-      <div className={cn("grid gap-3", fullDay ? "sm:grid-cols-2" : "sm:grid-cols-3")}>
+      <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <label className="label">Bilik / Dewan</label>
           <select className="input" value={roomId} onChange={(e) => setRoomId(Number(e.target.value))}>
@@ -558,24 +560,22 @@ function ModifyEditor({
             onChange={(e) => setTarikh(e.target.value)}
           />
         </div>
-        {!fullDay && (
-          <div>
-            <label className="label">Slot</label>
-            <select className="input" value={slot} onChange={(e) => setSlot(e.target.value as "AM" | "PM")}>
-              {SLOTS.map((s) => (
-                <option key={s} value={s}>
-                  {SLOT_LABEL[s]}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div>
+          <label className="label">Slot</label>
+          <select
+            className="input"
+            value={mode}
+            onChange={(e) => setMode(e.target.value as "AM" | "PM" | "FULL")}
+          >
+            {SLOTS.map((s) => (
+              <option key={s} value={s}>
+                {SLOT_LABEL[s]}
+              </option>
+            ))}
+            <option value="FULL">Sepanjang hari (Pagi &amp; Petang)</option>
+          </select>
+        </div>
       </div>
-      {fullDay && (
-        <p className="text-xs text-slate-500">
-          Tempahan sepanjang hari — kedua-dua slot Pagi &amp; Petang akan dipindahkan bersama.
-        </p>
-      )}
       <div className="flex items-center justify-end gap-2">
         <button type="button" className="btn-secondary text-xs" onClick={onCancel} disabled={pending}>
           Batal
@@ -584,7 +584,13 @@ function ModifyEditor({
           type="button"
           className="btn-primary text-xs"
           disabled={pending || unchanged}
-          onClick={() => onSubmit(fullDay ? { roomId, tarikh } : { roomId, tarikh, slot })}
+          onClick={() =>
+            onSubmit(
+              mode === "FULL"
+                ? { roomId, tarikh, fullDay: true }
+                : { roomId, tarikh, slot: mode },
+            )
+          }
         >
           {selfService ? "Simpan ubah" : "Hantar permohonan ubah"}
         </button>

@@ -55,9 +55,11 @@ export function computeRoomSlotsForRange(
       out.push({ tarikh, slot: "AM" }, { tarikh, slot: "PM" });
       continue;
     }
+    // Pagi 8:00–13:00, Petang 13:01–17:00. Sentuhan tepat pada 13:00 dikira Pagi
+    // sahaja (cth. 8:00–13:00 = Pagi); pergerakan petang bermula 13:01 ke atas.
     const amStart = fromZonedTime(`${tarikh}T08:00:00`, TZ);
     const amEnd = fromZonedTime(`${tarikh}T12:59:59`, TZ);
-    const pmStart = fromZonedTime(`${tarikh}T13:00:00`, TZ);
+    const pmStart = fromZonedTime(`${tarikh}T13:01:00`, TZ);
     const pmEnd = fromZonedTime(`${tarikh}T17:00:00`, TZ);
     if (intervalsOverlap(pergi, kembali, amStart, amEnd)) {
       out.push({ tarikh, slot: "AM" });
