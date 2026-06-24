@@ -6,6 +6,8 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState, type ReactElement } from "react";
 import { cn } from "@/lib/cn";
 import { adminMenuLinksForPeranan } from "@/lib/app-nav";
+import { isFullAdmin } from "@/lib/roles";
+import AdminRequestsBadge from "@/components/AdminRequestsBadge";
 
 function isActive(path: string | null, href: string) {
   return path === href || (path?.startsWith(href + "/") ?? false);
@@ -99,6 +101,7 @@ export default function BottomTabBar() {
   const peranan = data?.user?.peranan;
   const adminLinks = adminMenuLinksForPeranan(peranan);
   const hasAdmin = adminLinks.length > 0;
+  const showRequestsBadge = isFullAdmin(peranan);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => {
@@ -149,11 +152,14 @@ export default function BottomTabBar() {
             aria-expanded={sheetOpen}
             aria-haspopup="menu"
             className={cn(
-              "flex flex-1 flex-col items-center gap-0.5 py-1.5 text-[11px]",
+              "relative flex flex-1 flex-col items-center gap-0.5 py-1.5 text-[11px]",
               adminActive || sheetOpen ? "text-brand-700 font-semibold" : "text-slate-400",
             )}
           >
-            <AdminIcon className="h-6 w-6" />
+            <span className="relative">
+              <AdminIcon className="h-6 w-6" />
+              {showRequestsBadge && <AdminRequestsBadge ringClass="ring-white" />}
+            </span>
             <span>Admin</span>
           </button>
         ) : (
@@ -196,6 +202,11 @@ export default function BottomTabBar() {
                   label={l.label}
                   active={isActive(path, l.href)}
                   onNavigate={() => setSheetOpen(false)}
+                  badge={
+                    showRequestsBadge && l.href === "/admin/bilik-permohonan" ? (
+                      <AdminRequestsBadge ringClass="ring-white" />
+                    ) : null
+                  }
                 />
               ))}
             </div>
@@ -233,11 +244,13 @@ function AdminTile({
   label,
   active,
   onNavigate,
+  badge = null,
 }: {
   href: string;
   label: string;
   active: boolean;
   onNavigate: () => void;
+  badge?: ReactElement | null;
 }) {
   const meta = ADMIN_META[href] ?? { glyph: "grid" as GlyphName };
   return (
@@ -251,13 +264,14 @@ function AdminTile({
     >
       <span
         className={cn(
-          "flex h-11 w-11 items-center justify-center rounded-xl text-white shadow-sm",
+          "relative flex h-11 w-11 items-center justify-center rounded-xl text-white shadow-sm",
           meta.danger
             ? "bg-gradient-to-br from-rose-500 to-red-600"
             : "bg-gradient-to-br from-brand-600 to-cyan-600",
         )}
       >
         <Glyph name={meta.glyph} className="h-5 w-5" />
+        {badge}
       </span>
       <span className="text-[13px] font-semibold leading-tight text-slate-800">{label}</span>
     </Link>
