@@ -4,7 +4,6 @@ import {
   dataValidationsXml,
   dropdownValidation,
 } from "@/lib/xlsx";
-import { JAWATAN_OPTIONS } from "@/lib/jawatan";
 
 /** Pilihan peranan untuk dropdown (label mesra; mapPerananCsv kenal kesemuanya). */
 const PERANAN_OPTIONS = ["Pengguna", "Ketua Unit", "Timbalan PPD", "Pegawai PPD", "Admin"] as const;
@@ -12,10 +11,10 @@ const PERANAN_OPTIONS = ["Pengguna", "Ketua Unit", "Timbalan PPD", "Pegawai PPD"
 /** Header sama seperti templat CSV (huruf kecil) supaya konsisten dengan parseCsv. */
 const USER_HEADERS = ["username", "nama", "jawatan", "sektor", "peranan"] as const;
 
+// Jawatan tidak dikunci kepada senarai tetap — terlalu banyak jenis jawatan rasmi PPD,
+// jadi sel jawatan dibiar teks bebas (admin import dari senarai rasmi mereka sendiri).
 function userValidations(sektorCount: number): string {
   const validations: string[] = [];
-  const jawatanCol = colName(USER_HEADERS.indexOf("jawatan"));
-  validations.push(dropdownValidation(jawatanCol, `"${JAWATAN_OPTIONS.join(",")}"`));
   if (sektorCount > 0) {
     const sektorCol = colName(USER_HEADERS.indexOf("sektor"));
     validations.push(dropdownValidation(sektorCol, `'Kod Sektor'!$A$2:$A$${sektorCount + 1}`));

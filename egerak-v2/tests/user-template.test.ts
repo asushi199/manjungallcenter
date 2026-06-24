@@ -16,17 +16,17 @@ test("user template has four sheets and an empty Pengguna sheet (header only)", 
   assert.deepEqual(out.rows, []);
 });
 
-test("user template locks the jawatan dropdown to official options", () => {
+test("user template leaves jawatan as free text but still locks peranan dropdown", () => {
   const workbook = buildUserTemplateWorkbook([
     { code: "USTP", name: "Unit Sumber Teknologi Pendidikan" },
   ]);
   const zip = new PizZip(workbook);
   const sheetXml = zip.file("xl/worksheets/sheet1.xml")?.asText() ?? "";
 
-  assert.match(
-    sheetXml,
-    /<dataValidation[^>]*showErrorMessage="1"[^>]*sqref="C2:C1000">/,
-  );
+  // Jawatan (kolum C) tiada lagi dropdown — dibenarkan apa-apa jawatan.
+  assert.doesNotMatch(sheetXml, /<dataValidation[^>]*sqref="C2:C1000">/);
+  // Peranan (kolum E) masih dikunci kepada senarai rasmi.
+  assert.match(sheetXml, /<dataValidation[^>]*sqref="E2:E1000">/);
 });
 
 test("Pegawai PPD sector uses a distinct non-default color", () => {

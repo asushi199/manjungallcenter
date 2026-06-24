@@ -241,6 +241,7 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
               <label className="label">Jawatan</label>
               <input
                 className="input"
+                list="jawatan-options"
                 value={editForm.jawatan}
                 onChange={(e) => setEditForm({ ...editForm, jawatan: e.target.value })}
               />
@@ -322,7 +323,9 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
               <div className="min-w-0">
                 <div className="font-mono text-xs text-slate-500">{u.username}</div>
                 <div className="font-semibold">{u.nama}</div>
-                <div className="text-sm text-slate-600">{u.jawatan || "—"}</div>
+                <div className="text-sm text-slate-600 leading-snug break-words">
+                  {u.jawatan || "—"}
+                </div>
               </div>
               <div className="flex flex-col items-end gap-1 shrink-0">
                 <span className={"badge " + perananBadgeClass(u.peranan)}>
@@ -373,9 +376,9 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
             {users.map((u) => (
               <tr key={u.id} className="border-t">
                 <td className="px-3 py-2 font-mono">{u.username}</td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 max-w-[22rem]">
                   <div className="font-medium">{u.nama}</div>
-                  <div className="text-xs text-slate-500">{u.jawatan}</div>
+                  <div className="text-xs text-slate-500 leading-snug break-words">{u.jawatan}</div>
                 </td>
                 <td className="px-3 py-2 text-xs text-slate-600">{u.sektorName ?? "-"}</td>
                 <td className="px-3 py-2">
@@ -457,19 +460,21 @@ export default function AdminUsersClient({ users, sektors }: { users: Row[]; sek
           </div>
           <div>
             <label className="label">Jawatan</label>
-            <select
+            <input
               className="input"
-              required
+              list="jawatan-options"
+              placeholder="Cth: Penolong PPD (Sumber dan Teknologi Pendidikan)"
               value={form.jawatan}
               onChange={(e) => setForm({ ...form, jawatan: e.target.value })}
-            >
-              <option value="">Pilih jawatan</option>
+            />
+            <datalist id="jawatan-options">
               {JAWATAN_OPTIONS.map((j) => (
-                <option key={j} value={j}>
-                  {j}
-                </option>
+                <option key={j} value={j} />
               ))}
-            </select>
+            </datalist>
+            <p className="text-xs text-slate-500 mt-1">
+              Taip jawatan penuh. Cadangan ringkas tersedia, mana-mana jawatan dibenarkan.
+            </p>
           </div>
           <div>
             <label className="label">Sektor</label>

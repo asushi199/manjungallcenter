@@ -44,7 +44,7 @@ export default async function DashboardPage({
           <div className="card p-4">
             <h2 className="text-sm font-semibold text-brand-700 mb-1">Selamat Datang</h2>
             <p className="font-medium">{user.nama}</p>
-            <p className="text-xs text-slate-500">{user.jawatan}</p>
+            <p className="text-xs text-slate-500 leading-snug break-words">{user.jawatan}</p>
             <p className="text-xs text-slate-500">ID: {user.username}</p>
           </div>
 

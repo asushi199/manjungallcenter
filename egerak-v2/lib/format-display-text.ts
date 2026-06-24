@@ -43,6 +43,7 @@ const ACRONYMS = new Set([
   // Teknologi / program
   "USTP", "ICT", "ICTL", "PSS", "VLE", "LMS", "OPR", "KPI", "SISPA", "NILAM",
   "PBD", "PLC", "HEM", "TMK", "RBT", "PJK", "MBMMBI", "AI", "RPM", "LADAP",
+  "SIP", "SISC", "COS", "TVET",
   // Peperiksaan / penilaian
   "UPSR", "PT3", "SPM", "STPM", "STAM", "UASA", "PAT", "PKSR", "PBPPP",
   // Jawatan / unit / gred staf

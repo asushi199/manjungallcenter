@@ -603,7 +603,7 @@ function DayDrawer({
                         <span className="badge bg-emerald-100 text-emerald-700">Bercuti</span>
                       )}
                     </div>
-                    <div className="text-xs text-slate-500">{it.jawatan}</div>
+                    <div className="text-xs text-slate-500 break-words">{it.jawatan}</div>
                     <div className="text-xs text-slate-500">
                       {it.sektorName ?? "(Sektor tidak ditetapkan)"}
                     </div>
