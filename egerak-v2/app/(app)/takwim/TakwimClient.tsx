@@ -586,12 +586,13 @@ function TakwimForm({ addSektors, month }: { addSektors: SektorOption[]; month: 
   const router = useRouter();
   const [isSubmitting, startSubmit] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState(false);
+  const [okMsg, setOkMsg] = useState<string | null>(null);
   const defaultDate = `${month}-01`;
 
   const lainLainOption = LOKASI_PRESETS[LOKASI_PRESETS.length - 1];
-  // Lalai "Lain-lain" supaya lokasi kekal pilihan bebas (boleh kosong, "jika ada").
-  const [lokasiSel, setLokasiSel] = useState(lainLainOption);
+  // Lalai "Dewan Bestari" (preset pertama) — elak salah taip lokasi; pengguna boleh
+  // tukar ke Bilik Budiman atau Lain-lain bila perlu.
+  const [lokasiSel, setLokasiSel] = useState(LOKASI_PRESETS[0]);
   const [lokasiLain, setLokasiLain] = useState("");
   const isLainLain = lokasiSel === lainLainOption;
   const lokasi = isLainLain ? lokasiLain.trim() : lokasiSel;
@@ -599,7 +600,7 @@ function TakwimForm({ addSektors, month }: { addSektors: SektorOption[]; month: 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setOk(false);
+    setOkMsg(null);
     const form = new FormData(e.currentTarget);
     const payload = {
       sektorId: Number(form.get("sektorId")),
@@ -619,9 +620,13 @@ function TakwimForm({ addSektors, month }: { addSektors: SektorOption[]; month: 
         setError(result.error);
         return;
       }
-      setOk(true);
+      setOkMsg(
+        result.roomSlotsBooked && result.roomSlotsBooked > 0
+          ? `Takwim ditambah; ${result.roomSlotsBooked} slot bilik ditempah.`
+          : "Takwim telah ditambah.",
+      );
       e.currentTarget.reset();
-      setLokasiSel(lainLainOption);
+      setLokasiSel(LOKASI_PRESETS[0]);
       setLokasiLain("");
       router.refresh();
     });
@@ -695,7 +700,7 @@ function TakwimForm({ addSektors, month }: { addSektors: SektorOption[]; month: 
             {isSubmitting ? "Menyimpan..." : "Simpan Takwim"}
           </button>
           {error && <span className="text-sm font-medium text-red-700">{error}</span>}
-          {ok && <span className="text-sm font-medium text-emerald-700">Takwim telah ditambah.</span>}
+          {okMsg && <span className="text-sm font-medium text-emerald-700">{okMsg}</span>}
         </div>
       </form>
     </section>

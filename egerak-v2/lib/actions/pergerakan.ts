@@ -633,8 +633,9 @@ export async function listUrusanTemplatesForDay(ymdDate: string): Promise<Urusan
       .limit(500),
   );
 
-  // Aktiviti Rancangan Tahunan tanpa pegawai bertanggungjawab — hanya wujud sebagai
-  // takwim_aktiviti (tiada pergerakan), jadi gabungkan supaya turut jadi cadangan.
+  // Aktiviti Takwim (Rancangan Tahunan + Tambahan sektor) tanpa pegawai bertanggungjawab —
+  // hanya wujud sebagai takwim_aktiviti (tiada pergerakan), jadi gabungkan supaya turut
+  // jadi cadangan untuk pegawai "ambil" semasa Daftar Pergerakan.
   const masterRows = await withDbTimeout(
     db
       .select({
@@ -648,7 +649,7 @@ export async function listUrusanTemplatesForDay(ymdDate: string): Promise<Urusan
       .where(
         and(
           eq(takwimAktiviti.aktif, true),
-          eq(takwimAktiviti.kategori, "rancangan"),
+          inArray(takwimAktiviti.kategori, ["rancangan", "tambahan"]),
           isNull(takwimAktiviti.sourcePergerakanId),
           lte(takwimAktiviti.tarikhPergi, end),
           gte(takwimAktiviti.tarikhKembali, start),

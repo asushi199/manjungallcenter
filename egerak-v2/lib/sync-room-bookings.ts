@@ -86,25 +86,32 @@ export type RoomBookingPreview = {
   summary: string | null;
 };
 
-/** Kumpulkan konflik untuk paparan: hari penuh vs slot tunggal */
+/** Kumpulkan konflik untuk paparan: hari penuh vs slot tunggal, dengan nama aktiviti sedia ada. */
 export function summarizeRoomConflicts(
   conflicts: RoomConflictDetail[],
   roomName: string,
 ): string[] {
-  const byDate = new Map<string, Set<"AM" | "PM">>();
+  const byDate = new Map<string, { am?: string; pm?: string }>();
   for (const c of conflicts) {
-    const set = byDate.get(c.tarikh) ?? new Set();
-    set.add(c.slot);
-    byDate.set(c.tarikh, set);
+    const entry = byDate.get(c.tarikh) ?? {};
+    if (c.slot === "AM") entry.am = c.title;
+    else entry.pm = c.title;
+    byDate.set(c.tarikh, entry);
   }
   const lines: string[] = [];
   for (const [tarikh, slots] of [...byDate.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
     const d = formatTarikhBm(tarikh);
-    if (slots.has("AM") && slots.has("PM")) {
-      lines.push(`${d}: sepanjang hari penuh (${roomName} — Pagi & Petang sudah ditempah)`);
-    } else {
-      const label = slots.has("AM") ? "Pagi" : "Petang";
-      lines.push(`${d}: ${label} sudah ditempah`);
+    const { am, pm } = slots;
+    if (am && pm) {
+      if (am === pm) {
+        lines.push(`${d}: "${am}" sudah menempah sepanjang hari (${roomName} — Pagi & Petang)`);
+      } else {
+        lines.push(`${d}: Pagi "${am}" & Petang "${pm}" sudah ditempah (${roomName})`);
+      }
+    } else if (am) {
+      lines.push(`${d}: Pagi sudah ditempah — "${am}" (${roomName})`);
+    } else if (pm) {
+      lines.push(`${d}: Petang sudah ditempah — "${pm}" (${roomName})`);
     }
   }
   return lines;
@@ -335,7 +342,7 @@ export async function syncRoomBookingsFromTakwimAktiviti(
   if (!preview.canBook) {
     return {
       ok: false,
-      error: preview.summary ?? `Tempahan gagal 鈥?${room.name}.`,
+      error: preview.summary ?? `Tempahan gagal — ${room.name}.`,
     };
   }
 
@@ -387,6 +394,36 @@ export async function cancelRoomBookingsForPergerakan(
       action: "ROOM_CANCEL_PERGERAKAN",
       userId: auditUserId,
       detail: { pergerakanIds, bookingIds: cancelled.map((c) => c.id) },
+    });
+  }
+
+  return cancelled.length;
+}
+
+/** Batalkan tempahan bilik/dewan yang dipaut pada aktiviti Takwim (edit/padam). */
+export async function cancelRoomBookingsForTakwim(
+  tx: Db,
+  takwimAktivitiIds: number[],
+  auditUserId: number,
+): Promise<number> {
+  if (!takwimAktivitiIds.length) return 0;
+
+  const cancelled = await tx
+    .update(roomBookings)
+    .set({ status: "CANCELLED", updatedAt: new Date() })
+    .where(
+      and(
+        inArray(roomBookings.takwimAktivitiId, takwimAktivitiIds),
+        eq(roomBookings.status, "BOOKED"),
+      ),
+    )
+    .returning({ id: roomBookings.id });
+
+  if (cancelled.length) {
+    await tx.insert(auditLog).values({
+      action: "ROOM_CANCEL_TAKWIM",
+      userId: auditUserId,
+      detail: { takwimAktivitiIds, bookingIds: cancelled.map((c) => c.id) },
     });
   }
 

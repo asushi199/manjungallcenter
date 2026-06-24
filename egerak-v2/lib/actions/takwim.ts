@@ -14,6 +14,12 @@ import {
   type TakwimKategori,
   type TakwimModUser,
 } from "@/lib/takwim-utils";
+import { formatTitleCase } from "@/lib/format-display-text";
+import {
+  cancelRoomBookingsForTakwim,
+  resolveBookableRoomCode,
+  syncRoomBookingsFromTakwimAktiviti,
+} from "@/lib/sync-room-bookings";
 
 export type TakwimItem = {
   id: number;
@@ -358,7 +364,9 @@ const createTakwimSchema = z
     }
   });
 
-export type CreateTakwimResult = { ok: true } | { ok: false; error: string };
+export type CreateTakwimResult =
+  | { ok: true; roomSlotsBooked?: number }
+  | { ok: false; error: string };
 
 export async function createTakwimTambahan(input: unknown): Promise<CreateTakwimResult> {
   const user = await requireUser();
@@ -387,27 +395,56 @@ export async function createTakwimTambahan(input: unknown): Promise<CreateTakwim
     return { ok: false, error: "Julat tarikh tidak sah." };
   }
 
-  const inserted = await db
-    .insert(takwimAktiviti)
-    .values({
-      sektorId: data.sektorId,
-      urusan: data.urusan,
-      lokasi: data.lokasi,
-      tarikhPergi: pergi,
-      tarikhKembali: kembali,
-      kategori: "tambahan",
-      createdByUserId: Number(user.id),
-    })
-    .returning({ id: takwimAktiviti.id });
+  // Seragamkan teks (Title Case) seperti Daftar Pergerakan & import rancangan.
+  const urusan = formatTitleCase(data.urusan);
+  const lokasi = formatTitleCase(data.lokasi);
+  const roomCode = resolveBookableRoomCode(lokasi);
 
-  await db.insert(auditLog).values({
-    action: "CREATE_TAKWIM_TAMBAHAN",
-    userId: Number(user.id),
-    detail: { takwimAktivitiId: inserted[0]?.id, sektorId: data.sektorId },
-  });
+  let roomSlotsBooked = 0;
+  try {
+    await db.transaction(async (tx) => {
+      const inserted = await tx
+        .insert(takwimAktiviti)
+        .values({
+          sektorId: data.sektorId,
+          urusan,
+          lokasi,
+          tarikhPergi: pergi,
+          tarikhKembali: kembali,
+          kategori: "tambahan",
+          createdByUserId: Number(user.id),
+        })
+        .returning({ id: takwimAktiviti.id });
+      const takwimAktivitiId = inserted[0]?.id;
+
+      // Lokasi Budiman/Bestari → tempah bilik automatik (gagal jika slot bertembung).
+      if (roomCode && takwimAktivitiId) {
+        const sync = await syncRoomBookingsFromTakwimAktiviti(tx, {
+          takwimAktivitiId,
+          roomCode,
+          userId: Number(user.id),
+          title: urusan,
+          pergi,
+          kembali,
+          auditUserId: Number(user.id),
+        });
+        if (!sync.ok) throw new Error(sync.error);
+        roomSlotsBooked = sync.count;
+      }
+
+      await tx.insert(auditLog).values({
+        action: "CREATE_TAKWIM_TAMBAHAN",
+        userId: Number(user.id),
+        detail: { takwimAktivitiId, sektorId: data.sektorId, roomSlotsBooked },
+      });
+    });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Gagal menyimpan takwim." };
+  }
 
   revalidatePath("/takwim");
-  return { ok: true };
+  revalidatePath("/bilik");
+  return { ok: true, roomSlotsBooked };
 }
 
 const editTakwimSchema = z
@@ -484,26 +521,55 @@ export async function updateTakwim(input: unknown): Promise<CreateTakwimResult> 
     return { ok: false, error: "Julat tarikh tidak sah." };
   }
 
-  await db
-    .update(takwimAktiviti)
-    .set({
-      sektorId: data.sektorId,
-      urusan: data.urusan,
-      lokasi: data.lokasi,
-      tarikhPergi: pergi,
-      tarikhKembali: kembali,
-      updatedAt: new Date(),
-    })
-    .where(eq(takwimAktiviti.id, data.id));
+  const urusan = formatTitleCase(data.urusan);
+  const lokasi = formatTitleCase(data.lokasi);
+  const roomCode = resolveBookableRoomCode(lokasi);
 
-  await db.insert(auditLog).values({
-    action: "UPDATE_TAKWIM",
-    userId: Number(user.id),
-    detail: { takwimAktivitiId: data.id, kategori, sektorId: data.sektorId },
-  });
+  let roomSlotsBooked = 0;
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(takwimAktiviti)
+        .set({
+          sektorId: data.sektorId,
+          urusan,
+          lokasi,
+          tarikhPergi: pergi,
+          tarikhKembali: kembali,
+          updatedAt: new Date(),
+        })
+        .where(eq(takwimAktiviti.id, data.id));
+
+      // Selaraskan tempahan bilik dengan lokasi/tarikh terkini: batal yang lama,
+      // tempah semula jika lokasi masih Budiman/Bestari (gagal jika slot bertembung).
+      await cancelRoomBookingsForTakwim(tx, [data.id], Number(user.id));
+      if (roomCode) {
+        const sync = await syncRoomBookingsFromTakwimAktiviti(tx, {
+          takwimAktivitiId: data.id,
+          roomCode,
+          userId: Number(user.id),
+          title: urusan,
+          pergi,
+          kembali,
+          auditUserId: Number(user.id),
+        });
+        if (!sync.ok) throw new Error(sync.error);
+        roomSlotsBooked = sync.count;
+      }
+
+      await tx.insert(auditLog).values({
+        action: "UPDATE_TAKWIM",
+        userId: Number(user.id),
+        detail: { takwimAktivitiId: data.id, kategori, sektorId: data.sektorId, roomSlotsBooked },
+      });
+    });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Gagal mengemas kini takwim." };
+  }
 
   revalidatePath("/takwim");
-  return { ok: true };
+  revalidatePath("/bilik");
+  return { ok: true, roomSlotsBooked };
 }
 
 export async function deleteTakwim(input: { id: number }): Promise<CreateTakwimResult> {
@@ -530,17 +596,22 @@ export async function deleteTakwim(input: { id: number }): Promise<CreateTakwimR
     return { ok: false, error: "Anda tiada kebenaran memadam aktiviti ini." };
   }
 
-  await db
-    .update(takwimAktiviti)
-    .set({ aktif: false, updatedAt: new Date() })
-    .where(eq(takwimAktiviti.id, id));
+  await db.transaction(async (tx) => {
+    // Lepaskan tempahan bilik yang dipaut supaya slot tidak kekal diduduki.
+    await cancelRoomBookingsForTakwim(tx, [id], Number(user.id));
+    await tx
+      .update(takwimAktiviti)
+      .set({ aktif: false, updatedAt: new Date() })
+      .where(eq(takwimAktiviti.id, id));
 
-  await db.insert(auditLog).values({
-    action: "DELETE_TAKWIM",
-    userId: Number(user.id),
-    detail: { takwimAktivitiId: id, kategori },
+    await tx.insert(auditLog).values({
+      action: "DELETE_TAKWIM",
+      userId: Number(user.id),
+      detail: { takwimAktivitiId: id, kategori },
+    });
   });
 
   revalidatePath("/takwim");
+  revalidatePath("/bilik");
   return { ok: true };
 }

@@ -54,7 +54,7 @@ test("computeRoomSlotsForRange fullDay books AM and PM for every date", () => {
   );
 });
 
-test("summarizeRoomConflicts groups both slots as a full-day conflict", () => {
+test("summarizeRoomConflicts names the occupying activities for both slots", () => {
   assert.deepEqual(
     summarizeRoomConflicts(
       [
@@ -63,7 +63,30 @@ test("summarizeRoomConflicts groups both slots as a full-day conflict", () => {
       ],
       "Bilik Budiman",
     ),
-    ["14-06-2026: sepanjang hari penuh (Bilik Budiman — Pagi & Petang sudah ditempah)"],
+    ['14-06-2026: Pagi "A" & Petang "B" sudah ditempah (Bilik Budiman)'],
+  );
+});
+
+test("summarizeRoomConflicts collapses a single full-day activity and names it", () => {
+  assert.deepEqual(
+    summarizeRoomConflicts(
+      [
+        { tarikh: "2026-06-14", slot: "AM", title: "Mesyuarat X" },
+        { tarikh: "2026-06-14", slot: "PM", title: "Mesyuarat X" },
+      ],
+      "Dewan Bestari",
+    ),
+    ['14-06-2026: "Mesyuarat X" sudah menempah sepanjang hari (Dewan Bestari — Pagi & Petang)'],
+  );
+});
+
+test("summarizeRoomConflicts reports a single occupied slot with its activity", () => {
+  assert.deepEqual(
+    summarizeRoomConflicts(
+      [{ tarikh: "2026-06-14", slot: "PM", title: "Taklimat" }],
+      "Dewan Bestari",
+    ),
+    ['14-06-2026: Petang sudah ditempah — "Taklimat" (Dewan Bestari)'],
   );
 });
 
