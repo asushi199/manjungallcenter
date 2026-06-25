@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 
 export default function LoginForm({
   callbackUrl,
@@ -11,7 +10,6 @@ export default function LoginForm({
   callbackUrl: string;
   initialError?: string;
 }) {
-  const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -31,8 +29,7 @@ export default function LoginForm({
       setBusy(false);
       return;
     }
-    router.replace(callbackUrl || "/dashboard");
-    router.refresh();
+    window.location.href = callbackUrl || "/dashboard";
   }
 
   return (
