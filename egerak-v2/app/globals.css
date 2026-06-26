@@ -43,7 +43,7 @@
     @apply btn border-red-500 bg-white text-red-700 hover:bg-red-50;
   }
   .card {
-    @apply rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04),0_1px_3px_rgba(16,24,40,0.06)];
+    @apply rounded-xl border border-slate-200 bg-white shadow-[0_1px_3px_rgba(16,24,40,0.07),0_4px_14px_rgba(16,24,40,0.09)];
   }
   .input {
     @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm placeholder-slate-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500;
