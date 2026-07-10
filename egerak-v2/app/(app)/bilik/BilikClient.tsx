@@ -8,6 +8,7 @@ import { SLOT_LABEL } from "@/lib/room-slots";
 import { isWithinGrace } from "@/lib/room-booking-policy";
 import type { MyBookingItem } from "@/lib/room-booking-group";
 import { replaceWithSearchParams } from "@/lib/navigate";
+import DatePickerButton from "@/components/DatePickerButton";
 import { cn } from "@/lib/cn";
 
 const SLOT_SHORT: Record<"AM" | "PM" | "FULL", string> = {
@@ -99,7 +100,6 @@ export default function BilikClient({
 }) {
   const router = useRouter();
   const mdUp = useIsMdUp();
-  const weekPickerRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const [bookFormOpen, setBookFormOpen] = useState(false);
   const [showFullDayHint, setShowFullDayHint] = useState(false);
@@ -387,39 +387,23 @@ export default function BilikClient({
       </details>
 
       <div className="card p-3 sm:p-4 sm:flex sm:items-center sm:justify-between sm:gap-4">
-        <div className="relative flex justify-center sm:order-2 sm:flex-1 sm:px-2">
-          <button
-            type="button"
-            className="text-sm font-medium text-slate-700 leading-snug rounded-md px-2 py-1 -my-1 hover:bg-slate-100 hover:text-brand-700 transition-colors cursor-pointer"
-            aria-label="Pilih tarikh untuk lompat ke jadual"
-            onClick={() => {
-              const el = weekPickerRef.current;
-              if (!el) return;
-              try {
-                el.showPicker();
-              } catch {
-                el.focus();
-                el.click();
-              }
-            }}
-          >
-            <span className="sm:hidden">
-              {format(parseISO(weekStart), "d MMM")} –{" "}
-              {format(addDays(parseISO(weekStart), 13), "d MMM yyyy")}
-            </span>
-            <span className="hidden sm:inline">
-              {format(parseISO(weekStart), "dd MMM yyyy")} —{" "}
-              {format(addDays(parseISO(weekStart), 13), "dd MMM yyyy")}
-            </span>
-          </button>
-          <input
-            ref={weekPickerRef}
-            type="date"
-            className="sr-only"
-            tabIndex={-1}
-            aria-hidden
+        <div className="flex justify-center sm:order-2 sm:flex-1 sm:px-2">
+          <DatePickerButton
             value={weekStart}
-            onChange={(e) => jumpToDate(e.target.value)}
+            onChange={jumpToDate}
+            ariaLabel="Pilih tarikh untuk lompat ke jadual"
+            label={
+              <>
+                <span className="sm:hidden">
+                  {format(parseISO(weekStart), "d MMM")} –{" "}
+                  {format(addDays(parseISO(weekStart), 13), "d MMM yyyy")}
+                </span>
+                <span className="hidden sm:inline">
+                  {format(parseISO(weekStart), "dd MMM yyyy")} —{" "}
+                  {format(addDays(parseISO(weekStart), 13), "dd MMM yyyy")}
+                </span>
+              </>
+            }
           />
         </div>
         <div className="grid grid-cols-2 gap-2 mt-3 sm:mt-0 sm:contents">

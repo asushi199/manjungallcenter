@@ -1,31 +1,27 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useId, useRef } from "react";
-import { format } from "date-fns";
-import { ms } from "date-fns/locale/ms";
 import CalendarIcon from "@/components/CalendarIcon";
 import { cn } from "@/lib/cn";
 
-function monthTitle(value: string): string {
-  const [y, m] = value.split("-").map(Number);
-  if (!y || !m) return value;
-  return format(new Date(y, m - 1, 1), "MMMM yyyy", { locale: ms });
-}
-
-export default function MonthPickerButton({
+export default function DatePickerButton({
   value,
   onChange,
+  label,
   disabled,
   className,
+  ariaLabel,
 }: {
   value: string;
   onChange: (value: string) => void;
+  label: ReactNode;
   disabled?: boolean;
   className?: string;
+  ariaLabel: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const labelId = useId();
-  const title = monthTitle(value);
 
   function openPicker() {
     const input = inputRef.current;
@@ -38,32 +34,31 @@ export default function MonthPickerButton({
   }
 
   return (
-    <div className={cn("relative inline-flex", className)}>
+    <div className={cn("relative inline-flex w-full sm:w-auto", className)}>
       <button
         type="button"
         disabled={disabled}
         className={cn(
-          "btn-secondary gap-1.5 py-1.5 pl-2 pr-2.5 text-sm font-semibold",
-          "min-w-[9.25rem] sm:min-w-[10.25rem]",
+          "btn-secondary w-full sm:w-auto justify-center gap-1.5 py-2.5 sm:py-2 px-3 text-sm font-semibold tabular-nums",
           "shadow-sm hover:shadow",
           "focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1",
         )}
         onClick={openPicker}
-        aria-labelledby={labelId}
+        aria-label={ariaLabel}
       >
         <CalendarIcon className="size-4 shrink-0 text-brand-600" />
-        <span id={labelId} className="truncate capitalize">
-          {title}
+        <span id={labelId} className="truncate">
+          {label}
         </span>
       </button>
       <input
         ref={inputRef}
-        type="month"
+        type="date"
         className="sr-only"
         value={value}
         disabled={disabled}
         onChange={(e) => e.target.value && onChange(e.target.value)}
-        aria-label={`Pilih bulan — ${title}`}
+        aria-label={ariaLabel}
         tabIndex={-1}
       />
     </div>
