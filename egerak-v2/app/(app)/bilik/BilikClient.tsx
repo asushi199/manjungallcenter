@@ -161,6 +161,11 @@ export default function BilikClient({
     replaceWithSearchParams(router, "/bilik", new URLSearchParams({ week: next }));
   }
 
+  function jumpToDate(tarikh: string) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(tarikh)) return;
+    replaceWithSearchParams(router, "/bilik", new URLSearchParams({ week: tarikh }));
+  }
+
   /** Desktop: jadual semua bilik sebelah-menyebelah; telefon: satu bilik + tab */
   const tableRooms =
     rooms.length > 1 && !mdUp ? rooms.filter((r) => r.id === roomFocus) : rooms;
@@ -279,16 +284,30 @@ export default function BilikClient({
       </details>
 
       <div className="card p-3 space-y-3 sm:p-4 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:space-y-0">
-        <p className="text-sm font-medium text-slate-700 text-center sm:order-2 sm:flex-1 sm:px-2 leading-snug">
-          <span className="sm:hidden">
-            {format(parseISO(weekStart), "d MMM")} –{" "}
-            {format(addDays(parseISO(weekStart), 13), "d MMM yyyy")}
-          </span>
-          <span className="hidden sm:inline">
-            {format(parseISO(weekStart), "dd MMM yyyy")} —{" "}
-            {format(addDays(parseISO(weekStart), 13), "dd MMM yyyy")}
-          </span>
-        </p>
+        <div className="space-y-2 text-center sm:order-2 sm:flex-1 sm:px-2">
+          <p className="text-sm font-medium text-slate-700 leading-snug">
+            <span className="sm:hidden">
+              {format(parseISO(weekStart), "d MMM")} –{" "}
+              {format(addDays(parseISO(weekStart), 13), "d MMM yyyy")}
+            </span>
+            <span className="hidden sm:inline">
+              {format(parseISO(weekStart), "dd MMM yyyy")} —{" "}
+              {format(addDays(parseISO(weekStart), 13), "dd MMM yyyy")}
+            </span>
+          </p>
+          <div className="flex items-center justify-center gap-2">
+            <label htmlFor="bilik-week-picker" className="text-xs text-slate-500 shrink-0">
+              Pergi ke tarikh:
+            </label>
+            <input
+              id="bilik-week-picker"
+              type="date"
+              className="input text-sm py-1.5 w-auto max-w-[11rem]"
+              value={weekStart}
+              onChange={(e) => jumpToDate(e.target.value)}
+            />
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-2 sm:contents">
           <button
             type="button"
