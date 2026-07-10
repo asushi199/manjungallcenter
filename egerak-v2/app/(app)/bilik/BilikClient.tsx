@@ -29,16 +29,43 @@ type Booking = {
 };
 type MyBooking = MyBookingItem;
 
-function BookingCell({ booking }: { booking: Booking }) {
+type BookingDetailView = {
+  roomName: string;
+  tarikh: string;
+  slotLabel: string;
+  title: string;
+  pegawaiNama: string;
+  titlePm?: string;
+  pegawaiPm?: string;
+};
+
+function BookingCell({ booking, onClick }: { booking: Booking; onClick?: () => void }) {
   const tip = `${booking.title} — ${booking.pegawaiNama}`;
-  return (
-    <div
-      className="rounded px-1 py-1 bg-red-100 text-red-900 text-[10px] leading-tight"
-      title={tip}
-    >
+  const inner = (
+    <>
       <div className="font-semibold line-clamp-2">{booking.title}</div>
       <div className="truncate opacity-90">{booking.pegawaiNama}</div>
-    </div>
+    </>
+  );
+  if (!onClick) {
+    return (
+      <div
+        className="rounded px-1 py-1 bg-red-100 text-red-900 text-[10px] leading-tight"
+        title={tip}
+      >
+        {inner}
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className="w-full rounded px-1 py-1 bg-red-100 text-red-900 text-[10px] leading-tight text-left hover:bg-red-200 transition-colors cursor-pointer"
+      title={tip}
+      onClick={onClick}
+    >
+      {inner}
+    </button>
   );
 }
 
@@ -73,6 +100,10 @@ export default function BilikClient({
   const router = useRouter();
   const mdUp = useIsMdUp();
   const weekPickerRef = useRef<HTMLInputElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const [bookFormOpen, setBookFormOpen] = useState(false);
+  const [showFullDayHint, setShowFullDayHint] = useState(false);
+  const [bookingDetail, setBookingDetail] = useState<BookingDetailView | null>(null);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [roomFocus, setRoomFocus] = useState(rooms[0]?.id ?? 0);
@@ -112,6 +143,7 @@ export default function BilikClient({
           : "Tempahan berjaya.",
       );
       setForm((f) => ({ ...f, title: "", fullDay: false }));
+      setShowFullDayHint(false);
       router.refresh();
     });
   }
@@ -167,6 +199,51 @@ export default function BilikClient({
     replaceWithSearchParams(router, "/bilik", new URLSearchParams({ week: tarikh }));
   }
 
+  function openBookForm(roomId: number, tarikh: string, slot: "AM" | "PM") {
+    const am = bookingKey(roomId, tarikh, "AM");
+    const pm = bookingKey(roomId, tarikh, "PM");
+    setBookingDetail(null);
+    setForm({ roomId, tarikh, slot, title: "", fullDay: false });
+    setRoomFocus(roomId);
+    setShowFullDayHint(!am && !pm);
+    setBookFormOpen(true);
+    requestAnimationFrame(() => {
+      titleInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      titleInputRef.current?.focus();
+    });
+  }
+
+  function showSlotDetail(booking: Booking) {
+    setBookingDetail({
+      roomName: booking.roomName,
+      tarikh: booking.tarikh,
+      slotLabel: SLOT_SHORT[booking.slot],
+      title: booking.title,
+      pegawaiNama: booking.pegawaiNama,
+    });
+  }
+
+  function showFullDayDetail(
+    am: Booking,
+    pm: Booking,
+    roomName: string,
+    tarikh: string,
+  ) {
+    setBookingDetail({
+      roomName,
+      tarikh,
+      slotLabel: SLOT_SHORT.FULL,
+      title: am.title,
+      pegawaiNama: am.pegawaiNama,
+      titlePm: am.title !== pm.title ? pm.title : undefined,
+      pegawaiPm: am.pegawaiNama !== pm.pegawaiNama ? pm.pegawaiNama : undefined,
+    });
+  }
+
+  const bothSlotsFreeForForm =
+    !bookingKey(form.roomId, form.tarikh, "AM") && !bookingKey(form.roomId, form.tarikh, "PM");
+  const highlightFullDay = showFullDayHint && bothSlotsFreeForForm && !form.fullDay;
+
   /** Desktop: jadual semua bilik sebelah-menyebelah; telefon: satu bilik + tab */
   const tableRooms =
     rooms.length > 1 && !mdUp ? rooms.filter((r) => r.id === roomFocus) : rooms;
@@ -192,7 +269,11 @@ export default function BilikClient({
 
   return (
     <div className="space-y-6">
-      <details className="card group">
+      <details
+        className="card group"
+        open={bookFormOpen}
+        onToggle={(e) => setBookFormOpen((e.target as HTMLDetailsElement).open)}
+      >
         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-4 [&::-webkit-details-marker]:hidden">
           <h2 className="font-semibold">Tempahan Baharu</h2>
           <span
@@ -213,6 +294,10 @@ export default function BilikClient({
                 const roomId = Number(e.target.value);
                 setForm({ ...form, roomId });
                 setRoomFocus(roomId);
+                setShowFullDayHint(
+                  !bookingKey(roomId, form.tarikh, "AM") &&
+                    !bookingKey(roomId, form.tarikh, "PM"),
+                );
               }}
             >
               {rooms.map((r) => (
@@ -229,7 +314,14 @@ export default function BilikClient({
               className="input"
               required
               value={form.tarikh}
-              onChange={(e) => setForm({ ...form, tarikh: e.target.value })}
+              onChange={(e) => {
+                const tarikh = e.target.value;
+                setForm({ ...form, tarikh });
+                setShowFullDayHint(
+                  !bookingKey(form.roomId, tarikh, "AM") &&
+                    !bookingKey(form.roomId, tarikh, "PM"),
+                );
+              }}
             />
           </div>
           <div>
@@ -248,18 +340,27 @@ export default function BilikClient({
             </select>
           </div>
           <div className="sm:col-span-2">
-            <label className="flex items-start gap-2 text-sm cursor-pointer">
+            <label
+              className={cn(
+                "flex items-start gap-2 text-sm cursor-pointer rounded-md p-2 -mx-2 transition-colors",
+                highlightFullDay && "bg-brand-50 ring-2 ring-brand-300",
+              )}
+            >
               <input
                 type="checkbox"
                 className="mt-1"
                 checked={form.fullDay}
-                onChange={(e) => setForm({ ...form, fullDay: e.target.checked })}
+                onChange={(e) => {
+                  setForm({ ...form, fullDay: e.target.checked });
+                  if (e.target.checked) setShowFullDayHint(false);
+                }}
               />
               <span>
                 <strong>Aktiviti sepanjang hari</strong>
                 <span className="block text-xs text-slate-600 mt-0.5">
-                  Tempah Pagi & Petang untuk tarikh ini (seluruh hari tidak tersedia di
-                  kalendar).
+                  {highlightFullDay
+                    ? "Kedua-dua slot kosong — anda boleh tandakan ini untuk tempah sepanjang hari."
+                    : "Tempah Pagi & Petang untuk tarikh ini (seluruh hari tidak tersedia di kalendar)."}
                 </span>
               </span>
             </label>
@@ -267,6 +368,7 @@ export default function BilikClient({
           <div className="sm:col-span-2">
             <label className="label">Tajuk aktiviti</label>
             <input
+              ref={titleInputRef}
               className="input"
               required
               value={form.title}
@@ -360,6 +462,10 @@ export default function BilikClient({
       )}
 
       <div className="card overflow-x-auto">
+        <p className="px-3 pt-3 text-[11px] text-slate-500 sm:px-4">
+          Ketik slot <span className="text-emerald-700 font-medium">Kosong</span> untuk tempah;
+          ketik slot <span className="text-red-700 font-medium">berwarna</span> untuk lihat butiran.
+        </p>
         <table className="w-full table-fixed text-xs md:min-w-[640px]">
           <colgroup>
             <col style={{ width: "4.5rem" }} />
@@ -405,9 +511,11 @@ export default function BilikClient({
                         colSpan={2}
                         className="p-1 border-l align-top overflow-hidden"
                       >
-                        <div
-                          className="rounded px-2 py-2 bg-red-200 text-red-950 text-[10px] leading-tight min-h-[2.5rem]"
+                        <button
+                          type="button"
+                          className="w-full rounded px-2 py-2 bg-red-200 text-red-950 text-[10px] leading-tight min-h-[2.5rem] text-left hover:bg-red-300 transition-colors cursor-pointer"
                           title={tip}
+                          onClick={() => showFullDayDetail(am, pm, r.name, d)}
                         >
                           <div className="font-bold text-[9px] uppercase tracking-wide">
                             Penuh hari
@@ -418,7 +526,7 @@ export default function BilikClient({
                           <div className="truncate opacity-90">
                             {sameOfficer ? am.pegawaiNama : `${am.pegawaiNama} · ${pm.pegawaiNama}`}
                           </div>
-                        </div>
+                        </button>
                       </td>
                     );
                   }
@@ -430,11 +538,15 @@ export default function BilikClient({
                         className="p-1 border-l align-top overflow-hidden"
                       >
                         {b ? (
-                          <BookingCell booking={b} />
+                          <BookingCell booking={b} onClick={() => showSlotDetail(b)} />
                         ) : (
-                          <div className="rounded px-1 py-2 bg-emerald-50 text-emerald-800 text-center text-[10px]">
+                          <button
+                            type="button"
+                            className="w-full rounded px-1 py-2 bg-emerald-50 text-emerald-800 text-center text-[10px] hover:bg-emerald-100 transition-colors cursor-pointer"
+                            onClick={() => openBookForm(r.id, d, s)}
+                          >
                             Kosong
-                          </div>
+                          </button>
                         )}
                       </td>
                     );
@@ -538,6 +650,72 @@ export default function BilikClient({
             })}
           </ul>
         )}
+      </div>
+
+      {bookingDetail && (
+        <BookingDetailDialog detail={bookingDetail} onClose={() => setBookingDetail(null)} />
+      )}
+    </div>
+  );
+}
+
+function BookingDetailDialog({
+  detail,
+  onClose,
+}: {
+  detail: BookingDetailView;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="card w-full max-w-sm p-4 space-y-3 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="booking-detail-title"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <h3 id="booking-detail-title" className="font-semibold">
+            Butiran tempahan
+          </h3>
+          <button type="button" className="text-slate-400 hover:text-slate-600 text-lg leading-none" onClick={onClose} aria-label="Tutup">
+            ×
+          </button>
+        </div>
+        <dl className="text-sm space-y-2">
+          <div>
+            <dt className="text-xs text-slate-500">Bilik / Dewan</dt>
+            <dd>{detail.roomName}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-500">Tarikh</dt>
+            <dd>{format(parseISO(detail.tarikh), "dd MMM yyyy")}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-500">Slot</dt>
+            <dd>{detail.slotLabel}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-500">Tajuk aktiviti</dt>
+            <dd className="font-medium">{detail.title}</dd>
+            {detail.titlePm && (
+              <dd className="font-medium mt-1 text-slate-700">Petang: {detail.titlePm}</dd>
+            )}
+          </div>
+          <div>
+            <dt className="text-xs text-slate-500">Pegawai</dt>
+            <dd>{detail.pegawaiNama}</dd>
+            {detail.pegawaiPm && <dd className="mt-1 text-slate-700">Petang: {detail.pegawaiPm}</dd>}
+          </div>
+        </dl>
+        <button type="button" className="btn-secondary w-full justify-center" onClick={onClose}>
+          Tutup
+        </button>
       </div>
     </div>
   );
