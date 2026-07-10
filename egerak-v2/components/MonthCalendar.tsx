@@ -13,6 +13,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import FilterBar, { type SektorOption } from "@/components/FilterBar";
+import MonthPickerButton from "@/components/MonthPickerButton";
 import { cn } from "@/lib/cn";
 import { buildDayBuckets } from "@/lib/calendar-buckets";
 import type { HolidayDetail } from "@/lib/holidays/types";
@@ -198,8 +199,6 @@ export default function MonthCalendar({
     openDayDrawer(dayKey);
   }
 
-  const monthTitle = format(firstOfMonth, "MMMM yyyy");
-
   return (
     <div
       className={cn("card overflow-hidden relative", isPending && "opacity-70 pointer-events-none")}
@@ -235,13 +234,10 @@ export default function MonthCalendar({
                 >
                   ‹
                 </button>
-                <input
-                  type="month"
-                  className="input py-1.5 text-sm w-[8.75rem] sm:w-[9.5rem]"
+                <MonthPickerButton
                   value={month}
                   disabled={isPending}
-                  onChange={(e) => e.target.value && applyMonth(e.target.value)}
-                  aria-label={`Pilih bulan — ${monthTitle}`}
+                  onChange={applyMonth}
                 />
                 <button
                   type="button"
@@ -273,14 +269,11 @@ export default function MonthCalendar({
             >
               ‹
             </button>
-            <input
-              type="month"
-              className="input py-1.5 text-sm w-[8.75rem] sm:w-[9.5rem]"
-              value={month}
-              disabled={isPending}
-              onChange={(e) => e.target.value && applyMonth(e.target.value)}
-              aria-label={`Pilih bulan — ${monthTitle}`}
-            />
+              <MonthPickerButton
+                value={month}
+                disabled={isPending}
+                onChange={applyMonth}
+              />
             <button
               type="button"
               className="btn-secondary px-2 py-1.5 text-sm"

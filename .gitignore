@@ -25,3 +25,4 @@ Thumbs.db
 # Data tempatan (jangan commit DB runtime)
 *.sqlite
 *.sqlite3
+.vercel

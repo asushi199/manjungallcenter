@@ -12,6 +12,7 @@ import type { HolidayDetail } from "@/lib/holidays/types";
 import type { CalendarWeekStartsOn } from "@/lib/actions/calendar-settings";
 import { replaceWithSearchParams } from "@/lib/navigate";
 import SektorFilterDropdown from "@/components/SektorFilterDropdown";
+import MonthPickerButton from "@/components/MonthPickerButton";
 import type { SektorOption } from "@/components/FilterBar";
 import type { CalendarItem } from "@/components/MonthCalendar";
 import SelectedDayCards from "@/components/SelectedDayCards";
@@ -279,13 +280,10 @@ export default function MonthWeekCalendar({
               >
                 ‹
               </button>
-              <input
-                type="month"
-                className="input py-1.5 text-sm w-[8.75rem] sm:w-[9.5rem]"
+              <MonthPickerButton
                 value={month}
                 disabled={isPending}
-                onChange={(e) => e.target.value && applyMonth(e.target.value)}
-                aria-label="Pilih bulan"
+                onChange={applyMonth}
               />
               <button
                 type="button"

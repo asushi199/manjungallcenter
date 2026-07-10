@@ -147,7 +147,7 @@ async function generateWithGroq(input: OprPromptInput): Promise<ProviderAttempt>
     return { ok: false, quota: false, detail: "GROQ_API_KEY tidak ditetapkan" };
   }
 
-  const model = (process.env.GROQ_MODEL || "llama-3.3-70b-versatile").trim();
+  const model = (process.env.GROQ_MODEL || "openai/gpt-oss-120b").trim();
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
