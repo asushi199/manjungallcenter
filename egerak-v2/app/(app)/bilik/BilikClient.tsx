@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, format, parseISO } from "date-fns";
 import { bookRoom, cancelBooking, modifyBooking, cancelBookingsBulk } from "@/lib/actions/rooms";
@@ -72,6 +72,7 @@ export default function BilikClient({
 }) {
   const router = useRouter();
   const mdUp = useIsMdUp();
+  const weekPickerRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [roomFocus, setRoomFocus] = useState(rooms[0]?.id ?? 0);
@@ -283,9 +284,23 @@ export default function BilikClient({
         </div>
       </details>
 
-      <div className="card p-3 space-y-3 sm:p-4 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:space-y-0">
-        <div className="space-y-2 text-center sm:order-2 sm:flex-1 sm:px-2">
-          <p className="text-sm font-medium text-slate-700 leading-snug">
+      <div className="card p-3 sm:p-4 sm:flex sm:items-center sm:justify-between sm:gap-4">
+        <div className="relative flex justify-center sm:order-2 sm:flex-1 sm:px-2">
+          <button
+            type="button"
+            className="text-sm font-medium text-slate-700 leading-snug rounded-md px-2 py-1 -my-1 hover:bg-slate-100 hover:text-brand-700 transition-colors cursor-pointer"
+            aria-label="Pilih tarikh untuk lompat ke jadual"
+            onClick={() => {
+              const el = weekPickerRef.current;
+              if (!el) return;
+              try {
+                el.showPicker();
+              } catch {
+                el.focus();
+                el.click();
+              }
+            }}
+          >
             <span className="sm:hidden">
               {format(parseISO(weekStart), "d MMM")} –{" "}
               {format(addDays(parseISO(weekStart), 13), "d MMM yyyy")}
@@ -294,21 +309,18 @@ export default function BilikClient({
               {format(parseISO(weekStart), "dd MMM yyyy")} —{" "}
               {format(addDays(parseISO(weekStart), 13), "dd MMM yyyy")}
             </span>
-          </p>
-          <div className="flex items-center justify-center gap-2">
-            <label htmlFor="bilik-week-picker" className="text-xs text-slate-500 shrink-0">
-              Pergi ke tarikh:
-            </label>
-            <input
-              id="bilik-week-picker"
-              type="date"
-              className="input text-sm py-1.5 w-auto max-w-[11rem]"
-              value={weekStart}
-              onChange={(e) => jumpToDate(e.target.value)}
-            />
-          </div>
+          </button>
+          <input
+            ref={weekPickerRef}
+            type="date"
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden
+            value={weekStart}
+            onChange={(e) => jumpToDate(e.target.value)}
+          />
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:contents">
+        <div className="grid grid-cols-2 gap-2 mt-3 sm:mt-0 sm:contents">
           <button
             type="button"
             className="btn-secondary w-full justify-center text-sm py-2.5 whitespace-nowrap sm:order-1 sm:w-auto sm:min-w-[8.5rem]"
