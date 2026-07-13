@@ -30,7 +30,7 @@ async function main() {
   const client = postgres(url, { max: 1, prepare: false });
   const db = drizzle(client, { schema });
 
-  const { users, pergerakan, opr, roomBookings } = schema;
+  const { users, pergerakan, takwimAktiviti, opr, roomBookings } = schema;
   let grandTotal = 0;
 
   async function run(
@@ -83,6 +83,20 @@ async function main() {
     ["urusan", "lokasi"],
     (id, patch) =>
       db.update(pergerakan).set(patch).where(eq(pergerakan.id, id)).then(() => undefined),
+  );
+
+  await run(
+    "takwimAktiviti",
+    await db
+      .select({
+        id: takwimAktiviti.id,
+        urusan: takwimAktiviti.urusan,
+        lokasi: takwimAktiviti.lokasi,
+      })
+      .from(takwimAktiviti),
+    ["urusan", "lokasi"],
+    (id, patch) =>
+      db.update(takwimAktiviti).set(patch).where(eq(takwimAktiviti.id, id)).then(() => undefined),
   );
 
   await run(
