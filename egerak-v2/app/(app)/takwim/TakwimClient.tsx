@@ -610,7 +610,10 @@ function TakwimForm({ addSektors, month }: { addSektors: SektorOption[]; month: 
     e.preventDefault();
     setError(null);
     setOkMsg(null);
-    const form = new FormData(e.currentTarget);
+    // Simpan rujukan elemen borang: selepas `await`, React menetapkan
+    // e.currentTarget kepada null, jadi capture di sini sebelum async.
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
     const payload = {
       sektorId: Number(form.get("sektorId")),
       urusan: String(form.get("urusan") ?? ""),
@@ -634,7 +637,7 @@ function TakwimForm({ addSektors, month }: { addSektors: SektorOption[]; month: 
           ? `Takwim ditambah; ${result.roomSlotsBooked} slot bilik ditempah.`
           : "Takwim telah ditambah.",
       );
-      e.currentTarget.reset();
+      formEl.reset();
       setLokasiSel(LOKASI_PRESETS[0]);
       setLokasiLain("");
       setStartDate(defaultDate);
