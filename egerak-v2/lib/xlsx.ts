@@ -152,7 +152,18 @@ function colIndexFromRef(ref: string): number {
 
 function excelSerialDateToText(value: string): string {
   const serial = Number(value);
-  if (!Number.isFinite(serial) || serial < 30_000 || serial > 80_000) return value;
+  if (!Number.isFinite(serial)) return value;
+
+  // Nilai masa Excel disimpan sebagai pecahan satu hari (0.3333 = 08:00, 0.5 = 12:00).
+  // Tukar kembali ke HH:mm supaya lajur Masa Mula/Masa Tamat tidak rosak.
+  if (serial > 0 && serial < 1) {
+    const totalMinutes = Math.round(serial * 24 * 60);
+    const hh = String(Math.floor(totalMinutes / 60) % 24).padStart(2, "0");
+    const min = String(totalMinutes % 60).padStart(2, "0");
+    return `${hh}:${min}`;
+  }
+
+  if (serial < 30_000 || serial > 80_000) return value;
 
   const ms = Math.round(serial * 86_400_000);
   const date = new Date(Date.UTC(1899, 11, 30) + ms);
