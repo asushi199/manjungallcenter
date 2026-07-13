@@ -40,10 +40,11 @@ const ACRONYMS = new Set([
   "MRSM", "KAFA", "SR", "SM", "SRA",
   // Badan / pejabat
   "PPD", "PPDM", "JPN", "KPM", "KPT", "BTP", "BPSH", "BPG", "IPG", "IPGM", "IAB", "BPK", "JKR",
+  "PKG",
   // Teknologi / program
   "USTP", "ICT", "ICTL", "PSS", "VLE", "LMS", "OPR", "KPI", "SISPA", "NILAM",
   "PBD", "PLC", "HEM", "TMK", "RBT", "PJK", "MBMMBI", "AI", "RPM", "LADAP",
-  "SIP", "SISC", "COS", "TVET",
+  "SIP", "SISC", "COS", "TVET", "NPQEL", "SPMU",
   // Peperiksaan / penilaian
   "UPSR", "PT3", "SPM", "STPM", "STAM", "UASA", "PAT", "PKSR", "PBPPP",
   // Jawatan / unit / gred staf
