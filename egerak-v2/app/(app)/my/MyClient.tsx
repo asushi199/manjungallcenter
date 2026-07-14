@@ -41,28 +41,16 @@ const OPR_FILTERS: { key: OprTodoFilter; label: string }[] = [
   { key: "tiada", label: "Tidak perlu" },
 ];
 
-/** Warna bermakna bagi setiap status OPR (cip penapis). */
-const OPR_FILTER_STYLE: Record<string, { active: string; idle: string }> = {
-  all: {
-    active: "bg-brand-600 text-white border-brand-600",
-    idle: "bg-white text-slate-700 border-slate-200 hover:border-slate-300",
-  },
-  perlu: {
-    active: "bg-red-600 text-white border-red-600",
-    idle: "bg-red-100 text-red-700 border-red-300 hover:border-red-400",
-  },
-  draf: {
-    active: "bg-amber-500 text-white border-amber-500",
-    idle: "bg-amber-50 text-amber-700 border-amber-200 hover:border-amber-300",
-  },
-  siap: {
-    active: "bg-emerald-600 text-white border-emerald-600",
-    idle: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-300",
-  },
-  tiada: {
-    active: "bg-slate-600 text-white border-slate-600",
-    idle: "bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300",
-  },
+/**
+ * Titik warna status bagi cip penapis — bahasa visual sama seperti penunjuk
+ * OPR pada kad. Cip sendiri kekal neutral (putih / brand bila aktif).
+ */
+const OPR_FILTER_DOT: Record<string, string> = {
+  all: "",
+  perlu: "bg-red-500",
+  draf: "bg-amber-500",
+  siap: "bg-emerald-500",
+  tiada: "bg-slate-400",
 };
 
 function compareItems(a: MyItem, b: MyItem, key: SortKey): number {
@@ -195,6 +183,8 @@ export default function MyClient({ items }: { items: MyItem[] }) {
   }, [items]);
 
   const visibleItems = isSearching ? searchResults : monthItems;
+  const allVisibleSelected =
+    visibleItems.length > 0 && visibleItems.every((i) => selected.has(i.id));
 
   function toggle(id: number) {
     const next = new Set(selected);
@@ -204,9 +194,7 @@ export default function MyClient({ items }: { items: MyItem[] }) {
   }
 
   function toggleAll() {
-    const allSelected =
-      visibleItems.length > 0 && visibleItems.every((i) => selected.has(i.id));
-    if (allSelected) setSelected(new Set());
+    if (allVisibleSelected) setSelected(new Set());
     else setSelected(new Set(visibleItems.map((i) => i.id)));
   }
 
@@ -241,42 +229,49 @@ export default function MyClient({ items }: { items: MyItem[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="card p-3 space-y-3">
-        {oprNeedTotal > 0 && (
-          <div className="flex items-center gap-2.5">
-            <span className="whitespace-nowrap text-xs text-slate-500">OPR siap</span>
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
-              <div
-                className="h-full rounded-full bg-emerald-500 transition-all"
-                style={{ width: `${oprDonePct}%` }}
-              />
-            </div>
-            <span className="whitespace-nowrap text-xs font-medium tabular-nums text-slate-700">
-              {oprCounts.siap} / {oprNeedTotal} · {oprDonePct}%
-            </span>
+      <div>
+        <h1 className="text-xl font-semibold">Pergerakan Saya</h1>
+        <p className="mt-1 text-sm text-slate-500 tabular-nums">
+          {items.length} rekod
+          {oprNeedTotal > 0 ? ` · ${oprCounts.siap}/${oprNeedTotal} OPR siap` : ""}
+        </p>
+        {oprNeedTotal > 0 ? (
+          <div className="mt-2 h-1 max-w-[16rem] overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-emerald-500 transition-all"
+              style={{ width: `${oprDonePct}%` }}
+            />
           </div>
-        )}
+        ) : null}
+      </div>
+
+      <div className="card p-3 space-y-3">
         <div className="flex flex-wrap gap-1.5">
           {OPR_FILTERS.map((f) => {
             const count =
               f.key === "all"
                 ? items.length
                 : oprCounts[f.key as keyof typeof oprCounts] ?? 0;
-            const style = OPR_FILTER_STYLE[f.key] ?? OPR_FILTER_STYLE.all;
             const isActive = oprFilter === f.key;
+            const dot = OPR_FILTER_DOT[f.key];
             return (
               <button
                 key={f.key}
                 type="button"
                 onClick={() => setOprFilter(f.key)}
                 className={cn(
-                  "rounded-full px-3 py-1 text-xs font-medium border transition-colors",
-                  isActive ? style.active : style.idle,
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  isActive
+                    ? "bg-brand-600 text-white border-brand-600"
+                    : "bg-white text-slate-700 border-slate-200 hover:border-slate-300",
                   !isActive && count === 0 && "opacity-50",
                 )}
               >
+                {dot ? (
+                  <span className={cn("size-1.5 shrink-0 rounded-full", dot)} aria-hidden />
+                ) : null}
                 {f.label}
-                <span className="ml-1 opacity-80">({count})</span>
+                <span className="opacity-70">({count})</span>
               </button>
             );
           })}
@@ -311,23 +306,37 @@ export default function MyClient({ items }: { items: MyItem[] }) {
               <option value="asc">Terlama</option>
             </select>
           </label>
-          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer ml-auto">
-            <input
-              type="checkbox"
-              checked={visibleItems.length > 0 && visibleItems.every((i) => selected.has(i.id))}
-              onChange={toggleAll}
-            />
-            Pilih semua
-          </label>
+        </div>
+      </div>
+
+      {selected.size > 0 ? (
+        <div className="card flex flex-wrap items-center gap-2 border-brand-200 bg-brand-50 p-2.5">
+          <span className="text-sm font-medium text-slate-700 tabular-nums">
+            {selected.size} dipilih
+          </span>
           <button
-            className="btn-danger"
-            disabled={selected.size === 0 || pending}
+            type="button"
+            className="btn-secondary min-h-0 px-2.5 py-1 text-xs"
+            onClick={toggleAll}
+          >
+            {allVisibleSelected ? "Nyahpilih semua" : "Pilih semua"}
+          </button>
+          <button
+            type="button"
+            className="px-1 text-xs text-slate-500 underline hover:text-slate-700"
+            onClick={() => setSelected(new Set())}
+          >
+            Batal
+          </button>
+          <button
+            className="btn-danger ml-auto min-h-0 px-3 py-1 text-xs"
+            disabled={pending}
             onClick={onDelete}
           >
             {pending ? "Memadam..." : `Padam (${selected.size})`}
           </button>
         </div>
-      </div>
+      ) : null}
 
       {items.length === 0 ? (
         <div className="card p-8 text-center text-slate-500 space-y-3">
