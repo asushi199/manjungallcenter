@@ -53,6 +53,15 @@ const OPR_FILTER_DOT: Record<string, string> = {
   tiada: "bg-slate-400",
 };
 
+/** Label pendek untuk kad penapis (susun menegak: nombor atas, label bawah). */
+const OPR_FILTER_SHORT: Record<string, string> = {
+  all: "Semua",
+  perlu: "Perlu",
+  draf: "Draf",
+  siap: "Siap",
+  tiada: "Tiada",
+};
+
 function compareItems(a: MyItem, b: MyItem, key: SortKey): number {
   switch (key) {
     case "urusan":
@@ -249,7 +258,7 @@ export default function MyClient({ items }: { items: MyItem[] }) {
         <div
           role="group"
           aria-label="Penapis status OPR"
-          className="flex gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="grid grid-cols-5 gap-1.5 sm:max-w-md"
         >
           {OPR_FILTERS.map((f) => {
             const count =
@@ -263,20 +272,40 @@ export default function MyClient({ items }: { items: MyItem[] }) {
                 key={f.key}
                 type="button"
                 aria-pressed={isActive}
+                aria-label={`${f.label} (${count})`}
                 onClick={() => setOprFilter(f.key)}
                 className={cn(
-                  "inline-flex flex-none items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                  "rounded-lg border px-2 py-1.5 text-left transition-colors",
                   isActive
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-600 hover:text-slate-900",
-                  !isActive && count === 0 && "opacity-50",
+                    ? "border-brand-600 bg-brand-600"
+                    : "border-slate-200 bg-white hover:border-slate-300",
                 )}
               >
-                {dot ? (
-                  <span className={cn("size-1.5 shrink-0 rounded-full", dot)} aria-hidden />
-                ) : null}
-                {f.label}
-                <span className="tabular-nums text-slate-400">{count}</span>
+                <div
+                  className={cn(
+                    "text-lg font-semibold leading-none tabular-nums",
+                    isActive ? "text-white" : count === 0 ? "text-slate-300" : "text-slate-900",
+                  )}
+                >
+                  {count}
+                </div>
+                <div
+                  className={cn(
+                    "mt-1 flex items-center gap-1 text-[11px] leading-tight",
+                    isActive ? "text-brand-50" : "text-slate-600",
+                  )}
+                >
+                  {dot ? (
+                    <span
+                      className={cn(
+                        "size-1.5 shrink-0 rounded-full",
+                        isActive ? "bg-white/80" : dot,
+                      )}
+                      aria-hidden
+                    />
+                  ) : null}
+                  {OPR_FILTER_SHORT[f.key]}
+                </div>
               </button>
             );
           })}
