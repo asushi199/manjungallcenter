@@ -6,6 +6,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { deletePergerakanIds } from "@/lib/actions/pergerakan";
 import PergerakanCard, { type PergerakanCardData } from "@/components/PergerakanCard";
+import DatePickerButton from "@/components/DatePickerButton";
 import {
   classifyOprTodo,
   countByOprCategory,
@@ -86,14 +87,20 @@ function compareItems(a: MyItem, b: MyItem, key: SortKey): number {
 
 type MyItem = PergerakanCardData & { id: number };
 
+const CURRENT_YM = format(new Date(), "yyyy-MM");
+
 function monthLabel(ym: string) {
   const [y, m] = ym.split("-").map(Number);
   const d = new Date(y, m - 1, 1);
   return format(d, "MMMM yyyy");
 }
 
-function defaultOpenYears(): Set<string> {
-  return new Set([format(new Date(), "yyyy")]);
+/** Bulan lalai: bulan semasa jika ada rekod, jika tidak bulan terkini yang lepas. */
+function pickDefaultMonth(monthsDesc: string[], todayYm: string): string | null {
+  if (monthsDesc.length === 0) return null;
+  if (monthsDesc.includes(todayYm)) return todayYm;
+  const recentPast = monthsDesc.find((m) => m <= todayYm);
+  return recentPast ?? monthsDesc[monthsDesc.length - 1];
 }
 
 export default function MyClient({ items }: { items: MyItem[] }) {
@@ -104,12 +111,13 @@ export default function MyClient({ items }: { items: MyItem[] }) {
   const [oprFilter, setOprFilter] = useState<OprTodoFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("tarikh");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [openYears, setOpenYears] = useState<Set<string>>(() => defaultOpenYears());
-  const [openMonths, setOpenMonths] = useState<Set<string>>(() => new Set());
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
 
   const oprCounts = useMemo(() => countByOprCategory(items), [items]);
   const oprNeedTotal = oprCounts.perlu + oprCounts.draf + oprCounts.siap;
   const oprDonePct = oprNeedTotal ? Math.round((oprCounts.siap / oprNeedTotal) * 100) : 0;
+
+  const isSearching = query.trim().length > 0;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -125,34 +133,51 @@ export default function MyClient({ items }: { items: MyItem[] }) {
     });
   }, [items, query, oprFilter]);
 
-  const sorted = useMemo(() => {
-    const list = [...filtered];
-    list.sort((a, b) => {
-      const c = compareItems(a, b, sortKey);
-      return sortDir === "asc" ? c : -c;
-    });
-    return list;
-  }, [filtered, sortKey, sortDir]);
+  const sortList = useMemo(() => {
+    return (list: MyItem[]) => {
+      const out = [...list];
+      out.sort((a, b) => {
+        const c = compareItems(a, b, sortKey);
+        return sortDir === "asc" ? c : -c;
+      });
+      return out;
+    };
+  }, [sortKey, sortDir]);
 
-  const grouped = useMemo(() => {
-    const byYear = new Map<string, Map<string, MyItem[]>>();
-    for (const it of sorted) {
-      const y = format(new Date(it.tarikhPergi), "yyyy");
-      const ym = format(new Date(it.tarikhPergi), "yyyy-MM");
-      const yearMap = byYear.get(y) ?? new Map<string, MyItem[]>();
-      const list = yearMap.get(ym) ?? [];
-      list.push(it);
-      yearMap.set(ym, list);
-      byYear.set(y, yearMap);
-    }
+  /** Carian: senarai rata merentas semua bulan. */
+  const searchResults = useMemo(
+    () => (isSearching ? sortList(filtered) : []),
+    [isSearching, filtered, sortList],
+  );
 
-    const years = [...byYear.entries()].sort((a, b) => b[0].localeCompare(a[0]));
-    return years.map(([y, monthsMap]) => {
-      const months = [...monthsMap.entries()].sort((a, b) => b[0].localeCompare(a[0]));
-      const total = months.reduce((acc, [, list]) => acc + list.length, 0);
-      return { year: y, months, total };
-    });
-  }, [sorted]);
+  /** Bulan yang mempunyai rekod (selepas penapis OPR), tersusun menurun. */
+  const availableMonths = useMemo(() => {
+    const set = new Set<string>();
+    for (const it of filtered) set.add(format(new Date(it.tarikhPergi), "yyyy-MM"));
+    return [...set].sort((a, b) => b.localeCompare(a));
+  }, [filtered]);
+
+  const activeMonth = useMemo(() => {
+    if (availableMonths.length === 0) return null;
+    if (selectedMonth) return selectedMonth;
+    return pickDefaultMonth(availableMonths, CURRENT_YM);
+  }, [selectedMonth, availableMonths]);
+
+  const monthItems = useMemo(() => {
+    if (!activeMonth) return [];
+    const list = filtered.filter(
+      (it) => format(new Date(it.tarikhPergi), "yyyy-MM") === activeMonth,
+    );
+    return sortList(list);
+  }, [filtered, activeMonth, sortList]);
+
+  // Jiran bulan (yang ada rekod) untuk butang lepas/depan — melangkau bulan kosong.
+  const olderMonth = activeMonth
+    ? availableMonths.find((m) => m < activeMonth) ?? null
+    : null;
+  const newerMonth = activeMonth
+    ? [...availableMonths].reverse().find((m) => m > activeMonth) ?? null
+    : null;
 
   const monthSummaries = useMemo(() => {
     const map = new Map<string, string>();
@@ -169,23 +194,7 @@ export default function MyClient({ items }: { items: MyItem[] }) {
     return map;
   }, [items]);
 
-  function toggleYear(y: string) {
-    setOpenYears((prev) => {
-      const next = new Set(prev);
-      if (next.has(y)) next.delete(y);
-      else next.add(y);
-      return next;
-    });
-  }
-
-  function toggleMonth(ym: string) {
-    setOpenMonths((prev) => {
-      const next = new Set(prev);
-      if (next.has(ym)) next.delete(ym);
-      else next.add(ym);
-      return next;
-    });
-  }
+  const visibleItems = isSearching ? searchResults : monthItems;
 
   function toggle(id: number) {
     const next = new Set(selected);
@@ -195,8 +204,10 @@ export default function MyClient({ items }: { items: MyItem[] }) {
   }
 
   function toggleAll() {
-    if (selected.size === sorted.length) setSelected(new Set());
-    else setSelected(new Set(sorted.map((i) => i.id)));
+    const allSelected =
+      visibleItems.length > 0 && visibleItems.every((i) => selected.has(i.id));
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(visibleItems.map((i) => i.id)));
   }
 
   function onDelete() {
@@ -209,6 +220,24 @@ export default function MyClient({ items }: { items: MyItem[] }) {
       router.refresh();
     });
   }
+
+  function renderCard(it: MyItem) {
+    return (
+      <PergerakanCard
+        key={it.id}
+        variant="mine"
+        item={it}
+        selected={selected.has(it.id)}
+        onToggleSelect={() => toggle(it.id)}
+      />
+    );
+  }
+
+  const noMatch = (
+    <div className="card p-8 text-center text-slate-500">
+      <p>Tiada rekod sepadan dengan penapis.</p>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -285,7 +314,7 @@ export default function MyClient({ items }: { items: MyItem[] }) {
           <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer ml-auto">
             <input
               type="checkbox"
-              checked={sorted.length > 0 && selected.size === sorted.length}
+              checked={visibleItems.length > 0 && visibleItems.every((i) => selected.has(i.id))}
               onChange={toggleAll}
             />
             Pilih semua
@@ -300,102 +329,80 @@ export default function MyClient({ items }: { items: MyItem[] }) {
         </div>
       </div>
 
-      {sorted.length === 0 ? (
+      {items.length === 0 ? (
         <div className="card p-8 text-center text-slate-500 space-y-3">
-          <p>
-            {items.length === 0
-              ? "Tiada rekod pergerakan."
-              : "Tiada rekod sepadan dengan penapis."}
-          </p>
-          {items.length === 0 ? (
-            <Link href="/new" className="btn-primary inline-flex">
-              Daftar pergerakan baharu
-            </Link>
-          ) : null}
+          <p>Tiada rekod pergerakan.</p>
+          <Link href="/new" className="btn-primary inline-flex">
+            Daftar pergerakan baharu
+          </Link>
         </div>
+      ) : isSearching ? (
+        searchResults.length === 0 ? (
+          noMatch
+        ) : (
+          <div className="space-y-2">
+            <p className="px-1 text-xs text-slate-500">
+              Hasil carian merentas bulan · {searchResults.length} rekod
+            </p>
+            {searchResults.map(renderCard)}
+          </div>
+        )
+      ) : availableMonths.length === 0 ? (
+        noMatch
       ) : (
         <div className="space-y-3">
-          {grouped.map((g) => {
-            const yOpen = openYears.has(g.year);
-            return (
-              <section
-                key={g.year}
-                className="rounded-lg border border-slate-200 bg-white overflow-hidden"
+          <div className="card p-3 sm:flex sm:items-center sm:justify-between sm:gap-4">
+            <div className="flex flex-col items-center gap-0.5 sm:order-2 sm:flex-1 sm:px-2">
+              <DatePickerButton
+                type="month"
+                value={activeMonth ?? CURRENT_YM}
+                onChange={(v) => setSelectedMonth(v)}
+                ariaLabel="Pilih bulan untuk lompat ke rekod"
+                label={monthLabel(activeMonth ?? CURRENT_YM)}
+              />
+              {activeMonth && monthSummaries.get(activeMonth) ? (
+                <span className="text-[11px] text-slate-500 tabular-nums">
+                  {monthSummaries.get(activeMonth)}
+                </span>
+              ) : null}
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-3 sm:mt-0 sm:contents">
+              <button
+                type="button"
+                className="btn-secondary w-full justify-center text-sm py-2.5 whitespace-nowrap sm:order-1 sm:w-auto disabled:opacity-40"
+                disabled={!olderMonth}
+                onClick={() => olderMonth && setSelectedMonth(olderMonth)}
               >
-                <button
-                  type="button"
-                  className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-slate-50 transition-colors"
-                  onClick={() => toggleYear(g.year)}
-                  aria-expanded={yOpen}
-                >
-                  <span className="text-slate-400 text-xs w-4 shrink-0" aria-hidden>
-                    {yOpen ? "▼" : "▶"}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                      <h2 className="text-sm font-semibold text-slate-800">{g.year}</h2>
-                      <span className="text-xs text-slate-500">{g.total} rekod</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                      {g.months.length} bulan
-                    </p>
-                  </div>
-                </button>
+                ← Bulan lepas
+              </button>
+              <button
+                type="button"
+                className="btn-secondary w-full justify-center text-sm py-2.5 whitespace-nowrap sm:order-3 sm:w-auto disabled:opacity-40"
+                disabled={!newerMonth}
+                onClick={() => newerMonth && setSelectedMonth(newerMonth)}
+              >
+                Bulan depan →
+              </button>
+            </div>
+          </div>
 
-                {yOpen ? (
-                  <div className="border-t border-slate-100">
-                    {g.months.map(([ym, groupItems], idx) => {
-                      const open = openMonths.has(ym);
-                      return (
-                        <div
-                          key={ym}
-                          className={cn(idx !== 0 && "border-t border-slate-100")}
-                        >
-                          <button
-                            type="button"
-                            className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-slate-50 transition-colors"
-                            onClick={() => toggleMonth(ym)}
-                            aria-expanded={open}
-                          >
-                            <span className="text-slate-400 text-xs w-4 shrink-0" aria-hidden>
-                              {open ? "▼" : "▶"}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                                <h3 className="text-sm font-semibold text-slate-800">
-                                  {monthLabel(ym)}
-                                </h3>
-                                <span className="text-xs text-slate-500">
-                                  {groupItems.length} rekod
-                                </span>
-                              </div>
-                              <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                                {monthSummaries.get(ym)}
-                              </p>
-                            </div>
-                          </button>
-
-                          {open ? (
-                            <div className="px-3 pb-3 space-y-2 pt-2">
-                              {groupItems.map((it) => (
-                                <PergerakanCard
-                                  key={it.id}
-                                  variant="mine"
-                                  item={it}
-                                  selected={selected.has(it.id)}
-                                  onToggleSelect={() => toggle(it.id)}
-                                />
-                              ))}
-                            </div>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : null}
-              </section>
-            );
-          })}
+          {monthItems.length === 0 ? (
+            <div className="card p-6 text-center text-slate-500 space-y-3">
+              <p>
+                Tiada rekod untuk {monthLabel(activeMonth ?? CURRENT_YM)}
+                {oprFilter !== "all" ? " dengan penapis ini" : ""}.
+              </p>
+              <button
+                type="button"
+                className="btn-secondary inline-flex"
+                onClick={() => setSelectedMonth(null)}
+              >
+                Pergi ke bulan terkini
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">{monthItems.map(renderCard)}</div>
+          )}
         </div>
       )}
     </div>

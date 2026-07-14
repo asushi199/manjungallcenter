@@ -25,6 +25,7 @@ export default function CompactExpandableCard({
   children,
   footer,
   className,
+  headerLayout = "inline",
 }: {
   title: string;
   subtitle?: string;
@@ -35,6 +36,12 @@ export default function CompactExpandableCard({
   children?: ReactNode;
   footer?: ReactNode;
   className?: string;
+  /**
+   * "inline" (lalai): tajuk & `trailing` sebaris.
+   * "stack": tajuk mengambil satu baris penuh, `trailing` turun ke baris bawah
+   * supaya tajuk panjang tidak terhimpit.
+   */
+  headerLayout?: "inline" | "stack";
 }) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
@@ -66,6 +73,19 @@ export default function CompactExpandableCard({
       window.removeEventListener("resize", check);
     };
   }, [expanded, title, subtitle, children, footer, trailing]);
+
+  const toneBadge = tone ? (
+    <span
+      className={cn(
+        "text-[10px] font-semibold px-2 py-0.5 rounded-full border",
+        tone === "holiday" && "bg-rose-50 text-rose-800 border-rose-200",
+        tone === "leave" && "bg-emerald-50 text-emerald-800 border-emerald-200",
+        tone === "pergerakan" && "bg-slate-50 text-slate-700 border-slate-200",
+      )}
+    >
+      {tone === "holiday" ? "Cuti" : tone === "leave" ? "Bercuti" : "Pergerakan"}
+    </span>
+  ) : null;
 
   const hintChevron = useMemo(() => {
     if (!isToggleable) return null;
@@ -138,22 +158,14 @@ export default function CompactExpandableCard({
                 ) : null}
               </div>
               <div className="flex items-center gap-1 shrink-0 justify-end">
-                {tone ? (
-                  <span
-                    className={cn(
-                      "text-[10px] font-semibold px-2 py-0.5 rounded-full border",
-                      tone === "holiday" && "bg-rose-50 text-rose-800 border-rose-200",
-                      tone === "leave" && "bg-emerald-50 text-emerald-800 border-emerald-200",
-                      tone === "pergerakan" && "bg-slate-50 text-slate-700 border-slate-200",
-                    )}
-                  >
-                      {tone === "holiday" ? "Cuti" : tone === "leave" ? "Bercuti" : "Pergerakan"}
-                    </span>
-                ) : null}
-                {trailing}
+                {toneBadge}
+                {headerLayout === "inline" ? trailing : null}
                 {hintChevron ? <span className="ml-0.5">{hintChevron}</span> : null}
               </div>
             </div>
+            {headerLayout === "stack" && trailing ? (
+              <div className="mt-1.5">{trailing}</div>
+            ) : null}
             {children ? (
               <div className={cn("mt-1.5 text-sm text-slate-700", expanded && "space-y-1")}>
                 {children}

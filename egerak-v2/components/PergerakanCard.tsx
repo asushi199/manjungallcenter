@@ -2,7 +2,7 @@
 
 import { format } from "date-fns";
 import { cn } from "@/lib/cn";
-import { oprStatusBadge, type OprStatus } from "@/lib/opr-status";
+import { oprStatusIndicator, type OprStatus } from "@/lib/opr-status";
 import { sektorStyle } from "@/lib/sektor-colors";
 import MinePergerakanCardActions from "@/components/MinePergerakanCardActions";
 import CompactExpandableCard, { ClampText } from "@/components/CompactExpandableCard";
@@ -55,10 +55,11 @@ export default function PergerakanCard({
   selected,
   onToggleSelect,
 }: Props) {
+  const isMine = variant === "mine";
   const style = sektorStyle(item.sektorCode, item.jenis);
   const { tarikh, masa } = formatTarikhMasa(item.tarikhPergi, item.tarikhKembali);
   const sektorShort = formatSektorShort(item.sektorCode);
-  const oprBadge = item.jenis === "Pergerakan" ? oprStatusBadge(item.oprStatus) : null;
+  const oprIndicator = isMine ? oprStatusIndicator(item.jenis, item.oprStatus) : null;
 
   const title =
     variant === "dashboard" && index != null ? `${index}. ${item.urusan}` : item.urusan;
@@ -70,53 +71,66 @@ export default function PergerakanCard({
 
   const metaText = `${item.lokasi ? `${item.lokasi} · ` : ""}${tarikh} · ${masa}`;
 
-  const trailing = (
-    <>
-      {variant === "mine" && oprBadge ? (
-        <span className={cn("badge text-[10px]", oprBadge.className)}>{oprBadge.label}</span>
-      ) : null}
-      {variant === "mine" ? (
-        <Link
-          href={`/my/${item.id}/edit?from=${encodeURIComponent("/my")}`}
-          className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-slate-200 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-          aria-label="Edit rekod"
-          data-no-toggle
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <path d="M12 20h9" />
-            <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-          </svg>
-        </Link>
-      ) : null}
-      {sektorShort ? (
-        <span
-          className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-slate-50 text-slate-700 border-slate-200 max-w-[10rem] truncate"
-          title={item.sektorName ?? sektorShort}
-        >
-          {sektorShort}
+  const sektorChip = sektorShort ? (
+    <span
+      className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-slate-50 text-slate-700 border-slate-200 max-w-[10rem] truncate"
+      title={item.sektorName ?? sektorShort}
+    >
+      {sektorShort}
+    </span>
+  ) : null;
+
+  const editLink = (
+    <Link
+      href={`/my/${item.id}/edit?from=${encodeURIComponent("/my")}`}
+      className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-slate-200 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+      aria-label="Edit rekod"
+      data-no-toggle
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+      </svg>
+    </Link>
+  );
+
+  // Saya: status OPR (kiri) + sektor & edit (kanan) pada baris di bawah tajuk.
+  const trailing = isMine ? (
+    <div className="flex w-full items-center gap-2">
+      {oprIndicator ? (
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
+          <span className={cn("size-1.5 shrink-0 rounded-full", oprIndicator.dotClass)} aria-hidden />
+          {oprIndicator.label}
         </span>
       ) : null}
-    </>
+      <div className="ml-auto flex items-center gap-1.5">
+        {sektorChip}
+        {editLink}
+      </div>
+    </div>
+  ) : (
+    sektorChip
   );
 
   const card = (
     <CompactExpandableCard
       title={title}
       subtitle={subtitle}
-      tone={item.jenis === "Bercuti" ? "leave" : "pergerakan"}
+      tone={item.jenis === "Bercuti" ? "leave" : isMine ? undefined : "pergerakan"}
       stripeColor={style.border}
       trailing={trailing}
-      className={cn(variant === "mine" && selected && "ring-2 ring-brand-600 ring-offset-1")}
+      headerLayout={isMine ? "stack" : "inline"}
+      className={cn(isMine && selected && "ring-2 ring-brand-600 ring-offset-1")}
       footer={
         variant === "mine" ? (
           <MinePergerakanCardActions

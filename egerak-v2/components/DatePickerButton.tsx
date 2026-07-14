@@ -12,6 +12,7 @@ export default function DatePickerButton({
   disabled,
   className,
   ariaLabel,
+  type = "date",
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -19,6 +20,8 @@ export default function DatePickerButton({
   disabled?: boolean;
   className?: string;
   ariaLabel: string;
+  /** Native picker granularity — "date" (lalai) atau "month". */
+  type?: "date" | "month";
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const labelId = useId();
@@ -53,7 +56,7 @@ export default function DatePickerButton({
       </button>
       <input
         ref={inputRef}
-        type="date"
+        type={type}
         className="sr-only"
         value={value}
         disabled={disabled}

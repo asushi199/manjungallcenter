@@ -16,6 +16,22 @@ export function oprStatusBadge(status: OprStatus | null | undefined): {
   return null;
 }
 
+/**
+ * Penunjuk status OPR ringkas (titik warna + label) untuk baris meta kad.
+ * Berbeza dengan `oprStatusBadge`: turut memaparkan keadaan "Perlu OPR"
+ * (belum ada rekod) supaya semua kategori penapis terwakil pada kad.
+ */
+export function oprStatusIndicator(
+  jenis: "Pergerakan" | "Bercuti",
+  status: OprStatus | null | undefined,
+): { label: string; dotClass: string } | null {
+  if (jenis !== "Pergerakan") return null;
+  if (status === "SIAP") return { label: "OPR Siap", dotClass: "bg-emerald-500" };
+  if (status === "DRAFT") return { label: "OPR Draf", dotClass: "bg-amber-500" };
+  if (status === "TIADA") return { label: "Tiada OPR", dotClass: "bg-slate-400" };
+  return { label: "Perlu OPR", dotClass: "bg-red-500" };
+}
+
 /** Belum ada rekod OPR atau draf — perlu tindakan. */
 export function needsOprAction(
   jenis: "Pergerakan" | "Bercuti",
