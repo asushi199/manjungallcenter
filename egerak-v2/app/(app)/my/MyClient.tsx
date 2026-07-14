@@ -246,7 +246,11 @@ export default function MyClient({ items }: { items: MyItem[] }) {
       </div>
 
       <div className="card p-3 space-y-3">
-        <div className="flex flex-wrap gap-1.5">
+        <div
+          role="group"
+          aria-label="Penapis status OPR"
+          className="flex gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
           {OPR_FILTERS.map((f) => {
             const count =
               f.key === "all"
@@ -258,12 +262,13 @@ export default function MyClient({ items }: { items: MyItem[] }) {
               <button
                 key={f.key}
                 type="button"
+                aria-pressed={isActive}
                 onClick={() => setOprFilter(f.key)}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  "inline-flex flex-none items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
                   isActive
-                    ? "bg-brand-600 text-white border-brand-600"
-                    : "bg-white text-slate-700 border-slate-200 hover:border-slate-300",
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900",
                   !isActive && count === 0 && "opacity-50",
                 )}
               >
@@ -271,7 +276,7 @@ export default function MyClient({ items }: { items: MyItem[] }) {
                   <span className={cn("size-1.5 shrink-0 rounded-full", dot)} aria-hidden />
                 ) : null}
                 {f.label}
-                <span className="opacity-70">({count})</span>
+                <span className="tabular-nums text-slate-400">{count}</span>
               </button>
             );
           })}
