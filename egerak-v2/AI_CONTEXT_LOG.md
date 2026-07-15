@@ -294,3 +294,35 @@ Pelan: docs/superpowers/plans/2026-06-21-pergerakan-decouple-booking-cadangan.md
   `null` = sepanjang hari (serasi data lama). UI `BilikClient` ModifyEditor kini
   ada pemilih Slot (Pagi/Petang/Sepanjang hari) untuk semua tempahan;
   `BilikPermohonanClient` papar "Tukar ke" ikut `newSlot` sasaran.
+
+## Cadangan urusan: sempitkan kepada takwim + sektor sendiri (2026-07-15)
+
+Selepas beberapa hari penggunaan sebenar, cadangan urusan lebih banyak mengganggu
+daripada membantu: majoriti pegawai pergi ke tempat berlainan, jadi senarai penuh
+"aktiviti PPD hari ini" jarang relevan.
+
+- **`listUrusanTemplatesForDay` kini tapis peer `pergerakan` kepada sektor sendiri**
+  (`eq(pergerakan.sektorId, ownSektorId)`; tiada sektor → tiada peer cadangan).
+  Sektor lain sengaja tidak dicadangkan.
+- **Takwim kekal tanpa tapisan sektor.** Ia data terancang & rendah bunyi, dan di
+  situlah aktiviti seluruh PPD (perjumpaan/karnival/majlis) berada — jadi kes
+  "aktiviti besar" berfungsi tanpa perlu field `skop` baharu.
+- **Urusan tidak lagi dikunci semasa cadangan dimuat.** `urusanDisabled` kini
+  `!isEdit && modeCActive` sahaja. Gerbang lembut lama memaksa tunggu ~350ms
+  debounce + satu server action setiap kali tarikh berubah, sebelum boleh taip.
+  Cadangan ialah bantuan, bukan laluan utama. Mod C (Budiman/Bestari ada tempahan)
+  kekal sebagai gerbang keras kerana ia mengelak rekod berganda untuk aktiviti sama.
+
+### Keputusan produk (dipertimbang, sengaja tidak dibuat)
+
+- **Tiada "Lihat semua" merentas sektor.** Kes SISPA siasatan (kolaborasi merentas
+  sektor) cukup jarang untuk ditaip sendiri.
+- **Tiada auto-naik-taraf ikut keluasan sektor** (cth. ≥3 sektor berlainan pada
+  urusan sama → tunjuk kepada semua). Bilik Budiman/Bestari sudah menangkap
+  kebanyakan aktiviti seluruh PPD; buat dahulu yang paling ringkas, tambah hanya
+  jika ada kes sebenar yang terlepas.
+- **Risiko diterima:** aktiviti seluruh PPD yang tiada dalam takwim boleh ditulis
+  berlainan gaya oleh setiap sektor. `urusanMatches` toleransi kepada tipo dan
+  perkataan tambahan (Jaccard token ≥0.5), tetapi **bukan** singkatan — "JK" lwn
+  "Jawatankuasa" akan pecah kepada dua kluster dalam `cluster-programs.ts`, jadi
+  kiraan program boleh naik. Guna takwim (satu teks kanonik) untuk elak.

@@ -79,7 +79,7 @@ export default function PergerakanForm({
   const roomIdForCode = (code: "BILIK_BUDIMAN" | "DEWAN_BESTARI") =>
     rooms.find((r) => r.code === code)?.id;
 
-  // Cadangan (dua sumber) + gate lembut.
+  // Cadangan (peer sektor sendiri + takwim; dan tempahan bilik).
   const [cadanganLoading, setCadanganLoading] = useState(false);
   const [peerCadangan, setPeerCadangan] = useState<UrusanTemplate[]>([]);
   const [roomCadangan, setRoomCadangan] = useState<RoomCadangan[]>([]);
@@ -202,8 +202,9 @@ export default function PergerakanForm({
   const roomNoBooking = roomCode != null && !cadanganLoading && !hasRoomBookings;
   // Mode C hanya untuk bilik YANG ada tempahan: mesti pilih atau tanda "tiada dalam senarai".
   const modeCActive = roomCode != null && hasRoomBookings && !urusanUnlocked;
-  // Gate lembut (kunci urusan semasa memuat) terpakai bila cadangan sedang diambil.
-  const urusanDisabled = !isEdit && (cadanganLoading || modeCActive);
+  // Hanya mode C mengunci urusan. Cadangan yang sedang dimuat tidak pernah menyekat taip —
+  // ia bantuan, bukan laluan utama.
+  const urusanDisabled = !isEdit && modeCActive;
 
   const attended = (() => {
     const p = parseLocalInput(tarikhPergi);
@@ -558,7 +559,7 @@ export default function PergerakanForm({
           onChange={(e) => setUrusan(e.target.value)}
           placeholder={
             urusanDisabled
-              ? "Pilih cadangan di atas, atau tunggu sebentar…"
+              ? "Pilih aktiviti tempahan bilik di atas, atau tanda “tiada dalam senarai”."
               : "Contoh: Mesyuarat Pengurusan Kewangan PPD Manjung"
           }
         />

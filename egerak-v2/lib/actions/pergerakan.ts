@@ -600,42 +600,60 @@ export type UrusanTemplate = {
 
 /**
  * Cadangan urusan (aktiviti) pada tarikh tertentu.
- * Aktiviti PPD pada hari itu: satu baris setiap urusan (hampir sama), lokasi ikut rekod pertama.
- * Sumber: rekod `pergerakan` sedia ada + aktiviti master Rancangan Tahunan yang belum ada
- * pegawai bertanggungjawab (takwim_aktiviti tanpa pergerakan), supaya pegawai boleh "ambil"
- * aktiviti rancangan walaupun tiada owner. Tidak pulang nama pegawai.
+ *
+ * Dua sumber sahaja, sengaja sempit supaya borang kekal bersih:
+ *  1. `pergerakan` rakan **sektor sendiri** — kes biasa satu sektor keluar bersama.
+ *  2. Aktiviti master Takwim (Rancangan Tahunan + Tambahan) yang belum ada pegawai
+ *     bertanggungjawab, **semua sektor** — takwim ialah data terancang & rendah bunyi,
+ *     dan di situlah aktiviti seluruh PPD (perjumpaan/karnival/majlis) berada.
+ *
+ * Pergerakan sektor lain sengaja TIDAK dicadangkan: kebanyakan pegawai pergi ke tempat
+ * berlainan, jadi ia hanya menambah bunyi. Aktiviti di Bilik Budiman / Dewan Bestari
+ * dikendalikan berasingan oleh cadangan tempahan bilik.
+ *
+ * Tidak pulang nama pegawai.
  */
 export async function listUrusanTemplatesForDay(ymdDate: string): Promise<UrusanTemplate[]> {
   const user = await requireUser();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ymdDate)) return [];
 
+  const ownSektorId =
+    user.sektorId != null && Number.isFinite(Number(user.sektorId))
+      ? Number(user.sektorId)
+      : null;
+
   const start = new Date(`${ymdDate}T00:00:00+08:00`);
   const end = new Date(`${ymdDate}T23:59:59+08:00`);
-  const rows = await withDbTimeout(
-    db
-      .select({
-        urusan: pergerakan.urusan,
-        lokasi: pergerakan.lokasi,
-        tarikhPergi: pergerakan.tarikhPergi,
-        tarikhKembali: pergerakan.tarikhKembali,
-        sektorId: pergerakan.sektorId,
-      })
-      .from(pergerakan)
-      .where(
-        and(
-          eq(pergerakan.aktif, true),
-          eq(pergerakan.jenis, "Pergerakan"),
-          lte(pergerakan.tarikhPergi, end),
-          gte(pergerakan.tarikhKembali, start),
-        ),
-      )
-      .orderBy(desc(pergerakan.tarikhPergi))
-      .limit(500),
-  );
+  const rows =
+    ownSektorId == null
+      ? []
+      : await withDbTimeout(
+          db
+            .select({
+              urusan: pergerakan.urusan,
+              lokasi: pergerakan.lokasi,
+              tarikhPergi: pergerakan.tarikhPergi,
+              tarikhKembali: pergerakan.tarikhKembali,
+              sektorId: pergerakan.sektorId,
+            })
+            .from(pergerakan)
+            .where(
+              and(
+                eq(pergerakan.aktif, true),
+                eq(pergerakan.jenis, "Pergerakan"),
+                eq(pergerakan.sektorId, ownSektorId),
+                lte(pergerakan.tarikhPergi, end),
+                gte(pergerakan.tarikhKembali, start),
+              ),
+            )
+            .orderBy(desc(pergerakan.tarikhPergi))
+            .limit(500),
+        );
 
   // Aktiviti Takwim (Rancangan Tahunan + Tambahan sektor) tanpa pegawai bertanggungjawab —
   // hanya wujud sebagai takwim_aktiviti (tiada pergerakan), jadi gabungkan supaya turut
   // jadi cadangan untuk pegawai "ambil" semasa Daftar Pergerakan.
+  // Sengaja tanpa tapisan sektor: lihat nota sumber (2) di atas.
   const masterRows = await withDbTimeout(
     db
       .select({
@@ -667,11 +685,6 @@ export async function listUrusanTemplatesForDay(ymdDate: string): Promise<Urusan
       sektorId: r.sektorId ?? null,
     })),
   );
-
-  const ownSektorId =
-    user.sektorId != null && Number.isFinite(Number(user.sektorId))
-      ? Number(user.sektorId)
-      : null;
 
   return rankCadanganBySektor(templates, ownSektorId).map((g) => ({
     urusan: g.urusan,
