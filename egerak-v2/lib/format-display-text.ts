@@ -37,7 +37,7 @@ const LOWERCASE_WORDS = new Set([
 const ACRONYMS = new Set([
   // Jenis sekolah
   "SK", "SJK", "SJKC", "SJKT", "SMK", "SMJK", "SABK", "SBP", "SBPI", "SMKA",
-  "MRSM", "KAFA", "SR", "SM", "SRA",
+  "SMKAB", "MRSM", "KAFA", "SR", "SM", "SRA",
   // Badan / pejabat
   "PPD", "PPDM", "JPN", "KPM", "KPT", "BTP", "BPSH", "BPG", "IPG", "IPGM", "IAB", "BPK", "JKR",
   "PKG",
@@ -57,6 +57,7 @@ const ACRONYMS = new Set([
 
 /** Singkatan dengan kes khas (jenama rasmi) — dipaparkan mengikut ejaan rasmi. */
 const CANONICAL = new Map<string, string>([
+  ["COE", "CoE"],
   ["DELIMA", "DELIMa"],
   ["PDP", "PdP"],
   ["PAK21", "PAK21"],
