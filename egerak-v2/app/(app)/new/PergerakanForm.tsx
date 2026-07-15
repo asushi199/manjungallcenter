@@ -449,25 +449,6 @@ export default function PergerakanForm({
         </label>
       )}
 
-      <div>
-        <label className="label" htmlFor="urusan">
-          Urusan / Aktiviti
-        </label>
-        <textarea
-          id="urusan"
-          className="input min-h-[96px]"
-          required
-          disabled={urusanDisabled}
-          value={urusan}
-          onChange={(e) => setUrusan(e.target.value)}
-          placeholder={
-            urusanDisabled
-              ? "Pilih cadangan di bawah, atau tunggu sebentar…"
-              : "Contoh: Mesyuarat Pengurusan Kewangan PPD Manjung"
-          }
-        />
-      </div>
-
       {jenis === "Pergerakan" && cadanganLoading && (
         <p className="text-xs text-slate-500">Mencari aktiviti hari ini…</p>
       )}
@@ -563,6 +544,25 @@ export default function PergerakanForm({
             )}
           </div>
         )}
+
+      <div>
+        <label className="label" htmlFor="urusan">
+          Urusan / Aktiviti
+        </label>
+        <textarea
+          id="urusan"
+          className="input min-h-[96px]"
+          required
+          disabled={urusanDisabled}
+          value={urusan}
+          onChange={(e) => setUrusan(e.target.value)}
+          placeholder={
+            urusanDisabled
+              ? "Pilih cadangan di atas, atau tunggu sebentar…"
+              : "Contoh: Mesyuarat Pengurusan Kewangan PPD Manjung"
+          }
+        />
+      </div>
 
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">
