@@ -301,12 +301,20 @@ Selepas beberapa hari penggunaan sebenar, cadangan urusan lebih banyak menggangg
 daripada membantu: majoriti pegawai pergi ke tempat berlainan, jadi senarai penuh
 "aktiviti PPD hari ini" jarang relevan.
 
-- **`listUrusanTemplatesForDay` kini tapis peer `pergerakan` kepada sektor sendiri**
-  (`eq(pergerakan.sektorId, ownSektorId)`; tiada sektor → tiada peer cadangan).
-  Sektor lain sengaja tidak dicadangkan.
-- **Takwim kekal tanpa tapisan sektor.** Ia data terancang & rendah bunyi, dan di
-  situlah aktiviti seluruh PPD (perjumpaan/karnival/majlis) berada — jadi kes
-  "aktiviti besar" berfungsi tanpa perlu field `skop` baharu.
+- **`listUrusanTemplatesForDay` kini tapis KEDUA-DUA sumber kepada sektor sendiri** —
+  peer `pergerakan` dan aktiviti master takwim. Tiada sektor → terus pulang `[]`.
+- **Kenapa takwim juga ditapis:** draf awal membiarkan takwim merentas semua sektor
+  atas alasan "takwim rendah bunyi". Itu silap — ia rendah bunyi hanya kerana data
+  belum lengkap. Sebaik semua sektor import Rancangan Tahunan, satu hari boleh ada
+  banyak entri merentas sektor, dan rancangan tahunan tersebar rata sepanjang tahun.
+  Tapisan sektor juga selari dengan tujuan takwim dipapar: pegawai "ambil" aktiviti
+  sektor sendiri, bukan rancangan tahunan sektor lain.
+- **`rankCadanganBySektor` dibuang** (juga `sektorId` pada `DayActivityRow`/
+  `DayActivityTemplate`): apabila setiap baris sudah sektor sendiri, susunan
+  "sektor sendiri dahulu" jadi no-op dan `sektorId` tidak dibaca sesiapa.
+  Ujian `tests/day-activity-templates.test.ts` ditulis semula untuk menguji
+  pengumpulan `buildDayUrusanCadangan` (count, lokasi rekod terawal, urusan
+  terpanjang, baris kosong digugurkan) — kelakuan yang sebelum ini tiada ujian.
 - **Urusan tidak lagi dikunci semasa cadangan dimuat.** `urusanDisabled` kini
   `!isEdit && modeCActive` sahaja. Gerbang lembut lama memaksa tunggu ~350ms
   debounce + satu server action setiap kali tarikh berubah, sebelum boleh taip.
@@ -321,8 +329,18 @@ daripada membantu: majoriti pegawai pergi ke tempat berlainan, jadi senarai penu
   urusan sama → tunjuk kepada semua). Bilik Budiman/Bestari sudah menangkap
   kebanyakan aktiviti seluruh PPD; buat dahulu yang paling ringkas, tambah hanya
   jika ada kes sebenar yang terlepas.
-- **Risiko diterima:** aktiviti seluruh PPD yang tiada dalam takwim boleh ditulis
-  berlainan gaya oleh setiap sektor. `urusanMatches` toleransi kepada tipo dan
-  perkataan tambahan (Jaccard token ≥0.5), tetapi **bukan** singkatan — "JK" lwn
-  "Jawatankuasa" akan pecah kepada dua kluster dalam `cluster-programs.ts`, jadi
-  kiraan program boleh naik. Guna takwim (satu teks kanonik) untuk elak.
+- **Tiada field `skop` (sektor/semua) pada takwim.** Sekali lagi: tunggu kes sebenar.
+  Jika perlu kemudian, JANGAN wakilkan "semua" dengan `sektorId = null` — FK itu
+  `onDelete: "set null"`, jadi memadam satu sektor akan senyap-senyap menukar semua
+  takwimnya menjadi "seluruh PPD". Guna field berasingan yang eksplisit.
+
+### Risiko diterima
+
+- Aktiviti seluruh PPD yang **bukan** di Budiman/Bestari (cth. karnival di sekolah,
+  majlis di luar) tidak dicadangkan merentas sektor. Orang pertama setiap sektor
+  taip sendiri, kemudian ia merebak dalam sektor itu melalui cadangan peer.
+- Kerana setiap sektor menaip sendiri, gaya penulisan boleh berbeza.
+  `urusanMatches` toleransi kepada tipo dan perkataan tambahan (Jaccard token ≥0.5),
+  tetapi **bukan** singkatan — "JK" lwn "Jawatankuasa" akan pecah kepada dua kluster
+  dalam `cluster-programs.ts`, jadi kiraan program boleh naik. Jika laporan analisis
+  mula menunjukkan aktiviti berulang yang mencurigakan, inilah puncanya.

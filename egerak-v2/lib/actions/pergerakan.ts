@@ -21,7 +21,7 @@ import { isSektorIdInScope, resolveUserSektorScope } from "@/lib/sektor-admin-sc
 import { canSectorDeletePergerakan, isFullAdmin } from "@/lib/roles";
 import { parseLocalInput, toLocalInput, TZ, ymd, formatDateTime } from "@/lib/dates";
 import { formatInTimeZone } from "date-fns-tz";
-import { buildDayUrusanCadangan, rankCadanganBySektor } from "@/lib/analisis/day-activity-templates";
+import { buildDayUrusanCadangan } from "@/lib/analisis/day-activity-templates";
 import { addDays, parseISO } from "date-fns";
 import { cancelRoomBookingsForPergerakan } from "@/lib/sync-room-bookings";
 import { formatTitleCase } from "@/lib/format-display-text";
@@ -599,17 +599,17 @@ export type UrusanTemplate = {
 };
 
 /**
- * Cadangan urusan (aktiviti) pada tarikh tertentu.
+ * Cadangan urusan (aktiviti) pada tarikh tertentu — sektor sendiri sahaja.
  *
- * Dua sumber sahaja, sengaja sempit supaya borang kekal bersih:
- *  1. `pergerakan` rakan **sektor sendiri** — kes biasa satu sektor keluar bersama.
+ * Dua sumber, kedua-duanya ditapis kepada sektor pengguna:
+ *  1. `pergerakan` rakan sektor — kes biasa satu sektor keluar bersama.
  *  2. Aktiviti master Takwim (Rancangan Tahunan + Tambahan) yang belum ada pegawai
- *     bertanggungjawab, **semua sektor** — takwim ialah data terancang & rendah bunyi,
- *     dan di situlah aktiviti seluruh PPD (perjumpaan/karnival/majlis) berada.
+ *     bertanggungjawab, supaya pegawai boleh "ambil" aktiviti sektornya sendiri.
  *
- * Pergerakan sektor lain sengaja TIDAK dicadangkan: kebanyakan pegawai pergi ke tempat
- * berlainan, jadi ia hanya menambah bunyi. Aktiviti di Bilik Budiman / Dewan Bestari
- * dikendalikan berasingan oleh cadangan tempahan bilik.
+ * Sektor lain sengaja TIDAK dicadangkan. Kebanyakan pegawai pergi ke tempat berlainan,
+ * jadi ia hanya menambah bunyi; dan seorang pegawai tidak akan "ambil" rancangan tahunan
+ * sektor lain. Aktiviti seluruh PPD biasanya di Bilik Budiman / Dewan Bestari, yang sudah
+ * dicadangkan berasingan melalui tempahan bilik.
  *
  * Tidak pulang nama pegawai.
  */
@@ -621,39 +621,35 @@ export async function listUrusanTemplatesForDay(ymdDate: string): Promise<Urusan
     user.sektorId != null && Number.isFinite(Number(user.sektorId))
       ? Number(user.sektorId)
       : null;
+  if (ownSektorId == null) return [];
 
   const start = new Date(`${ymdDate}T00:00:00+08:00`);
   const end = new Date(`${ymdDate}T23:59:59+08:00`);
-  const rows =
-    ownSektorId == null
-      ? []
-      : await withDbTimeout(
-          db
-            .select({
-              urusan: pergerakan.urusan,
-              lokasi: pergerakan.lokasi,
-              tarikhPergi: pergerakan.tarikhPergi,
-              tarikhKembali: pergerakan.tarikhKembali,
-              sektorId: pergerakan.sektorId,
-            })
-            .from(pergerakan)
-            .where(
-              and(
-                eq(pergerakan.aktif, true),
-                eq(pergerakan.jenis, "Pergerakan"),
-                eq(pergerakan.sektorId, ownSektorId),
-                lte(pergerakan.tarikhPergi, end),
-                gte(pergerakan.tarikhKembali, start),
-              ),
-            )
-            .orderBy(desc(pergerakan.tarikhPergi))
-            .limit(500),
-        );
+  const rows = await withDbTimeout(
+    db
+      .select({
+        urusan: pergerakan.urusan,
+        lokasi: pergerakan.lokasi,
+        tarikhPergi: pergerakan.tarikhPergi,
+        tarikhKembali: pergerakan.tarikhKembali,
+      })
+      .from(pergerakan)
+      .where(
+        and(
+          eq(pergerakan.aktif, true),
+          eq(pergerakan.jenis, "Pergerakan"),
+          eq(pergerakan.sektorId, ownSektorId),
+          lte(pergerakan.tarikhPergi, end),
+          gte(pergerakan.tarikhKembali, start),
+        ),
+      )
+      .orderBy(desc(pergerakan.tarikhPergi))
+      .limit(500),
+  );
 
   // Aktiviti Takwim (Rancangan Tahunan + Tambahan sektor) tanpa pegawai bertanggungjawab —
   // hanya wujud sebagai takwim_aktiviti (tiada pergerakan), jadi gabungkan supaya turut
   // jadi cadangan untuk pegawai "ambil" semasa Daftar Pergerakan.
-  // Sengaja tanpa tapisan sektor: lihat nota sumber (2) di atas.
   const masterRows = await withDbTimeout(
     db
       .select({
@@ -661,7 +657,6 @@ export async function listUrusanTemplatesForDay(ymdDate: string): Promise<Urusan
         lokasi: takwimAktiviti.lokasi,
         tarikhPergi: takwimAktiviti.tarikhPergi,
         tarikhKembali: takwimAktiviti.tarikhKembali,
-        sektorId: takwimAktiviti.sektorId,
       })
       .from(takwimAktiviti)
       .where(
@@ -669,6 +664,7 @@ export async function listUrusanTemplatesForDay(ymdDate: string): Promise<Urusan
           eq(takwimAktiviti.aktif, true),
           inArray(takwimAktiviti.kategori, ["rancangan", "tambahan"]),
           isNull(takwimAktiviti.sourcePergerakanId),
+          eq(takwimAktiviti.sektorId, ownSektorId),
           lte(takwimAktiviti.tarikhPergi, end),
           gte(takwimAktiviti.tarikhKembali, start),
         ),
@@ -682,11 +678,10 @@ export async function listUrusanTemplatesForDay(ymdDate: string): Promise<Urusan
       lokasi: String(r.lokasi || ""),
       tarikhPergi: new Date(r.tarikhPergi),
       tarikhKembali: new Date(r.tarikhKembali),
-      sektorId: r.sektorId ?? null,
     })),
   );
 
-  return rankCadanganBySektor(templates, ownSektorId).map((g) => ({
+  return templates.map((g) => ({
     urusan: g.urusan,
     lokasi: g.lokasi,
     tarikhPergi: toLocalInput(g.tarikhPergi),
