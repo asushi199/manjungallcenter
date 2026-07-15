@@ -41,7 +41,7 @@ export default async function OprPrintPage({ params }: { params: Promise<{ id: s
           <div className="flex flex-col items-center gap-1 text-center">
             <PpdLogo width={132} className="opr-print-logo" priority />
             <h1 className="text-[11pt] font-bold uppercase leading-tight">
-              Laporan Pelaksanaan Program / Aktiviti
+              OPR Pelaksanaan Program / Aktiviti
             </h1>
             <p className="text-[8pt] leading-snug">Pejabat Pendidikan Daerah Manjung</p>
           </div>

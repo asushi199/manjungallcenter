@@ -262,6 +262,18 @@ export default function PergerakanForm({
     });
   }
 
+  function handleReset() {
+    setJenis(initial?.jenis ?? "Pergerakan");
+    setLokasiSel(lokasiInit.lokasiSel);
+    setLokasiLain(lokasiInit.lokasiLain);
+    setUrusan("");
+    setTarikhPergi("");
+    setTarikhKembali("");
+    setTidakPerluOpr(false);
+    setError(null);
+    setOkMsg(null);
+  }
+
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -437,6 +449,25 @@ export default function PergerakanForm({
         </label>
       )}
 
+      <div>
+        <label className="label" htmlFor="urusan">
+          Urusan / Aktiviti
+        </label>
+        <textarea
+          id="urusan"
+          className="input min-h-[96px]"
+          required
+          disabled={urusanDisabled}
+          value={urusan}
+          onChange={(e) => setUrusan(e.target.value)}
+          placeholder={
+            urusanDisabled
+              ? "Pilih cadangan di bawah, atau tunggu sebentar…"
+              : "Contoh: Mesyuarat Pengurusan Kewangan PPD Manjung"
+          }
+        />
+      </div>
+
       {jenis === "Pergerakan" && cadanganLoading && (
         <p className="text-xs text-slate-500">Mencari aktiviti hari ini…</p>
       )}
@@ -507,7 +538,7 @@ export default function PergerakanForm({
           <div className="space-y-2">
             <p className="text-xs font-medium text-slate-700">Cadangan urusan hari ini:</p>
             <div className="flex flex-col gap-2">
-              {(showAllPeers ? peerCadangan : peerCadangan.slice(0, 6)).map((t) => (
+              {(showAllPeers ? peerCadangan : peerCadangan.slice(0, 3)).map((t) => (
                 <button
                   key={`${t.urusan}|${t.lokasi}|${t.tarikhPergi}`}
                   type="button"
@@ -521,36 +552,17 @@ export default function PergerakanForm({
                 </button>
               ))}
             </div>
-            {peerCadangan.length > 6 && !showAllPeers && (
+            {peerCadangan.length > 3 && !showAllPeers && (
               <button
                 type="button"
                 className="text-xs underline text-slate-600"
                 onClick={() => setShowAllPeers(true)}
               >
-                Lihat lagi ({peerCadangan.length - 6})
+                Lihat lagi ({peerCadangan.length - 3})
               </button>
             )}
           </div>
         )}
-
-      <div>
-        <label className="label" htmlFor="urusan">
-          Urusan / Aktiviti
-        </label>
-        <textarea
-          id="urusan"
-          className="input min-h-[96px]"
-          required
-          disabled={urusanDisabled}
-          value={urusan}
-          onChange={(e) => setUrusan(e.target.value)}
-          placeholder={
-            urusanDisabled
-              ? "Pilih cadangan di atas, atau tunggu sebentar…"
-              : "Contoh: Mesyuarat Pengurusan Kewangan PPD Manjung"
-          }
-        />
-      </div>
 
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">
@@ -569,7 +581,7 @@ export default function PergerakanForm({
             Batal
           </Link>
         ) : (
-          <button type="reset" className="btn-secondary" disabled={pending}>
+          <button type="button" className="btn-secondary" disabled={pending} onClick={handleReset}>
             Reset
           </button>
         )}
