@@ -398,7 +398,7 @@ export default function MyClient({ items }: { items: MyItem[] }) {
       </div>
 
       {selectMode ? (
-        <div className="card flex flex-wrap items-center gap-2 border-brand-200 bg-brand-50 p-2.5">
+        <div className="card sticky top-[3.25rem] z-30 flex flex-wrap items-center gap-2 border-brand-200 bg-brand-50 p-2.5 shadow-md">
           <span className="text-sm font-medium text-slate-700 tabular-nums">
             {selected.size > 0 ? `${selected.size} dipilih` : "Pilih rekod untuk padam"}
           </span>
