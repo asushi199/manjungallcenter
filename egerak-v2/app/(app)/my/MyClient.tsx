@@ -104,6 +104,7 @@ export default function MyClient({ items }: { items: MyItem[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [selectMode, setSelectMode] = useState(false);
   const [query, setQuery] = useState("");
   const [oprFilter, setOprFilter] = useState<OprTodoFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("tarikh");
@@ -225,7 +226,7 @@ export default function MyClient({ items }: { items: MyItem[] }) {
         variant="mine"
         item={it}
         selected={selected.has(it.id)}
-        onToggleSelect={() => toggle(it.id)}
+        onToggleSelect={selectMode ? () => toggle(it.id) : undefined}
       />
     );
   }
@@ -238,19 +239,34 @@ export default function MyClient({ items }: { items: MyItem[] }) {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">Pergerakan Saya</h1>
-        <p className="mt-1 text-sm text-slate-500 tabular-nums">
-          {items.length} rekod
-          {oprNeedTotal > 0 ? ` · ${oprCounts.siap}/${oprNeedTotal} OPR siap` : ""}
-        </p>
-        {oprNeedTotal > 0 ? (
-          <div className="mt-2 h-1 max-w-[16rem] overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-full rounded-full bg-emerald-500 transition-all"
-              style={{ width: `${oprDonePct}%` }}
-            />
-          </div>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">Pergerakan Saya</h1>
+          <p className="mt-1 text-sm text-slate-500 tabular-nums">
+            {items.length} rekod
+            {oprNeedTotal > 0 ? ` · ${oprCounts.siap}/${oprNeedTotal} OPR siap` : ""}
+          </p>
+          {oprNeedTotal > 0 ? (
+            <div className="mt-2 h-1 max-w-[16rem] overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all"
+                style={{ width: `${oprDonePct}%` }}
+              />
+            </div>
+          ) : null}
+        </div>
+        {items.length > 0 ? (
+          <button
+            type="button"
+            aria-pressed={selectMode}
+            className="btn-secondary shrink-0 min-h-0 px-3 py-1.5 text-sm"
+            onClick={() => {
+              setSelectMode((m) => !m);
+              setSelected(new Set());
+            }}
+          >
+            {selectMode ? "Selesai" : "Pilih"}
+          </button>
         ) : null}
       </div>
 
@@ -343,10 +359,10 @@ export default function MyClient({ items }: { items: MyItem[] }) {
         </div>
       </div>
 
-      {selected.size > 0 ? (
+      {selectMode ? (
         <div className="card flex flex-wrap items-center gap-2 border-brand-200 bg-brand-50 p-2.5">
           <span className="text-sm font-medium text-slate-700 tabular-nums">
-            {selected.size} dipilih
+            {selected.size > 0 ? `${selected.size} dipilih` : "Pilih rekod untuk padam"}
           </span>
           <button
             type="button"
@@ -356,15 +372,8 @@ export default function MyClient({ items }: { items: MyItem[] }) {
             {allVisibleSelected ? "Nyahpilih semua" : "Pilih semua"}
           </button>
           <button
-            type="button"
-            className="px-1 text-xs text-slate-500 underline hover:text-slate-700"
-            onClick={() => setSelected(new Set())}
-          >
-            Batal
-          </button>
-          <button
-            className="btn-danger ml-auto min-h-0 px-3 py-1 text-xs"
-            disabled={pending}
+            className="btn-danger ml-auto min-h-0 px-3 py-1 text-xs disabled:opacity-40"
+            disabled={pending || selected.size === 0}
             onClick={onDelete}
           >
             {pending ? "Memadam..." : `Padam (${selected.size})`}
