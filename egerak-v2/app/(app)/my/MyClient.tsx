@@ -259,12 +259,50 @@ export default function MyClient({ items }: { items: MyItem[] }) {
           <button
             type="button"
             aria-pressed={selectMode}
-            className="btn-secondary shrink-0 min-h-0 px-3 py-1.5 text-sm"
+            className={cn(
+              "btn-secondary shrink-0 min-h-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium",
+              selectMode
+                ? "border-brand-600 bg-brand-600 text-white hover:bg-brand-700"
+                : "border-brand-600 text-brand-600 hover:bg-brand-50",
+            )}
             onClick={() => {
               setSelectMode((m) => !m);
               setSelected(new Set());
             }}
           >
+            {selectMode ? (
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            ) : (
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="m3 17 2 2 4-4" />
+                <path d="m3 7 2 2 4-4" />
+                <path d="M13 6h8" />
+                <path d="M13 12h8" />
+                <path d="M13 18h8" />
+              </svg>
+            )}
             {selectMode ? "Selesai" : "Pilih"}
           </button>
         ) : null}
