@@ -453,16 +453,19 @@ body.bilik-print-page .app-site-footer {
 }
 
 .opr-print-photos {
-  @apply mt-4;
+  /* Sepadan dengan @media print (2mm) supaya ukur zoom tidak terlebih. */
+  margin-top: 2mm;
 }
 
 .opr-print-photo-grid {
-  @apply grid grid-cols-2 gap-2;
+  @apply grid grid-cols-2;
+  gap: 2mm;
 }
 
 .opr-print-photo-frame {
   @apply w-full flex items-center justify-center overflow-hidden border rounded bg-slate-50;
-  height: 120px;
+  /* Sepadan dengan cetak (24mm) — elak zoom agresif kerana bingkai skrin lebih tinggi. */
+  height: 24mm;
 }
 
 .opr-print-photo {

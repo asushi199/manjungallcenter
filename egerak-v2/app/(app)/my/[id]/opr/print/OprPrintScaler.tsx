@@ -5,6 +5,8 @@ import {
   OPR_PRINT_MARGIN_Y_MM,
   OPR_PRINT_PAGE_HEIGHT_MM,
   OPR_PRINT_PAGE_WIDTH_MM,
+  OPR_PRINT_SCREEN_HEIGHT_FACTOR,
+  OPR_PRINT_ZOOM_DEADZONE,
   OPR_PRINT_ZOOM_MIN,
 } from "@/lib/opr-print-page";
 
@@ -57,36 +59,41 @@ export default function OprPrintScaler({ children }: { children: React.ReactNode
 
       clearPrintZoom();
 
+      // Helaian skrin = mock A4 penuh (padding meniru jidar). Bandingkan
+      // tinggi keseluruhan dengan tinggi kertas — lebih stabil daripada
+      // (kandungan vs kawasan boleh cetak) yang mudah tersilap bila padding
+      // sudah 0 semasa beforeprint.
       const sheetWidthPx = sheet.offsetWidth || 1;
       const pxPerMm = sheetWidthPx / OPR_PRINT_PAGE_WIDTH_MM;
-      const printableHeightPx = (OPR_PRINT_PAGE_HEIGHT_MM - 2 * OPR_PRINT_MARGIN_Y_MM) * pxPerMm;
+      const pageHeightPx = OPR_PRINT_PAGE_HEIGHT_MM * pxPerMm;
 
-      // Padding skrin meniru jidar @page; semasa cetak padding = 0.
       const cs = getComputedStyle(article);
       const padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
-      const printContentHeightPx = Math.max(1, article.offsetHeight - padY);
+      // Jika media print sudah aktif (padding 0), anggap jidar @page masih
+      // perlu ruang — tambah balik margin Y supaya nisbah sama seperti mock skrin.
+      const marginPadPx =
+        padY > 1 ? 0 : 2 * OPR_PRINT_MARGIN_Y_MM * pxPerMm;
+      const mockPageHeightPx = article.offsetHeight + marginPadPx;
 
-      const raw = printableHeightPx / printContentHeightPx;
-      // Sedikit buffer (2%) elak overflow disebabkan perbezaan font/imej cetak vs skrin.
-      const zoom = Math.min(1, Math.max(OPR_PRINT_ZOOM_MIN, raw * 0.98));
+      const adjustedHeightPx = mockPageHeightPx / OPR_PRINT_SCREEN_HEIGHT_FACTOR;
+      let zoom = pageHeightPx / Math.max(1, adjustedHeightPx);
+
+      if (zoom >= OPR_PRINT_ZOOM_DEADZONE) {
+        zoom = 1;
+      } else {
+        zoom = Math.min(1, Math.max(OPR_PRINT_ZOOM_MIN, zoom));
+      }
+
       if (zoom < 0.999) {
         article.style.setProperty("zoom", String(Number(zoom.toFixed(4))));
       }
     };
 
-    const onPrintMql = (e: MediaQueryListEvent) => {
-      if (e.matches) applyPrintZoom();
-      else clearPrintZoom();
-    };
-
     window.addEventListener("beforeprint", applyPrintZoom);
     window.addEventListener("afterprint", clearPrintZoom);
-    const mql = window.matchMedia("print");
-    mql.addEventListener("change", onPrintMql);
     return () => {
       window.removeEventListener("beforeprint", applyPrintZoom);
       window.removeEventListener("afterprint", clearPrintZoom);
-      mql.removeEventListener("change", onPrintMql);
       clearPrintZoom();
     };
   }, []);
