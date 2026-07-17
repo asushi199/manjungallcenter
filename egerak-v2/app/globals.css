@@ -132,8 +132,9 @@
   }
 
   .opr-print {
-    /* Jidar 1" datang daripada @page lalai (laluan cetak OPR) — sokongan pelayar
-       paling luas (termasuk mudah alih); bukan named-page yang kerap diabaikan. */
+    /* Jidar 9mm / 1" datang daripada @page (laluan cetak OPR) — sokongan pelayar
+       paling luas (termasuk mudah alih); bukan named-page yang kerap diabaikan.
+       Zoom muat-satu-muka ditetapkan oleh OprPrintScaler pada beforeprint. */
     width: 100% !important;
     max-width: none !important;
     padding: 0 !important;
@@ -408,8 +409,8 @@ body.bilik-print-page .app-site-footer {
 
 .opr-print {
   /* Pratonton skrin sepadan dengan cetakan: kiri/kanan 1" (untuk fail/lubang),
-     atas & bawah dikecilkan (12mm). */
-  padding: 12mm 1in;
+     atas & bawah 9mm (lihat OPR_PRINT_MARGIN_Y_MM). */
+  padding: 9mm 1in;
 }
 
 .opr-print-footer {
