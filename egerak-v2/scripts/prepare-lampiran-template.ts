@@ -38,10 +38,11 @@ const replacements: Array<[string, string]> = [
   ],
   // Tempoh aktiviti (bukan tarikh tandatangan)
   ["<w:t>21/05/2026</w:t>", "<w:t>[[tempoh]]</w:t>"],
-  // Tarikh tandatangan — biarkan kosong untuk isi manual
+  // Tarikh tandatangan pemohon — kosong tetapi lebar tetap (sama panjang 20/05/2026)
+  // supaya tab kanan Ketua tidak lari ke kiri.
   [
     '<w:t xml:space="preserve">  20/05/2026</w:t>',
-    '<w:t xml:space="preserve">  </w:t>',
+    '<w:t xml:space="preserve">            </w:t>',
   ],
 ];
 
@@ -69,6 +70,15 @@ const tempohTcOpen = '<w:tcPr><w:tcW w:w="2520" w:type="dxa"/><w:tcBorders>';
 const tempohTcFixed = '<w:tcPr><w:tcW w:w="2520" w:type="dxa"/><w:noWrap/><w:tcBorders>';
 if (!xml.includes('<w:tcPr><w:tcW w:w="2520" w:type="dxa"/><w:noWrap/>')) {
   xml = xml.split(tempohTcOpen).join(tempohTcFixed);
+}
+
+// Pemohon tarikh blank: lebar tetap supaya tab Ketua kekal di lajur kanan.
+const narrowTarikhBlank =
+  '<w:r w:rsidRPr="00961670"><w:t>:</w:t></w:r><w:r w:rsidR="00DB07BE"><w:t xml:space="preserve">  </w:t></w:r><w:r w:rsidR="00581BFD"><w:t xml:space="preserve"> </w:t></w:r><w:r w:rsidR="00581BFD"><w:tab/></w:r><w:r w:rsidR="00AA03C8"><w:t xml:space="preserve">Tarikh </w:t>';
+const wideTarikhBlank =
+  '<w:r w:rsidRPr="00961670"><w:t>:</w:t></w:r><w:r w:rsidR="00DB07BE"><w:t xml:space="preserve">            </w:t></w:r><w:r w:rsidR="00581BFD"><w:t xml:space="preserve"> </w:t></w:r><w:r w:rsidR="00581BFD"><w:tab/></w:r><w:r w:rsidR="00AA03C8"><w:t xml:space="preserve">Tarikh </w:t>';
+if (xml.includes(narrowTarikhBlank)) {
+  xml = xml.split(narrowTarikhBlank).join(wideTarikhBlank);
 }
 
 zip.file("word/document.xml", xml);
