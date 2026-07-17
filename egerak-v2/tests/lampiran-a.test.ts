@@ -17,7 +17,13 @@ describe("formatLampiranTempoh", () => {
   it("range shows both dates", () => {
     const pergi = fromZonedTime("2026-05-21T07:00:00", TZ);
     const kembali = fromZonedTime("2026-05-22T17:00:00", TZ);
-    assert.equal(formatLampiranTempoh(pergi, kembali), "21/05/2026 – 22/05/2026");
+    assert.equal(formatLampiranTempoh(pergi, kembali), "21–22/05/2026");
+  });
+
+  it("cross-month range stacks dates", () => {
+    const pergi = fromZonedTime("2026-05-30T07:00:00", TZ);
+    const kembali = fromZonedTime("2026-06-02T17:00:00", TZ);
+    assert.equal(formatLampiranTempoh(pergi, kembali), "30/05/2026\n02/06/2026");
   });
 });
 

@@ -52,6 +52,25 @@ for (const [from, to] of replacements) {
   xml = xml.split(from).join(to);
 }
 
+// Layout: gabung "Tarik"+"h", kecilkan fon TEMPOH, elak wrap
+const brokenTarikh =
+  '<w:r w:rsidR="00AA03C8"><w:t>Tarik</w:t></w:r><w:r w:rsidR="00B62958"><w:t>h</w:t></w:r><w:r w:rsidR="00581BFD"><w:tab/><w:t>:</w:t></w:r>';
+const fixedTarikh =
+  '<w:r w:rsidR="00AA03C8"><w:t xml:space="preserve">Tarikh </w:t></w:r><w:r w:rsidR="00581BFD"><w:tab/><w:t>:</w:t></w:r>';
+xml = xml.split(brokenTarikh).join(fixedTarikh);
+
+xml = xml
+  .split("<w:r><w:rPr><w:b/></w:rPr><w:t>[[tempoh]]</w:t></w:r>")
+  .join(
+    '<w:r><w:rPr><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr><w:t>[[tempoh]]</w:t></w:r>',
+  );
+
+const tempohTcOpen = '<w:tcPr><w:tcW w:w="2520" w:type="dxa"/><w:tcBorders>';
+const tempohTcFixed = '<w:tcPr><w:tcW w:w="2520" w:type="dxa"/><w:noWrap/><w:tcBorders>';
+if (!xml.includes('<w:tcPr><w:tcW w:w="2520" w:type="dxa"/><w:noWrap/>')) {
+  xml = xml.split(tempohTcOpen).join(tempohTcFixed);
+}
+
 zip.file("word/document.xml", xml);
 
 mkdirSync(join(root, "public", "templates"), { recursive: true });

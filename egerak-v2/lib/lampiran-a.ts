@@ -19,11 +19,21 @@ const TEMPLATE_PATH = join(process.cwd(), "public/templates/lampiran-a-template.
 
 /** Format tarikh TEMPOH dalam borang (dd/MM/yyyy). */
 export function formatLampiranTempoh(pergi: Date, kembali: Date): string {
-  const fmt = (d: Date) => formatInTimeZone(d, TZ, "dd/MM/yyyy");
-  const start = fmt(pergi);
-  const end = fmt(kembali);
+  const day = (d: Date) => formatInTimeZone(d, TZ, "dd");
+  const monthYear = (d: Date) => formatInTimeZone(d, TZ, "MM/yyyy");
+  const full = (d: Date) => formatInTimeZone(d, TZ, "dd/MM/yyyy");
+
+  const start = full(pergi);
+  const end = full(kembali);
   if (start === end) return start;
-  return `${start} – ${end}`;
+
+  // Same month: compact "21–25/05/2026" fits narrow TEMPOH column.
+  if (monthYear(pergi) === monthYear(kembali)) {
+    return `${day(pergi)}–${day(kembali)}/${monthYear(pergi)}`;
+  }
+
+  // Cross-month: stack dates vertically (docxtemplater linebreaks).
+  return `${start}\n${end}`;
 }
 
 export function buildLampiranAFields(params: {
