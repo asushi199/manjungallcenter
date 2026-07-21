@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { groupMyBookings, type MyBookingRow } from "../lib/room-booking-group";
+import {
+  groupMyBookings,
+  isFullDayBookingPair,
+  type MyBookingRow,
+} from "../lib/room-booking-group";
 
 function row(over: Partial<MyBookingRow>): MyBookingRow {
   return {
@@ -38,6 +42,16 @@ test("different titles stay as separate single items", () => {
   ]);
   assert.equal(items.length, 2);
   assert.ok(items.every((i) => !i.fullDay));
+});
+
+test("different Takwim activities in AM and PM are not treated as one full-day booking", () => {
+  assert.equal(
+    isFullDayBookingPair(
+      { title: "Mesyuarat pagi", pegawaiNama: "Ali", takwimAktivitiId: 41 },
+      { title: "Taklimat petang", pegawaiNama: "Ali", takwimAktivitiId: 42 },
+    ),
+    false,
+  );
 });
 
 test("single slot stays single", () => {

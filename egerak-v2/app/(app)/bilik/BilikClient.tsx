@@ -7,6 +7,7 @@ import { bookRoom, cancelBooking, modifyBooking, cancelBookingsBulk } from "@/li
 import { SLOT_LABEL } from "@/lib/room-slots";
 import { isWithinGrace } from "@/lib/room-booking-policy";
 import type { MyBookingItem } from "@/lib/room-booking-group";
+import { isFullDayBookingPair } from "@/lib/room-booking-group";
 import { replaceWithSearchParams } from "@/lib/navigate";
 import DatePickerButton from "@/components/DatePickerButton";
 import { cn } from "@/lib/cn";
@@ -26,6 +27,7 @@ type Booking = {
   tarikh: string;
   slot: "AM" | "PM";
   title: string;
+  takwimAktivitiId: number | null;
   pegawaiNama: string;
 };
 type MyBooking = MyBookingItem;
@@ -484,7 +486,7 @@ export default function BilikClient({
                 {tableRooms.map((r) => {
                   const am = bookingKey(r.id, d, "AM");
                   const pm = bookingKey(r.id, d, "PM");
-                  if (am && pm) {
+                  if (am && pm && isFullDayBookingPair(am, pm)) {
                     const sameOfficer = am.pegawaiNama === pm.pegawaiNama;
                     const tip = sameOfficer
                       ? `${am.title} / ${pm.title} — ${am.pegawaiNama}`

@@ -13,6 +13,7 @@ export type MyBookingRow = {
   slot: "AM" | "PM";
   title: string;
   pegawaiNama: string;
+  takwimAktivitiId?: number | null;
   createdAt: string;
   pendingType: "CANCEL" | "MODIFY" | null;
 };
@@ -34,6 +35,20 @@ export type MyBookingItem = {
 
 const SLOT_ORDER: Record<"AM" | "PM", number> = { AM: 0, PM: 1 };
 
+export function isFullDayBookingPair(
+  am: { title: string; pegawaiNama: string; takwimAktivitiId?: number | null },
+  pm: { title: string; pegawaiNama: string; takwimAktivitiId?: number | null },
+): boolean {
+  const amTakwimId = am.takwimAktivitiId;
+  const pmTakwimId = pm.takwimAktivitiId;
+
+  if (amTakwimId != null || pmTakwimId != null) {
+    return amTakwimId != null && amTakwimId === pmTakwimId;
+  }
+
+  return am.title === pm.title && am.pegawaiNama === pm.pegawaiNama;
+}
+
 export function groupMyBookings(rows: MyBookingRow[]): MyBookingItem[] {
   const groups = new Map<string, MyBookingRow[]>();
   for (const r of rows) {
@@ -50,18 +65,36 @@ export function groupMyBookings(rows: MyBookingRow[]): MyBookingItem[] {
     if (arr.length === 2 && hasAm && hasPm) {
       const sorted = [...arr].sort((a, b) => SLOT_ORDER[a.slot] - SLOT_ORDER[b.slot]);
       const [am, pm] = sorted;
-      items.push({
-        ids: [am.id, pm.id],
-        fullDay: true,
-        roomId: am.roomId,
-        roomName: am.roomName,
-        tarikh: am.tarikh,
-        slot: "FULL",
-        title: am.title,
-        pegawaiNama: am.pegawaiNama,
-        createdAt: am.createdAt < pm.createdAt ? am.createdAt : pm.createdAt,
-        pendingType: am.pendingType ?? pm.pendingType,
-      });
+      if (isFullDayBookingPair(am, pm)) {
+        items.push({
+          ids: [am.id, pm.id],
+          fullDay: true,
+          roomId: am.roomId,
+          roomName: am.roomName,
+          tarikh: am.tarikh,
+          slot: "FULL",
+          title: am.title,
+          pegawaiNama: am.pegawaiNama,
+          createdAt: am.createdAt < pm.createdAt ? am.createdAt : pm.createdAt,
+          pendingType: am.pendingType ?? pm.pendingType,
+        });
+        continue;
+      }
+
+      items.push(
+        ...[am, pm].map((r) => ({
+          ids: [r.id],
+          fullDay: false,
+          roomId: r.roomId,
+          roomName: r.roomName,
+          tarikh: r.tarikh,
+          slot: r.slot,
+          title: r.title,
+          pegawaiNama: r.pegawaiNama,
+          createdAt: r.createdAt,
+          pendingType: r.pendingType,
+        })),
+      );
     } else {
       for (const r of arr) {
         items.push({

@@ -61,6 +61,7 @@ export async function listBookingsInRange(start: string, end: string) {
       slot: roomBookings.slot,
       title: roomBookings.title,
       userId: roomBookings.userId,
+      takwimAktivitiId: roomBookings.takwimAktivitiId,
       pegawaiNama: users.nama,
       status: roomBookings.status,
     })
@@ -482,6 +483,7 @@ export async function listMyBookings() {
       tarikh: roomBookings.tarikh,
       slot: roomBookings.slot,
       title: roomBookings.title,
+      takwimAktivitiId: roomBookings.takwimAktivitiId,
       pegawaiNama: users.nama,
       createdAt: roomBookings.createdAt,
       pendingType: bookingRequests.type,
