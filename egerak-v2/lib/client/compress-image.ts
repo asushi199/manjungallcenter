@@ -34,32 +34,6 @@ function isImageFile(file: File): boolean {
   return file.type.startsWith("image/") || /\.(heic|heif)$/i.test(file.name);
 }
 
-function isHeicFile(file: File): boolean {
-  return /\.(heic|heif)$/i.test(file.name) || /image\/hei[cf]/i.test(file.type);
-}
-
-async function convertHeicToJpeg(file: File): Promise<File> {
-  try {
-    const { default: heic2any } = await import("heic2any");
-    const result = await heic2any({
-      blob: file,
-      toType: "image/jpeg",
-      quality: OPR_IMAGE_JPEG_QUALITY,
-    });
-    const jpeg = Array.isArray(result) ? result[0] : result;
-    if (!jpeg) throw new Error("Tiada gambar dihasilkan.");
-    const baseName = file.name.replace(/\.[^.]+$/i, "") || "gambar";
-    return new File([jpeg], `${baseName}.jpg`, {
-      type: "image/jpeg",
-      lastModified: Date.now(),
-    });
-  } catch {
-    throw new Error(
-      "Fail HEIC tidak dapat ditukar pada peranti ini. Sila cuba gambar JPG atau fail lain.",
-    );
-  }
-}
-
 type DecodedImage = {
   source: CanvasImageSource;
   width: number;
@@ -112,23 +86,16 @@ export async function compressImageForOpr(file: File): Promise<CompressImageResu
     throw new Error("Hanya fail gambar dibenarkan.");
   }
 
-  const wasHeic = isHeicFile(file);
-  const sourceFile = wasHeic ? await convertHeicToJpeg(file) : file;
-  const image = await decodeImage(sourceFile);
+  const image = await decodeImage(file);
   try {
     const portraitHint = isPortrait(image.width, image.height) ? PORTRAIT_HINT : undefined;
-    const heicNotice = wasHeic ? "Fail HEIC ditukar kepada JPEG." : undefined;
 
     const isAlreadySmall =
-      sourceFile.size <= OPR_IMAGE_SKIP_COMPRESS_BELOW_BYTES &&
-      (sourceFile.type === "image/jpeg" || sourceFile.type === "image/webp");
+      file.size <= OPR_IMAGE_SKIP_COMPRESS_BELOW_BYTES &&
+      (file.type === "image/jpeg" || file.type === "image/webp");
 
     if (isAlreadySmall) {
-      return {
-        file: sourceFile,
-        compressed: wasHeic,
-        notice: joinNotices(heicNotice, portraitHint),
-      };
+      return { file, compressed: false, notice: portraitHint };
     }
 
     let width = image.width;
@@ -166,21 +133,21 @@ export async function compressImageForOpr(file: File): Promise<CompressImageResu
       if (quality < 0.5) break;
     }
 
-    const baseName = sourceFile.name.replace(/\.[^.]+$/i, "") || "gambar";
+    const baseName = file.name.replace(/\.[^.]+$/i, "") || "gambar";
     const outFile = new File([blob!], `${baseName}.jpg`, {
       type: "image/jpeg",
       lastModified: Date.now(),
     });
 
     const compressNotice =
-      outFile.size < sourceFile.size
-        ? `Gambar dimampatkan (${formatBytes(sourceFile.size)} → ${formatBytes(outFile.size)}).`
+      outFile.size < file.size
+        ? `Gambar dimampatkan (${formatBytes(file.size)} → ${formatBytes(outFile.size)}).`
         : "Gambar diseragamkan sebagai JPEG.";
 
     return {
       file: outFile,
       compressed: true,
-      notice: joinNotices(heicNotice, compressNotice, portraitHint),
+      notice: joinNotices(compressNotice, portraitHint),
     };
   } finally {
     image.dispose();
