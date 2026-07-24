@@ -75,8 +75,8 @@ Organisasi MOE sering **melarang Service Account JSON** — gunakan [`docs/GAS_U
 
 ## OPR — gambar aktiviti
 
-- **Maksimum 4 gambar** setiap satu OPR (semak di pelayar + server).
-- **Mampatan automatik** di pelayar sebelum muat naik: tepi panjang ≤ 1920px, JPEG ~82%, sasaran ≈ 1.2 MB (gambar kecil tidak diubah).
+- **Maksimum 4 gambar** setiap satu OPR (semak di pelayar + server). Beberapa gambar boleh dipilih sekali dan dimuat naik satu demi satu.
+- **Mampatan automatik** di pelayar sebelum muat naik: tepi panjang ≤ 1920px, JPEG ~82%, sasaran ≈ 1.2 MB (gambar kecil tidak diubah). HEIC/HEIF daripada iPhone ditukar kepada JPEG di pelayar apabila disokong oleh peranti.
 - Fail disimpan di **folder Google Drive PPD** (via Apps Script); teks OPR dalam Postgres.
 
 Konfigurasi GAS: [`docs/GAS_UPLOAD_SETUP.md`](docs/GAS_UPLOAD_SETUP.md) · Skrip: [`gas/Code.gs`](gas/Code.gs).

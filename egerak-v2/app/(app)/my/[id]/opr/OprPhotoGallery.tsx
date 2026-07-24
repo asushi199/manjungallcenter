@@ -66,7 +66,8 @@ export default function OprPhotoGallery({
           {storageHint ? <p className="text-xs text-slate-500 mb-2">{storageHint}</p> : null}
           <input
             type="file"
-            accept="image/*"
+            accept="image/*,.heic,.heif"
+            multiple
             className="input"
             onChange={onUpload}
             disabled={pending || uploadingPhoto || atPhotoLimit}

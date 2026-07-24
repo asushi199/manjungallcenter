@@ -30,18 +30,65 @@ function joinNotices(...parts: (string | undefined)[]): string | undefined {
   return text || undefined;
 }
 
+function isImageFile(file: File): boolean {
+  return file.type.startsWith("image/") || /\.(heic|heif)$/i.test(file.name);
+}
+
+type DecodedImage = {
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+  dispose: () => void;
+};
+
+/**
+ * Sesetengah Safari iPhone boleh memaparkan HEIF tetapi createImageBitmap gagal
+ * membacanya. Cuba elemen <img> sebagai penyahkod kedua supaya fail HEIF boleh
+ * tetap ditukar kepada JPEG sebelum dihantar ke storan.
+ */
+async function decodeImage(file: File): Promise<DecodedImage> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    return {
+      source: bitmap,
+      width: bitmap.width,
+      height: bitmap.height,
+      dispose: () => bitmap.close(),
+    };
+  } catch {
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const element = new Image();
+        element.onload = () => resolve(element);
+        element.onerror = () => reject(new Error("Tidak dapat membaca fail gambar ini."));
+        element.src = objectUrl;
+      });
+      return {
+        source: image,
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+        dispose: () => URL.revokeObjectURL(objectUrl),
+      };
+    } catch (error) {
+      URL.revokeObjectURL(objectUrl);
+      throw error;
+    }
+  }
+}
+
 /**
  * Mampatkan gambar besar di pelayar sebelum muat naik (JPEG, tepi panjang ≤ 1920px).
  * Gambar menegak dibenarkan; pengguna dinasihatkan gunakan landskap untuk cetakan.
  */
 export async function compressImageForOpr(file: File): Promise<CompressImageResult> {
-  if (!file.type.startsWith("image/")) {
+  if (!isImageFile(file)) {
     throw new Error("Hanya fail gambar dibenarkan.");
   }
 
-  const bitmap = await createImageBitmap(file);
+  const image = await decodeImage(file);
   try {
-    const portraitHint = isPortrait(bitmap.width, bitmap.height) ? PORTRAIT_HINT : undefined;
+    const portraitHint = isPortrait(image.width, image.height) ? PORTRAIT_HINT : undefined;
 
     const isAlreadySmall =
       file.size <= OPR_IMAGE_SKIP_COMPRESS_BELOW_BYTES &&
@@ -51,8 +98,8 @@ export async function compressImageForOpr(file: File): Promise<CompressImageResu
       return { file, compressed: false, notice: portraitHint };
     }
 
-    let width = bitmap.width;
-    let height = bitmap.height;
+    let width = image.width;
+    let height = image.height;
     const maxEdge = Math.max(width, height);
 
     if (maxEdge > OPR_IMAGE_MAX_EDGE_PX) {
@@ -69,7 +116,7 @@ export async function compressImageForOpr(file: File): Promise<CompressImageResu
       throw new Error("Pelayar tidak menyokong pemprosesan gambar.");
     }
 
-    ctx.drawImage(bitmap, 0, 0, width, height);
+    ctx.drawImage(image.source, 0, 0, width, height);
 
     let quality = OPR_IMAGE_JPEG_QUALITY;
     let blob: Blob | null = null;
@@ -103,6 +150,6 @@ export async function compressImageForOpr(file: File): Promise<CompressImageResu
       notice: joinNotices(compressNotice, portraitHint),
     };
   } finally {
-    bitmap.close();
+    image.dispose();
   }
 }

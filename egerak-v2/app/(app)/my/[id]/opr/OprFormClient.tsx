@@ -260,39 +260,55 @@ export default function OprFormClient({
   }
 
   function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const selectedFiles = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (!file) return;
+    if (!selectedFiles.length) return;
     if (atPhotoLimit) {
       setMsg(`Maksimum ${OPR_MAX_PHOTOS} gambar bagi setiap OPR.`);
       return;
     }
 
+    // Muat naik satu demi satu: setiap foto mendapat had masa server sendiri,
+    // tanpa menghantar beberapa fail besar dalam satu permintaan.
+    const remaining = OPR_MAX_PHOTOS - photos.length;
+    const files = selectedFiles.slice(0, remaining);
+    const omittedCount = selectedFiles.length - files.length;
     setUploadingPhoto(true);
     setMsg(null);
     startTransition(async () => {
+      let uploadedCount = 0;
+      let lastNotice: string | undefined;
       try {
-        const { file: uploadFile, notice } = await compressImageForOpr(file);
-        const fd = new FormData();
-        fd.set("pergerakanId", String(pergerakanId));
-        fd.set("file", uploadFile);
-        const res = await uploadOprPhotoAction(fd);
-        if (!res.ok) {
-          setMsg(res.error);
-          return;
+        for (const file of files) {
+          const { file: uploadFile, notice } = await compressImageForOpr(file);
+          const fd = new FormData();
+          fd.set("pergerakanId", String(pergerakanId));
+          fd.set("file", uploadFile);
+          const res = await uploadOprPhotoAction(fd);
+          if (!res.ok) {
+            setMsg(res.error);
+            return;
+          }
+          const url = res.displayUrl ?? res.publicUrl;
+          if (url) {
+            setPhotos((p) => [
+              ...p,
+              { id: res.id, displayUrl: url, publicUrl: res.publicUrl },
+            ]);
+          }
+          uploadedCount += 1;
+          lastNotice = notice;
         }
-        const url = res.displayUrl ?? res.publicUrl;
-        if (url) {
-          setPhotos((p) => [
-            ...p,
-            { id: res.id, displayUrl: url, publicUrl: res.publicUrl },
-          ]);
-        }
+        const skippedNotice = omittedCount
+          ? ` ${omittedCount} gambar tidak dipilih kerana had ${OPR_MAX_PHOTOS} gambar.`
+          : "";
         setMsg(
-          notice ??
-            `Gambar dimuat naik (${res.photoCount ?? photos.length + 1}/${OPR_MAX_PHOTOS}).`,
+          uploadedCount === 1 && lastNotice
+            ? `${lastNotice}${skippedNotice}`
+            : `${uploadedCount} gambar dimuat naik (${photos.length + uploadedCount}/${OPR_MAX_PHOTOS}).${skippedNotice}`,
         );
-        router.refresh();
+        // Tidak refresh halaman di sini: gambar telah ditambah ke state tempatan.
+        // Ini mengekalkan Fokus dan semua input borang yang belum disimpan.
       } catch (err) {
         setMsg(err instanceof Error ? err.message : "Gagal memproses gambar");
       } finally {
@@ -471,7 +487,7 @@ export default function OprFormClient({
           <div className="card p-4">
             <h2 className="font-semibold mb-2">Gambar aktiviti</h2>
             <p className="text-xs text-slate-500 mb-2">
-              Maksimum {OPR_MAX_PHOTOS} gambar. <strong>Melintang (landskap) disyorkan</strong>.
+              Maksimum {OPR_MAX_PHOTOS} gambar. Boleh pilih beberapa gambar; ia dimuat naik satu demi satu. <strong>Melintang (landskap) disyorkan</strong>.
             </p>
             <OprPhotoGallery
               pergerakanId={pergerakanId}
