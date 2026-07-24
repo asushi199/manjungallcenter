@@ -66,12 +66,24 @@ export default function OprPhotoGallery({
           {storageHint ? <p className="text-xs text-slate-500 mb-2">{storageHint}</p> : null}
           <input
             type="file"
-            accept="image/*,.heic,.heif"
+            accept="image/*"
             multiple
             className="input"
             onChange={onUpload}
             disabled={pending || uploadingPhoto || atPhotoLimit}
           />
+          <label className="label mt-3">Fail HEIC / HEIF daripada iPhone</label>
+          <input
+            type="file"
+            accept=".heic,.heif,application/octet-stream"
+            multiple
+            className="input"
+            onChange={onUpload}
+            disabled={pending || uploadingPhoto || atPhotoLimit}
+          />
+          <p className="text-xs text-slate-400 mt-1">
+            Jika fail HEIC tidak kelihatan dalam pemilih gambar Android, pilih melalui medan ini.
+          </p>
           {atPhotoLimit ? (
             <p className="text-sm text-amber-800 mt-2">Had {OPR_MAX_PHOTOS} gambar telah dicapai.</p>
           ) : null}
