@@ -81,6 +81,17 @@ if (xml.includes(narrowTarikhBlank)) {
   xml = xml.split(narrowTarikhBlank).join(wideTarikhBlank);
 }
 
+// PERAKUAN KETUA JABATAN: jangan pra-tandakan "Adalah disahkan…" —
+// biar Tuan PPD / Ketua Jabatan tandakan sendiri.
+const checkedWps =
+  '<w:r><w:sym w:font="Wingdings" w:char="F0FC"/></w:r></w:p></w:txbxContent></wps:txbx>';
+const emptyWps = "</w:p></w:txbxContent></wps:txbx>";
+const checkedVml =
+  '<w:r><w:sym w:font="Wingdings" w:char="F0FC"/></w:r></w:p></w:txbxContent></v:textbox>';
+const emptyVml = "</w:p></w:txbxContent></v:textbox>";
+if (xml.includes(checkedWps)) xml = xml.split(checkedWps).join(emptyWps);
+if (xml.includes(checkedVml)) xml = xml.split(checkedVml).join(emptyVml);
+
 zip.file("word/document.xml", xml);
 
 mkdirSync(join(root, "public", "templates"), { recursive: true });
