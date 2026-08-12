@@ -5,6 +5,8 @@
 import { buildOprPhotoNaming, type OprPhotoMeta } from "@/lib/opr-photos";
 
 const MAX_BYTES = 8 * 1024 * 1024; // elak timeout GAS
+// Tinggalkan masa untuk tulis metadata OPR sebelum had fungsi Vercel 60 saat.
+const UPLOAD_TIMEOUT_MS = 52_000;
 
 export function isGasStorageConfigured(): boolean {
   return !!(
@@ -42,21 +44,37 @@ export async function uploadOprPhotoViaGas(
     driveName = `opr-${oprId}-${Date.now()}_${safeName}`;
   }
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      secret,
-      oprId,
-      fileName: driveName,
-      subPath,
-      mimeType: file.type || "application/octet-stream",
-      dataBase64: file.buffer.toString("base64"),
-    }),
-    redirect: "follow",
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+  let res: Response;
+  let text: string;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        secret,
+        oprId,
+        fileName: driveName,
+        subPath,
+        mimeType: file.type || "application/octet-stream",
+        dataBase64: file.buffer.toString("base64"),
+      }),
+      redirect: "follow",
+      signal: controller.signal,
+    });
+    text = await res.text();
+  } catch (error) {
+    if (controller.signal.aborted || (error instanceof Error && error.name === "AbortError")) {
+      throw new Error(
+        "Muat naik gambar mengambil terlalu lama. Sila cuba semula dengan gambar lebih kecil.",
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
 
-  const text = await res.text();
   let json: {
     ok?: boolean;
     error?: string;

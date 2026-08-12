@@ -10,8 +10,8 @@ import OprFormClient from "./OprFormClient";
 
 export const dynamic = "force-dynamic";
 
-/** Vercel Pro: hingga 60s; Hobby kekal ~10s. Kurangkan 504 jika Gemini perlahan. */
-export const maxDuration = 30;
+/** Had Hobby tanpa Fluid Compute ialah 60s; beri masa GAS/Drive menamatkan muat naik. */
+export const maxDuration = 60;
 
 export default async function OprPage({
   params,
