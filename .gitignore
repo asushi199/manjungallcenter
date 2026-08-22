@@ -20,7 +20,11 @@ node_modules/
 # OS / editor
 .DS_Store
 Thumbs.db
-.cursor/
+# Ignore local Cursor state but keep the committed Cloud Agent environment config.
+.cursor/*
+!.cursor/environment.json
+!.cursor/install.sh
+!.cursor/start.sh
 
 # Data tempatan (jangan commit DB runtime)
 *.sqlite
