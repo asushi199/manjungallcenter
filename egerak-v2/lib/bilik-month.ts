@@ -2,7 +2,12 @@ import { format, parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { TZ } from "@/lib/dates";
 
-const DAY_BM = ["Aha", "Isn", "Sel", "Rab", "Kha", "Jum", "Sab"] as const;
+export const DAY_BM = ["Aha", "Isn", "Sel", "Rab", "Kha", "Jum", "Sab"] as const;
+
+/** Singkatan hari BM — muat lajur tarikh sempit (Aha, Isn, Sel, …). */
+export function weekdayShortBm(tarikh: string): string {
+  return DAY_BM[parseISO(tarikh).getDay()];
+}
 
 export type MonthBookingCell = {
   title: string;
@@ -48,8 +53,7 @@ export function formatDayLabel(tarikh: string): string {
 
 /** Ringkas untuk cetak — muat satu halaman melintang. */
 export function formatDayLabelCompact(tarikh: string): string {
-  const d = parseISO(tarikh);
-  return `${format(d, "dd/MM")} ${DAY_BM[d.getDay()]}`;
+  return `${format(parseISO(tarikh), "dd/MM")} ${weekdayShortBm(tarikh)}`;
 }
 
 export function isWeekend(tarikh: string): boolean {

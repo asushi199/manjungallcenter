@@ -15,6 +15,7 @@ import {
 } from "@/lib/room-booking-group";
 import { replaceWithSearchParams } from "@/lib/navigate";
 import DatePickerButton from "@/components/DatePickerButton";
+import { formatDayLabel, formatDayLabelCompact, isWeekend, weekdayShortBm } from "@/lib/bilik-month";
 import { cn } from "@/lib/cn";
 
 const SLOT_SHORT: Record<"AM" | "PM" | "FULL", string> = {
@@ -493,8 +494,11 @@ export default function BilikClient({
           </thead>
           <tbody>
             {days.map((d) => (
-              <tr key={d} className="border-t">
-                <td className="p-2 whitespace-nowrap font-medium">{format(parseISO(d), "dd/MM")}</td>
+              <tr key={d} className={cn("border-t", isWeekend(d) && "bg-slate-50")}>
+                <td className="p-2 whitespace-nowrap leading-tight">
+                  <div className="font-medium">{format(parseISO(d), "dd/MM")}</div>
+                  <div className="text-[10px] font-medium text-slate-500">{weekdayShortBm(d)}</div>
+                </td>
                 {tableRooms.map((r) => {
                   const am = bookingKey(r.id, d, "AM");
                   const pm = bookingKey(r.id, d, "PM");
@@ -571,7 +575,7 @@ export default function BilikClient({
                   onChange={() => toggleBooking(b.id)}
                 />
                 <span>
-                  {b.tarikh} {b.slot} · <strong>{b.roomName}</strong> — {b.title} (
+                  {formatDayLabelCompact(b.tarikh)} {b.slot} · <strong>{b.roomName}</strong> — {b.title} (
                   {b.pegawaiNama})
                 </span>
               </li>
@@ -715,7 +719,8 @@ function MyBookingsPanel({
                   <li key={key} className="py-2 space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span>
-                        <strong>{b.roomName}</strong> · {b.tarikh} · {SLOT_SHORT[b.slot]} — {b.title}
+                        <strong>{b.roomName}</strong> · {formatDayLabelCompact(b.tarikh)} ·{" "}
+                        {SLOT_SHORT[b.slot]} — {b.title}
                         <span className="text-slate-500"> ({b.pegawaiNama})</span>
                       </span>
                       {b.pendingType ? (
@@ -799,7 +804,7 @@ function BookingDetailDialog({
           </div>
           <div>
             <dt className="text-xs text-slate-500">Tarikh</dt>
-            <dd>{format(parseISO(detail.tarikh), "dd MMM yyyy")}</dd>
+            <dd>{formatDayLabel(detail.tarikh)}</dd>
           </div>
           <div>
             <dt className="text-xs text-slate-500">Slot</dt>
