@@ -113,11 +113,36 @@ export function groupMyBookings(rows: MyBookingRow[]): MyBookingItem[] {
     }
   }
 
-  // Susun ikut tarikh menurun (padan dengan listMyBookings), kemudian slot.
+  // Susun ikut tarikh menaik (padan dengan listMyBookings), kemudian slot.
   return items.sort((a, b) => {
-    if (a.tarikh !== b.tarikh) return a.tarikh < b.tarikh ? 1 : -1;
+    if (a.tarikh !== b.tarikh) return a.tarikh < b.tarikh ? -1 : 1;
     const sa = a.slot === "AM" ? 0 : a.slot === "FULL" ? 0 : 1;
     const sb = b.slot === "AM" ? 0 : b.slot === "FULL" ? 0 : 1;
     return sa - sb;
   });
+}
+
+export type MyBookingMonthGroup = {
+  month: string;
+  items: MyBookingItem[];
+};
+
+/** Kumpulkan item yang sudah diisih tarikh menaik kepada kumpulan bulan (yyyy-MM). */
+export function groupMyBookingsByMonth(items: MyBookingItem[]): MyBookingMonthGroup[] {
+  const map = new Map<string, MyBookingItem[]>();
+  for (const item of items) {
+    const month = item.tarikh.slice(0, 7);
+    const arr = map.get(month);
+    if (arr) arr.push(item);
+    else map.set(month, [item]);
+  }
+  return [...map.entries()].map(([month, monthItems]) => ({ month, items: monthItems }));
+}
+
+/** Bulan lalai: bulan semasa jika ada rekod, jika tidak bulan akan datang yang terdekat. */
+export function pickDefaultMyBookingMonth(monthsAsc: string[], todayYm: string): string | null {
+  if (monthsAsc.length === 0) return null;
+  if (monthsAsc.includes(todayYm)) return todayYm;
+  const upcoming = monthsAsc.find((m) => m >= todayYm);
+  return upcoming ?? monthsAsc[monthsAsc.length - 1]!;
 }

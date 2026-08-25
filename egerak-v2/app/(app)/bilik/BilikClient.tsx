@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, format, parseISO } from "date-fns";
+import { ms } from "date-fns/locale/ms";
 import { bookRoom, cancelBooking, modifyBooking, cancelBookingsBulk } from "@/lib/actions/rooms";
 import { SLOT_LABEL } from "@/lib/room-slots";
 import { isWithinGrace } from "@/lib/room-booking-policy";
 import type { MyBookingItem } from "@/lib/room-booking-group";
-import { isFullDayBookingPair } from "@/lib/room-booking-group";
+import {
+  groupMyBookingsByMonth,
+  isFullDayBookingPair,
+  pickDefaultMyBookingMonth,
+} from "@/lib/room-booking-group";
 import { replaceWithSearchParams } from "@/lib/navigate";
 import DatePickerButton from "@/components/DatePickerButton";
 import { cn } from "@/lib/cn";
@@ -87,17 +92,24 @@ function useIsMdUp() {
   return mdUp;
 }
 
+function monthLabel(ym: string) {
+  const [y, m] = ym.split("-").map(Number);
+  return format(new Date(y, m - 1, 1), "MMMM yyyy", { locale: ms });
+}
+
 export default function BilikClient({
   rooms,
   bookings,
   myBookings,
   weekStart,
+  today,
   isAdmin,
 }: {
   rooms: Room[];
   bookings: Booking[];
   myBookings: MyBooking[];
   weekStart: string;
+  today: string;
   isAdmin?: boolean;
 }) {
   const router = useRouter();
@@ -576,70 +588,177 @@ export default function BilikClient({
         </div>
       )}
 
-      <div className="card p-4">
-        <h2 className="font-semibold mb-1">Tempahan Saya</h2>
-        <p className="text-xs text-slate-500 mb-2">
-          Dalam <strong>24 jam</strong> selepas tempah, anda boleh ubah atau batal sendiri.
-          Selepas itu, ubah/batal perlu kelulusan Admin (tempahan asal kekal sehingga
-          diluluskan).
-        </p>
-        {myBookings.length === 0 ? (
-          <p className="text-sm text-slate-500">Tiada tempahan aktif.</p>
-        ) : (
-          <ul className="divide-y text-sm">
-            {myBookings.map((b) => {
-              const key = b.ids.join("-");
-              return (
-                <li key={key} className="py-2 space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span>
-                      <strong>{b.roomName}</strong> · {b.tarikh} · {SLOT_SHORT[b.slot]} — {b.title}
-                      <span className="text-slate-500"> ({b.pegawaiNama})</span>
-                    </span>
-                    {b.pendingType ? (
-                      <span className="rounded-full bg-amber-100 text-amber-800 text-xs px-2.5 py-1 whitespace-nowrap">
-                        {b.pendingType === "CANCEL" ? "Mohon batal" : "Mohon ubah"} — menunggu Admin
-                      </span>
-                    ) : (
-                      <span className="flex gap-2 shrink-0">
-                        <button
-                          type="button"
-                          className="btn-secondary text-xs"
-                          disabled={pending}
-                          onClick={() => setEditingId(editingId === key ? null : key)}
-                        >
-                          {isWithinGrace(b.createdAt) ? "Ubah" : "Mohon ubah"}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-danger text-xs"
-                          disabled={pending}
-                          onClick={() => onCancel(b)}
-                        >
-                          {isWithinGrace(b.createdAt) ? "Batal" : "Mohon batal"}
-                        </button>
-                      </span>
-                    )}
-                  </div>
-                  {editingId === key && !b.pendingType && (
-                    <ModifyEditor
-                      booking={b}
-                      rooms={rooms}
-                      pending={pending}
-                      selfService={isWithinGrace(b.createdAt)}
-                      onCancel={() => setEditingId(null)}
-                      onSubmit={(target) => onModify(b.ids, target)}
-                    />
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+      <MyBookingsPanel
+        myBookings={myBookings}
+        rooms={rooms}
+        todayYm={today.slice(0, 7)}
+        pending={pending}
+        editingId={editingId}
+        setEditingId={setEditingId}
+        onCancel={onCancel}
+        onModify={onModify}
+      />
 
       {bookingDetail && (
         <BookingDetailDialog detail={bookingDetail} onClose={() => setBookingDetail(null)} />
+      )}
+    </div>
+  );
+}
+
+function MyBookingsPanel({
+  myBookings,
+  rooms,
+  todayYm,
+  pending,
+  editingId,
+  setEditingId,
+  onCancel,
+  onModify,
+}: {
+  myBookings: MyBooking[];
+  rooms: Room[];
+  todayYm: string;
+  pending: boolean;
+  editingId: string | null;
+  setEditingId: (id: string | null) => void;
+  onCancel: (b: MyBooking) => void;
+  onModify: (
+    ids: number[],
+    target: { roomId: number; tarikh: string; slot?: "AM" | "PM"; fullDay?: boolean },
+  ) => void;
+}) {
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const groups = useMemo(() => groupMyBookingsByMonth(myBookings), [myBookings]);
+  const availableMonths = useMemo(() => groups.map((g) => g.month), [groups]);
+  const activeMonth = useMemo(() => {
+    if (availableMonths.length === 0) return null;
+    if (selectedMonth && availableMonths.includes(selectedMonth)) return selectedMonth;
+    return pickDefaultMyBookingMonth(availableMonths, todayYm);
+  }, [availableMonths, selectedMonth, todayYm]);
+  const monthItems = useMemo(
+    () => groups.find((g) => g.month === activeMonth)?.items ?? [],
+    [groups, activeMonth],
+  );
+  const olderMonth = activeMonth
+    ? [...availableMonths].reverse().find((m) => m < activeMonth) ?? null
+    : null;
+  const newerMonth = activeMonth ? (availableMonths.find((m) => m > activeMonth) ?? null) : null;
+  const showMonthNav = availableMonths.length > 1;
+
+  return (
+    <div className="card p-4">
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <h2 className="font-semibold">Tempahan Saya</h2>
+        {myBookings.length > 0 ? (
+          <span className="text-xs text-slate-500 tabular-nums shrink-0 mt-0.5">
+            {myBookings.length} tempahan
+          </span>
+        ) : null}
+      </div>
+      <p className="text-xs text-slate-500 mb-2">
+        Dalam <strong>24 jam</strong> selepas tempah, anda boleh ubah atau batal sendiri.
+        Selepas itu, ubah/batal perlu kelulusan Admin (tempahan asal kekal sehingga
+        diluluskan).
+      </p>
+      {myBookings.length === 0 ? (
+        <p className="text-sm text-slate-500">Tiada tempahan aktif mulai bulan ini.</p>
+      ) : (
+        <>
+          {activeMonth && showMonthNav ? (
+            <div className="flex items-center gap-2 mb-3">
+              <button
+                type="button"
+                className="btn-secondary px-2.5 py-2 text-sm disabled:opacity-40"
+                disabled={!olderMonth}
+                onClick={() => olderMonth && setSelectedMonth(olderMonth)}
+                aria-label="Bulan lepas"
+              >
+                ‹
+              </button>
+              <DatePickerButton
+                type="month"
+                value={activeMonth}
+                onChange={(v) => setSelectedMonth(v)}
+                className="flex-1"
+                ariaLabel="Pilih bulan tempahan"
+                label={
+                  <span className="capitalize">
+                    {monthLabel(activeMonth)} · {monthItems.length}
+                  </span>
+                }
+              />
+              <button
+                type="button"
+                className="btn-secondary px-2.5 py-2 text-sm disabled:opacity-40"
+                disabled={!newerMonth}
+                onClick={() => newerMonth && setSelectedMonth(newerMonth)}
+                aria-label="Bulan depan"
+              >
+                ›
+              </button>
+            </div>
+          ) : activeMonth ? (
+            <p className="text-sm font-medium capitalize text-slate-600 mb-2">
+              {monthLabel(activeMonth)}
+            </p>
+          ) : null}
+          {monthItems.length === 0 ? (
+            <p className="text-sm text-slate-500">
+              Tiada tempahan untuk {monthLabel(activeMonth ?? todayYm)}.
+            </p>
+          ) : (
+            <ul className="divide-y text-sm max-h-[28rem] overflow-y-auto">
+              {monthItems.map((b) => {
+                const key = b.ids.join("-");
+                return (
+                  <li key={key} className="py-2 space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span>
+                        <strong>{b.roomName}</strong> · {b.tarikh} · {SLOT_SHORT[b.slot]} — {b.title}
+                        <span className="text-slate-500"> ({b.pegawaiNama})</span>
+                      </span>
+                      {b.pendingType ? (
+                        <span className="rounded-full bg-amber-100 text-amber-800 text-xs px-2.5 py-1 whitespace-nowrap">
+                          {b.pendingType === "CANCEL" ? "Mohon batal" : "Mohon ubah"} — menunggu Admin
+                        </span>
+                      ) : (
+                        <span className="flex gap-2 shrink-0">
+                          <button
+                            type="button"
+                            className="btn-secondary text-xs"
+                            disabled={pending}
+                            onClick={() => setEditingId(editingId === key ? null : key)}
+                          >
+                            {isWithinGrace(b.createdAt) ? "Ubah" : "Mohon ubah"}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-danger text-xs"
+                            disabled={pending}
+                            onClick={() => onCancel(b)}
+                          >
+                            {isWithinGrace(b.createdAt) ? "Batal" : "Mohon batal"}
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                    {editingId === key && !b.pendingType && (
+                      <ModifyEditor
+                        booking={b}
+                        rooms={rooms}
+                        pending={pending}
+                        selfService={isWithinGrace(b.createdAt)}
+                        onCancel={() => setEditingId(null)}
+                        onSubmit={(target) => onModify(b.ids, target)}
+                      />
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </>
       )}
     </div>
   );

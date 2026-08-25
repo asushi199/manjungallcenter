@@ -1,14 +1,16 @@
 "use server";
 
-import { and, asc, desc, eq, gte, inArray, lte, or } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lte, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { rooms, roomBookings, bookingRequests, auditLog, users } from "@/lib/schema";
+import { formatInTimeZone } from "date-fns-tz";
 import { requireUser } from "@/lib/rbac";
 import { isWithinGrace } from "@/lib/room-booking-policy";
 import { formatTitleCase } from "@/lib/format-display-text";
+import { TZ } from "@/lib/dates";
 
 const bookSchema = z
   .object({
@@ -474,6 +476,8 @@ export async function cancelBookingsBulk(
 
 export async function listMyBookings() {
   const user = await requireUser();
+  const today = formatInTimeZone(new Date(), TZ, "yyyy-MM-dd");
+  const monthStart = `${today.slice(0, 7)}-01`;
   return db
     .select({
       id: roomBookings.id,
@@ -498,8 +502,14 @@ export async function listMyBookings() {
         eq(bookingRequests.status, "PENDING"),
       ),
     )
-    .where(and(eq(roomBookings.userId, Number(user.id)), eq(roomBookings.status, "BOOKED")))
-    .orderBy(desc(roomBookings.tarikh));
+    .where(
+      and(
+        eq(roomBookings.userId, Number(user.id)),
+        eq(roomBookings.status, "BOOKED"),
+        gte(roomBookings.tarikh, monthStart),
+      ),
+    )
+    .orderBy(asc(roomBookings.tarikh));
 }
 
 // ── Permohonan batal/ubah (kelulusan Admin) ─────────────────────────────

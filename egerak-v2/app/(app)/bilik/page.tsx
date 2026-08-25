@@ -67,6 +67,7 @@ export default async function BilikPage({
           })),
         )}
         weekStart={weekStart}
+        today={today}
         isAdmin={isAdmin}
       />
     </div>

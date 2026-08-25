@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   groupMyBookings,
+  groupMyBookingsByMonth,
   isFullDayBookingPair,
+  pickDefaultMyBookingMonth,
   type MyBookingRow,
 } from "../lib/room-booking-group";
 
@@ -78,4 +80,38 @@ test("full-day pairs in different rooms are not merged", () => {
   ]);
   assert.equal(items.length, 2);
   assert.ok(items.every((i) => !i.fullDay));
+});
+
+test("groupMyBookings sorts soonest date first", () => {
+  const items = groupMyBookings([
+    row({ id: 2, tarikh: "2026-09-01", slot: "AM" }),
+    row({ id: 1, tarikh: "2026-08-25", slot: "PM" }),
+  ]);
+  assert.deepEqual(
+    items.map((i) => i.tarikh),
+    ["2026-08-25", "2026-09-01"],
+  );
+});
+
+test("groupMyBookingsByMonth keeps chronological month buckets", () => {
+  const items = groupMyBookings([
+    row({ id: 1, tarikh: "2026-08-25", slot: "AM" }),
+    row({ id: 2, tarikh: "2026-09-01", slot: "PM", title: "Taklimat" }),
+    row({ id: 3, tarikh: "2026-09-02", slot: "AM", title: "Mesyuarat 2" }),
+  ]);
+  const groups = groupMyBookingsByMonth(items);
+  assert.deepEqual(
+    groups.map((g) => [g.month, g.items.length]),
+    [
+      ["2026-08", 1],
+      ["2026-09", 2],
+    ],
+  );
+});
+
+test("pickDefaultMyBookingMonth prefers current month then nearest upcoming", () => {
+  assert.equal(pickDefaultMyBookingMonth(["2026-08", "2026-10"], "2026-08"), "2026-08");
+  assert.equal(pickDefaultMyBookingMonth(["2026-09", "2026-10"], "2026-08"), "2026-09");
+  assert.equal(pickDefaultMyBookingMonth(["2026-06", "2026-07"], "2026-08"), "2026-07");
+  assert.equal(pickDefaultMyBookingMonth([], "2026-08"), null);
 });
