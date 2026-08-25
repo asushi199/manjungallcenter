@@ -15,7 +15,7 @@ import {
 } from "@/lib/room-booking-group";
 import { replaceWithSearchParams } from "@/lib/navigate";
 import DatePickerButton from "@/components/DatePickerButton";
-import { formatDayLabel, formatDayLabelCompact, isWeekend, weekdayShortBm } from "@/lib/bilik-month";
+import { formatDayLabel, formatDayLabelCompact, isWeekend } from "@/lib/bilik-month";
 import { cn } from "@/lib/cn";
 
 const SLOT_SHORT: Record<"AM" | "PM" | "FULL", string> = {
@@ -467,7 +467,7 @@ export default function BilikClient({
         </p>
         <table className="w-full table-fixed text-xs md:min-w-[640px]">
           <colgroup>
-            <col style={{ width: "4.5rem" }} />
+            <col style={{ width: "6.25rem" }} />
             {tableRooms.map((r) =>
               SLOTS.map((s) => <col key={`col-${r.id}-${s}`} style={{ width: "8.5rem" }} />),
             )}
@@ -495,9 +495,8 @@ export default function BilikClient({
           <tbody>
             {days.map((d) => (
               <tr key={d} className={cn("border-t", isWeekend(d) && "bg-slate-50")}>
-                <td className="p-2 whitespace-nowrap leading-tight">
-                  <div className="font-medium">{format(parseISO(d), "dd/MM")}</div>
-                  <div className="text-[10px] font-medium text-slate-500">{weekdayShortBm(d)}</div>
+                <td className="p-2 whitespace-nowrap font-medium tabular-nums">
+                  {formatDayLabelCompact(d)}
                 </td>
                 {tableRooms.map((r) => {
                   const am = bookingKey(r.id, d, "AM");
