@@ -467,7 +467,7 @@ export default function BilikClient({
         </p>
         <table className="w-full table-fixed text-xs">
           <colgroup>
-            <col className="w-[5.5rem]" />
+            <col style={{ width: "5.5rem" }} />
             {tableRooms.map((r) =>
               SLOTS.map((s) => <col key={`col-${r.id}-${s}`} />),
             )}
