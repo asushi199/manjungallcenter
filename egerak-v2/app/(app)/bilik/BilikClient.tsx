@@ -465,11 +465,11 @@ export default function BilikClient({
           Ketik slot <span className="text-emerald-700 font-medium">Kosong</span> untuk tempah;
           ketik slot <span className="text-red-700 font-medium">berwarna</span> untuk lihat butiran.
         </p>
-        <table className="w-full table-fixed text-xs md:min-w-[640px]">
+        <table className="w-full table-fixed text-xs">
           <colgroup>
-            <col style={{ width: "6.25rem" }} />
+            <col className="w-[5.5rem]" />
             {tableRooms.map((r) =>
-              SLOTS.map((s) => <col key={`col-${r.id}-${s}`} style={{ width: "8.5rem" }} />),
+              SLOTS.map((s) => <col key={`col-${r.id}-${s}`} />),
             )}
           </colgroup>
           <thead>
@@ -495,7 +495,7 @@ export default function BilikClient({
           <tbody>
             {days.map((d) => (
               <tr key={d} className={cn("border-t", isWeekend(d) && "bg-slate-50")}>
-                <td className="p-2 whitespace-nowrap font-medium tabular-nums">
+                <td className="px-1.5 py-2 whitespace-nowrap font-medium tabular-nums">
                   {formatDayLabelCompact(d)}
                 </td>
                 {tableRooms.map((r) => {
