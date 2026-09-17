@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/admin/pergerakan", label: "Padam Pergerakan", short: "Padam" },
   { href: "/admin/users", label: "Pengurusan Pengguna", short: "Pengguna" },
   { href: "/admin/import", label: "Import Rancangan", short: "Import" },
+  { href: "/admin/sandaran", label: "Sandaran Data", short: "Sandaran" },
 ] as const;
 
 export default function AdminNav() {

@@ -39,6 +39,11 @@ export const IMPORT_RANCANGAN_LINK: AppNavLink = {
   label: "Import Rancangan",
 };
 
+export const SANDARAN_LINK: AppNavLink = {
+  href: "/admin/sandaran",
+  label: "Sandaran Data",
+};
+
 export const PADAM_PERGERAKAN_LINK: AppNavLink = {
   href: "/admin/pergerakan",
   label: "Padam Pergerakan",
@@ -58,6 +63,7 @@ export const FULL_ADMIN_NAV_LINKS: AppNavLink[] = [
   PERMOHONAN_BILIK_LINK,
   PADAM_PERGERAKAN_LINK,
   IMPORT_RANCANGAN_LINK,
+  SANDARAN_LINK,
 ];
 
 /** @deprecated Guna FULL_ADMIN_NAV_LINKS */

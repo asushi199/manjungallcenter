@@ -20,7 +20,7 @@ Project guidance for AI coding agents working on eGerak v2.
 
 ## Git And Files
 
-- Git repository root is `C:\Cursorproject\Manjungallcenter`; this project lives in the `egerak-v2/` subfolder. When running Git from the repository root, scope paths with `egerak-v2/` and avoid staging sibling folders.
+- Git repository root is `F:\SentRa`; this project lives in the `egerak-v2/` subfolder. When running Git from the repository root, scope paths with `egerak-v2/` and avoid staging sibling folders.
 - Never commit secrets, runtime data, build output, or dependency folders.
 - Do not commit:
   - `.env`, `.env.local`, `.env*.local`
@@ -118,3 +118,9 @@ Project guidance for AI coding agents working on eGerak v2.
   - OPR photo upload/delete
   - OPR and room print pages
   - CSV import
+
+## CodeGraph
+
+- Gunakan indeks `.codegraph/` di akar repositori `F:\SentRa` untuk memahami atau mencari kod, rantaian panggilan dan kesan perubahan.
+- Utamakan MCP `codegraph_explore`; jika MCP tidak tersedia, gunakan `codegraph explore "<soalan atau simbol>"` dari akar repositori.
+- `codegraph serve --mcp` menyegerakkan perubahan secara automatik. Selepas perubahan struktur, semak dengan `codegraph status` dan jalankan `codegraph sync` hanya apabila indeks belum dikemas kini.

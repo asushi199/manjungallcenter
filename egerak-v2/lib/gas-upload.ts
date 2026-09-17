@@ -103,6 +103,93 @@ export async function uploadOprPhotoViaGas(
 }
 
 /**
+ * Muat naik fail sandaran (gzip JSON) ke subfolder Drive.
+ * Fail mestilah peribadi — jangan kongsi pautan awam (mengandungi hash kata laluan).
+ * Memerlukan Code.gs yang mengembalikan `private: true`.
+ */
+export async function uploadBackupViaGas(file: {
+  fileName: string;
+  buffer: Buffer;
+  subPath: string[];
+}): Promise<{ path: string; fileId: string; webViewUrl: string }> {
+  const url = process.env.GAS_WEB_APP_URL?.trim();
+  const secret = process.env.GAS_UPLOAD_SECRET?.trim();
+  if (!url || !secret) {
+    throw new Error("Drive pejabat belum dikonfigurasi untuk sandaran.");
+  }
+
+  if (file.buffer.byteLength > MAX_BYTES) {
+    throw new Error(
+      "Fail sandaran melebihi 8 MB selepas dimampatkan. Sila muat turun secara manual.",
+    );
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 55_000);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        secret,
+        action: "backup",
+        private: true,
+        fileName: file.fileName,
+        subPath: file.subPath,
+        mimeType: "application/gzip",
+        dataBase64: file.buffer.toString("base64"),
+      }),
+      redirect: "follow",
+      signal: controller.signal,
+    });
+
+    const text = await res.text();
+    let json: {
+      ok?: boolean;
+      error?: string;
+      path?: string;
+      publicUrl?: string;
+      fileId?: string;
+      private?: boolean;
+    };
+
+    try {
+      json = JSON.parse(text) as typeof json;
+    } catch {
+      throw new Error("Drive pejabat tidak memulangkan JSON. Semak tetapan muat naik.");
+    }
+
+    if (!res.ok || !json.ok) {
+      throw new Error(json.error || `Muat naik sandaran gagal (HTTP ${res.status})`);
+    }
+
+    if (!json.fileId || !json.path) {
+      throw new Error("Respons Drive tidak lengkap (tiada fileId/path).");
+    }
+
+    if (!json.private) {
+      await deleteOprPhotoViaGas(json.fileId);
+      throw new Error(
+        "Versi muat naik Drive belum dikemas kini untuk sandaran peribadi. Fail tidak disimpan.",
+      );
+    }
+
+    return {
+      path: json.path,
+      fileId: json.fileId,
+      webViewUrl: json.publicUrl || `https://drive.google.com/file/d/${json.fileId}/view`,
+    };
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error("Muat naik sandaran tamat masa. Cuba lagi atau muat turun secara manual.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
  * Padam (trash) fail Drive melalui GAS — best-effort, tidak melontar ralat.
  * Dipanggil selepas baris DB dipadam supaya storan tidak menimbun fail yatim.
  */

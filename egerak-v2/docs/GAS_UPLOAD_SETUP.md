@@ -93,6 +93,8 @@ npm run dev
 
 可在 Apps Script 编辑器运行 **`testUpload`**，执行记录里应返回 `"ok":true`。
 
+部署新版本后，Admin → **Sandaran Data** 可以把压缩备份存进同一 Drive 的 `sandaran` 子文件夹。这些文件**不会**设为“知道链接的人可查看”（含账号哈希）。若未重新部署本脚本，系统会拒绝保存备份到 Drive。
+
 ---
 
 ## 安全提醒

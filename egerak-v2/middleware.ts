@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 const { auth } = NextAuth(authConfig);
 
-/** /api/health = endpoint keep-alive luar untuk Supabase Free tier (cron). */
+/** /api/health = keep-alive; /api/cron = sandaran berkala (disahkan CRON_SECRET). */
 const PUBLIC_PATHS = ["/login", "/api/health"];
 
 export default auth((req) => {
@@ -35,6 +35,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!api/auth|api/health|_next/static|_next/image|favicon.ico|icons/|sw\\.js|swe-worker|workbox-|manifest\\.webmanifest|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico)$).*)",
+    "/((?!api/auth|api/health|api/cron|_next/static|_next/image|favicon.ico|icons/|sw\\.js|swe-worker|workbox-|manifest\\.webmanifest|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico)$).*)",
   ],
 };

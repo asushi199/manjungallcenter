@@ -103,6 +103,8 @@ function doPost(e) {
       return handleDelete_(payload);
     }
 
+    var isPrivate = payload.private === true || payload.action === "backup";
+
     if (!payload.dataBase64 || !payload.fileName) {
       return jsonResponse_({ ok: false, error: "dataBase64 dan fileName diperlukan" });
     }
@@ -118,20 +120,24 @@ function doPost(e) {
     var folder = resolveFolderPath_(config.folderId, payload.subPath);
     var file = folder.createFile(blob);
 
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    // Gambar OPR: pautan thumbnail awam. Sandaran: JANGAN kongsi (ada hash kata laluan).
+    if (!isPrivate) {
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    }
 
     var fileId = file.getId();
-    // thumbnail URL — boleh dipapar dalam <img> (bukan uc?export=view)
-    var publicUrl =
-      "https://drive.google.com/thumbnail?id=" +
-      encodeURIComponent(fileId) +
-      "&sz=w1200";
+    var publicUrl = isPrivate
+      ? file.getUrl()
+      : "https://drive.google.com/thumbnail?id=" +
+        encodeURIComponent(fileId) +
+        "&sz=w1200";
 
     return jsonResponse_({
       ok: true,
       fileId: fileId,
       path: "drive/" + fileId,
       publicUrl: publicUrl,
+      private: isPrivate,
     });
   } catch (err) {
     return jsonResponse_({

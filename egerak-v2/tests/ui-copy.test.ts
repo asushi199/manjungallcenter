@@ -9,6 +9,8 @@ const files = [
   "app/(app)/dashboard/DashboardMain.tsx",
   "app/(app)/dashboard/DashboardTodayStats.tsx",
   "app/(app)/admin/import/page.tsx",
+  "app/(app)/admin/sandaran/page.tsx",
+  "app/(app)/admin/sandaran/SandaranClient.tsx",
   "app/(app)/admin/laporan-opr/LaporanOprClient.tsx",
   "app/(app)/admin/laporan-opr/page.tsx",
   "app/(app)/admin/pergerakan/page.tsx",

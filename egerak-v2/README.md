@@ -20,6 +20,7 @@ Menggantikan stack lama GAS + Google Sheet di [`../GAS & SHEET/`](../GAS & SHEET
 | OPR + AI | `/my/[id]/opr` | Groq utama, Gemini sandaran, max **4 gambar** |
 | Cetak OPR | `/my/[id]/opr/print` | PDF melalui pencetak pelayar |
 | Pengguna | `/admin/users` | Admin sahaja |
+| Sandaran data | `/admin/sandaran` | Muat turun / Drive / automatik malam |
 
 ---
 
@@ -67,7 +68,8 @@ Panduan penuh: [`docs/SETUP-V2.md`](docs/SETUP-V2.md).
 | `GEMINI_MODEL` | Sandaran | `gemini-2.5-flash` |
 | `OPR_PHOTO_STORAGE` | Gambar | `gas` (disyorkan) |
 | `GAS_WEB_APP_URL` | Gambar | URL Web App `/exec` |
-| `GAS_UPLOAD_SECRET` | Gambar | Sama dengan Apps Script |
+| `GAS_UPLOAD_SECRET` | Gambar / sandaran Drive | Sama dengan Apps Script |
+| `CRON_SECRET` | Sandaran automatik | Bearer token untuk `/api/cron/backup` |
 
 Organisasi MOE sering **melarang Service Account JSON** — gunakan [`docs/GAS_UPLOAD_SETUP.md`](docs/GAS_UPLOAD_SETUP.md), bukan GCP key.
 

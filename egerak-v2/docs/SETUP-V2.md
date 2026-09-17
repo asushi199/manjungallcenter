@@ -120,17 +120,30 @@ Skrip akan langkau baris di mana pengguna tidak wujud atau `aktif=FALSE`.
 
 ## F. Sandaran (backup)
 
-Supabase free tier sudah ada daily backup automatik (7 hari).
-Untuk sandaran luar (disyorkan bulanan):
+Supabase **percuma** tidak menyediakan sandaran harian automatik (itu pelan Pro). Guna sandaran dalam sistem:
 
-1. **Dashboard Supabase → Database → Backups → Download**.
-2. Atau jalankan `pg_dump` dari mesin tempatan (**guna Direct connection port 5432**, bukan pooler 6543):
+1. Log masuk Admin → **Sandaran Data**.
+2. **Muat turun sekarang** — fail `.json.gz` ke komputer. Simpan di folder selamat pejabat.
+3. **Simpan ke Drive pejabat** — jika GAS sudah dikonfigurasi (folder Drive yang sama dengan gambar OPR, subfolder `sandaran`). Fail **tidak** dikongsi pautan awam.
+4. **Sandaran automatik** — hidupakan di halaman yang sama (harian atau mingguan). Vercel Cron memanggil `/api/cron/backup` setiap hari 02:00 MYT (`0 18 * * *` UTC). Hanya 14 fail Drive terkini dikekalkan.
 
-   ```powershell
-   pg_dump "postgresql://postgres.xxxxx:PASSWORD@db.xxxxx.supabase.co:5432/postgres" -f egerak_backup_YYYY-MM-DD.sql
-   ```
+Tetapkan `CRON_SECRET` di Vercel (dan `.env.local` jika uji cron tempatan). Permintaan cron mesti ada:
 
-Simpan ke Drive PPD (folder USTP). **Sandaran ≠ padam data** — buat backup sebelum reset beta jika mungkin.
+```
+Authorization: Bearer <CRON_SECRET>
+```
+
+Cron luar (cron-job.org) boleh panggil URL yang sama dengan header itu, atau `?secret=`.
+
+Fail sandaran mengandungi hash kata laluan. Jangan email atau kongsi pautan awam.
+
+Untuk sandaran SQL mentah (`pg_dump`) dari mesin tempatan, guna Direct connection port **5432** (bukan pooler 6543):
+
+```powershell
+pg_dump "postgresql://postgres.xxxxx:PASSWORD@db.xxxxx.supabase.co:5432/postgres" -f egerak_backup_YYYY-MM-DD.sql
+```
+
+**Sandaran ≠ padam data** — buat backup sebelum reset beta jika mungkin.
 
 ### Kosongkan data ujian beta (platform bersih)
 

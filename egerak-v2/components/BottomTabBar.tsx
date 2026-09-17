@@ -226,6 +226,7 @@ type GlyphName =
   | "inbox"
   | "trash"
   | "upload"
+  | "save"
   | "grid";
 
 const ADMIN_META: Record<string, { glyph: GlyphName; danger?: boolean }> = {
@@ -237,6 +238,7 @@ const ADMIN_META: Record<string, { glyph: GlyphName; danger?: boolean }> = {
   "/admin/bilik-permohonan": { glyph: "inbox" },
   "/admin/pergerakan": { glyph: "trash", danger: true },
   "/admin/import": { glyph: "upload" },
+  "/admin/sandaran": { glyph: "save" },
 };
 
 function AdminTile({
@@ -345,6 +347,13 @@ function Glyph({ name, className }: { name: GlyphName; className?: string }) {
       return (
         <svg {...p}>
           <path d="M12 15V3M7 8l5-5 5 5M5 21h14" />
+        </svg>
+      );
+    case "save":
+      return (
+        <svg {...p}>
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+          <path d="M17 21v-8H7v8M7 3v5h8" />
         </svg>
       );
     default:
