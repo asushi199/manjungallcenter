@@ -13,10 +13,19 @@ function setSecret(name: string, value: string) {
   console.log(`OK ${name}`);
 }
 
+function poolerSessionPgDumpUrl(): string {
+  const url = normalizeDatabaseUrl(process.env.DATABASE_URL);
+  const u = new URL(url);
+  if (!u.hostname.includes("pooler.supabase.com")) {
+    throw new Error("DATABASE_URL mesti pooler Supabase untuk derive PGDUMP session :5432");
+  }
+  u.port = "5432";
+  u.searchParams.delete("pgbouncer");
+  return u.toString();
+}
+
 function pgdumpUrl(): string {
-  const direct = process.env.PGDUMP_DATABASE_URL?.trim();
-  if (direct) return normalizeDatabaseUrl(direct);
-  throw new Error("PGDUMP_DATABASE_URL kosong dalam .env.local");
+  return poolerSessionPgDumpUrl();
 }
 
 function main() {

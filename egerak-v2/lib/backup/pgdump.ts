@@ -8,17 +8,37 @@ import { normalizeDatabaseUrl } from "@/lib/database-url";
 const TZ = "Asia/Kuala_Lumpur";
 const MAX_GAS_BYTES = 8 * 1024 * 1024;
 
+/** URL untuk pg_dump — utamakan PGDUMP_DATABASE_URL; jika Direct (db.*.supabase.co) guna pooler :5432 untuk CI/IPv4. */
 export function resolvePgDumpUrl(): string {
   const direct = process.env.PGDUMP_DATABASE_URL?.trim();
-  if (direct) return normalizeDatabaseUrl(direct);
-  const url = normalizeDatabaseUrl(process.env.DATABASE_URL);
-  if (url.includes("pooler.supabase.com")) {
-    console.warn(
-      "AMARAN: DATABASE_URL nampak pooler. pg_dump lebih stabil dengan Direct connection.\n" +
-        "  Set PGDUMP_DATABASE_URL (Connect → Direct 5432) atau GitHub Secret yang sama.",
-    );
+  const poolerFromApp = poolerSessionUrl(process.env.DATABASE_URL);
+
+  if (direct) {
+    const normalized = normalizeDatabaseUrl(direct);
+    if (normalized.includes("db.") && normalized.includes(".supabase.co") && poolerFromApp) {
+      console.warn(
+        "PGDUMP Direct (db.*) — jika pg_dump gagal IPv6, guna pooler Session :5432 dalam PGDUMP_DATABASE_URL.",
+      );
+    }
+    return normalized;
   }
-  return url;
+
+  if (poolerFromApp) return poolerFromApp;
+
+  throw new Error("DATABASE_URL atau PGDUMP_DATABASE_URL diperlukan untuk pg_dump.");
+}
+
+function poolerSessionUrl(raw: string | undefined): string | null {
+  if (!raw?.trim()) return null;
+  try {
+    const u = new URL(normalizeDatabaseUrl(raw));
+    if (!u.hostname.includes("pooler.supabase.com")) return null;
+    u.port = "5432";
+    u.searchParams.delete("pgbouncer");
+    return u.toString();
+  } catch {
+    return null;
+  }
 }
 
 export type PgDumpArtifacts = {
