@@ -39,6 +39,7 @@ jobs:
       - name: pg_dump + muat naik Drive
         env:
           PGDUMP_DATABASE_URL: ${{ secrets.PGDUMP_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GAS_WEB_APP_URL: ${{ secrets.GAS_WEB_APP_URL }}
           GAS_UPLOAD_SECRET: ${{ secrets.GAS_UPLOAD_SECRET }}
         run: |

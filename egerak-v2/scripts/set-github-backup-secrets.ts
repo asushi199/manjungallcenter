@@ -34,6 +34,7 @@ function main() {
   if (!gasUrl || !gasSecret) throw new Error("GAS_WEB_APP_URL / GAS_UPLOAD_SECRET kosong");
 
   setSecret("PGDUMP_DATABASE_URL", pgdumpUrl());
+  setSecret("DATABASE_URL", normalizeDatabaseUrl(process.env.DATABASE_URL));
   setSecret("GAS_WEB_APP_URL", gasUrl);
   setSecret("GAS_UPLOAD_SECRET", gasSecret);
   console.log(`Selesai — repo ${REPO}`);

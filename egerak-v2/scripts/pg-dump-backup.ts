@@ -5,6 +5,7 @@
 import { readFileSync } from "node:fs";
 import "./load-env";
 import { runPgDump } from "../lib/backup/pgdump";
+import { writeLastPgDumpBackup } from "../lib/backup/pgdump-last";
 import { isGasStorageConfigured, uploadBackupViaGas } from "../lib/gas-upload";
 
 const APP_SLUG = "egerak";
@@ -32,6 +33,11 @@ async function main() {
     fileName: art.gzFileName,
     buffer,
     subPath: art.subPath,
+  });
+  await writeLastPgDumpBackup({
+    at: new Date().toISOString(),
+    fileName: art.gzFileName,
+    sizeBytes: art.gzSizeBytes,
   });
   console.log("\nMuat naik Google Drive berjaya:");
   console.log(" ", result.path);
