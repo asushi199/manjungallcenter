@@ -122,26 +122,32 @@ Skrip akan langkau baris di mana pengguna tidak wujud atau `aktif=FALSE`.
 
 Supabase **percuma** tidak menyediakan sandaran harian automatik (itu pelan Pro). Guna sandaran dalam sistem:
 
-1. Log masuk Admin → **Sandaran Data**.
+1. Log masuk Admin → **Sandaran Data** (`/admin/sandaran`).
 2. **Muat turun sekarang** — fail `.json.gz` ke komputer. Simpan di folder selamat pejabat.
-3. **Simpan ke Drive pejabat** — jika GAS sudah dikonfigurasi (folder Drive yang sama dengan gambar OPR, subfolder `sandaran`). Fail **tidak** dikongsi pautan awam.
-4. **Sandaran automatik** — hidupakan di halaman yang sama (harian atau mingguan). Vercel Cron memanggil `/api/cron/backup` setiap hari 02:00 MYT (`0 18 * * *` UTC). Hanya 14 fail Drive terkini dikekalkan.
+3. **Simpan ke Drive pejabat** — jika GAS sudah dikonfigurasi (subfolder `sandaran`). Fail **tidak** dikongsi pautan awam.
+4. **Sandaran automatik** — hidupakan di halaman yang sama (harian atau mingguan). Vercel Cron memanggil `/api/cron/backup` setiap hari 02:00 MYT (`0 18 * * *` UTC).
 
-Tetapkan `CRON_SECRET` di Vercel (dan `.env.local` jika uji cron tempatan). Permintaan cron mesti ada:
+Tetapkan `CRON_SECRET` di Vercel (dan `.env.local` jika uji cron tempatan):
 
 ```
 Authorization: Bearer <CRON_SECRET>
 ```
 
-Cron luar (cron-job.org) boleh panggil URL yang sama dengan header itu, atau `?secret=`.
-
 Fail sandaran mengandungi hash kata laluan. Jangan email atau kongsi pautan awam.
 
-Untuk sandaran SQL mentah (`pg_dump`) dari mesin tempatan, guna Direct connection port **5432** (bukan pooler 6543):
+### Sandaran SQL penuh (`pg_dump`, bulanan)
+
+Untuk sandaran SQL mentah (`pg_dump`), guna Direct connection port **5432** (bukan pooler 6543):
 
 ```powershell
-pg_dump "postgresql://postgres.xxxxx:PASSWORD@db.xxxxx.supabase.co:5432/postgres" -f egerak_backup_YYYY-MM-DD.sql
+npm run db:backup-pgdump
+npm run db:backup-pgdump:upload
 ```
+
+**Automatik bulanan (disyorkan):** GitHub → Settings → Secrets → Actions — set
+`PGDUMP_DATABASE_URL`, `GAS_WEB_APP_URL`, `GAS_UPLOAD_SECRET`. Jalankan workflow
+**Sandaran pg_dump bulanan** (`.github/workflows/backup-pgdump-monthly.yml`) atau
+**Run workflow** dari tab Actions. Fail `.sql.gz` ke `_backup/pgdump/tahun/bulan` di Drive.
 
 **Sandaran ≠ padam data** — buat backup sebelum reset beta jika mungkin.
 

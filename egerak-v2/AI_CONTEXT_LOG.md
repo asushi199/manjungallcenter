@@ -344,3 +344,9 @@ daripada membantu: majoriti pegawai pergi ke tempat berlainan, jadi senarai penu
   tetapi **bukan** singkatan — "JK" lwn "Jawatankuasa" akan pecah kepada dua kluster
   dalam `cluster-programs.ts`, jadi kiraan program boleh naik. Jika laporan analisis
   mula menunjukkan aktiviti berulang yang mencurigakan, inilah puncanya.
+
+### 2026-09-21 — Sandaran data (selari eUSTP: JSON harian + pg_dump bulanan)
+- Port: `lib/backup/*`, `lib/actions/backup.ts`, `/admin/backup`, download route,
+  `/api/cron/backup`, `vercel.json` crons, `uploadFileViaGas` dalam `gas-upload.ts`.
+- Jadual `app_settings` (migrasi `0016_app_settings.sql`) untuk `backup:last`.
+- Nav Admin: Sandaran Data. Docs SETUP-V2 §F dikemas kini (dual layer).

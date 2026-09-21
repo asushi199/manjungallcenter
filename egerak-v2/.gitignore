@@ -8,6 +8,7 @@ node_modules
 .vercel
 secrets/
 .npm-cache/
+backups/
 
 # CodeGraph index (local, regenerated)
 .codegraph/

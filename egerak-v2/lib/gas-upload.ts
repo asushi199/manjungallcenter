@@ -14,10 +14,9 @@ export function isGasStorageConfigured(): boolean {
   );
 }
 
-export async function uploadOprPhotoViaGas(
-  oprId: number,
+export async function uploadFileViaGas(
   file: { name: string; type: string; buffer: Buffer },
-  meta?: OprPhotoMeta,
+  opts: { fileName: string; subPath: string[] },
 ): Promise<{ path: string; publicUrl: string }> {
   const url = process.env.GAS_WEB_APP_URL?.trim();
   const secret = process.env.GAS_UPLOAD_SECRET?.trim();
@@ -28,20 +27,7 @@ export async function uploadOprPhotoViaGas(
   }
 
   if (file.buffer.byteLength > MAX_BYTES) {
-    throw new Error("Saiz gambar melebihi 8 MB. Sila mampatkan atau pilih fail lebih kecil.");
-  }
-
-  // Nama self-describing + subfolder Tahun/Bulan/Sektor bila metadata ada;
-  // jika tiada, kekal corak lama (rata) supaya tidak pecah.
-  let driveName: string;
-  let subPath: string[] = [];
-  if (meta) {
-    const naming = buildOprPhotoNaming(meta, file.name);
-    driveName = naming.fileName;
-    subPath = naming.subPath;
-  } else {
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    driveName = `opr-${oprId}-${Date.now()}_${safeName}`;
+    throw new Error("Saiz fail melebihi 8 MB. Sila pilih fail lebih kecil.");
   }
 
   const controller = new AbortController();
@@ -54,9 +40,8 @@ export async function uploadOprPhotoViaGas(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         secret,
-        oprId,
-        fileName: driveName,
-        subPath,
+        fileName: opts.fileName,
+        subPath: opts.subPath,
         mimeType: file.type || "application/octet-stream",
         dataBase64: file.buffer.toString("base64"),
       }),
@@ -67,7 +52,7 @@ export async function uploadOprPhotoViaGas(
   } catch (error) {
     if (controller.signal.aborted || (error instanceof Error && error.name === "AbortError")) {
       throw new Error(
-        "Muat naik gambar mengambil terlalu lama. Sila cuba semula dengan gambar lebih kecil.",
+        "Muat naik mengambil terlalu lama. Sila cuba semula.",
       );
     }
     throw error;
@@ -100,6 +85,25 @@ export async function uploadOprPhotoViaGas(
   }
 
   return { path: json.path, publicUrl: json.publicUrl };
+}
+
+export async function uploadOprPhotoViaGas(
+  oprId: number,
+  file: { name: string; type: string; buffer: Buffer },
+  meta?: OprPhotoMeta,
+): Promise<{ path: string; publicUrl: string }> {
+  let driveName: string;
+  let subPath: string[] = [];
+  if (meta) {
+    const naming = buildOprPhotoNaming(meta, file.name);
+    driveName = naming.fileName;
+    subPath = naming.subPath;
+  } else {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    driveName = `opr-${oprId}-${Date.now()}_${safeName}`;
+  }
+
+  return uploadFileViaGas(file, { fileName: driveName, subPath });
 }
 
 /**

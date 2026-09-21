@@ -1,0 +1,32 @@
+# pg_dump bulanan → gzip → Google Drive (GAS). Vercel serverless tidak boleh pg_dump.
+name: Sandaran pg_dump bulanan
+
+on:
+  schedule:
+    # UTC 18:00 pada hari 1 setiap bulan ≈ 02:00 MYT (hari 2 jika UTC+8)
+    - cron: "0 18 1 * *"
+  workflow_dispatch:
+
+jobs:
+  pgdump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Pasang PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - run: npm ci
+
+      - name: pg_dump + muat naik Drive
+        env:
+          PGDUMP_DATABASE_URL: ${{ secrets.PGDUMP_DATABASE_URL }}
+          GAS_WEB_APP_URL: ${{ secrets.GAS_WEB_APP_URL }}
+          GAS_UPLOAD_SECRET: ${{ secrets.GAS_UPLOAD_SECRET }}
+        run: npm run db:backup-pgdump:upload

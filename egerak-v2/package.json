@@ -15,6 +15,8 @@
     "db:create-user": "tsx scripts/create-user.ts",
     "db:import": "tsx scripts/import-from-sheet.ts",
     "db:check-url": "tsx scripts/check-db-url.ts",
+    "db:backup-pgdump": "tsx scripts/pg-dump-backup.ts",
+    "db:backup-pgdump:upload": "tsx scripts/pg-dump-backup.ts --upload",
     "holidays:sync": "tsx scripts/sync-holidays.ts",
     "holidays:generate": "tsx scripts/generate-public-holidays.ts"
   },
@@ -28,6 +30,7 @@
     "docxtemplater": "^3.68.7",
     "drizzle-orm": "^0.36.0",
     "googleapis": "^172.0.0",
+    "jszip": "^3.10.1",
     "next": "^15.0.3",
     "next-auth": "5.0.0-beta.25",
     "pizzip": "^3.2.0",

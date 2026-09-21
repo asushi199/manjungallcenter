@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 
 const ADMIN_LINKS = [
   { href: "/admin/users", label: "Pengguna" },
+  { href: "/admin/sandaran", label: "Sandaran Data" },
   { href: "/admin/import", label: "Import Rancangan" },
 ] as const;
 

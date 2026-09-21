@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/rbac";
 import { loadBackupPageData } from "@/lib/actions/backup";
 import SandaranClient from "./SandaranClient";
+import BackupPgDumpSection from "@/components/admin/BackupPgDumpSection";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export default async function AdminSandaranPage() {
         lastDriveAt={data.lastDriveAt}
         runs={data.runs}
       />
+      <BackupPgDumpSection />
     </div>
   );
 }
