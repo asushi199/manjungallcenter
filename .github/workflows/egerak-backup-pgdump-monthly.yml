@@ -41,4 +41,7 @@ jobs:
           PGDUMP_DATABASE_URL: ${{ secrets.PGDUMP_DATABASE_URL }}
           GAS_WEB_APP_URL: ${{ secrets.GAS_WEB_APP_URL }}
           GAS_UPLOAD_SECRET: ${{ secrets.GAS_UPLOAD_SECRET }}
-        run: npm run db:backup-pgdump:upload
+        run: |
+          export PATH="/usr/lib/postgresql/17/bin:$PATH"
+          pg_dump --version
+          npm run db:backup-pgdump:upload
