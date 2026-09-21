@@ -1,0 +1,19 @@
+{
+  "name": "eGerak v2 (PPD Manjung)",
+  "user": "ubuntu",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "next-dev",
+      "command": "cd egerak-v2 && npm run dev",
+      "description": "eGerak v2 Next.js dev server on http://localhost:3000"
+    }
+  ],
+  "ports": [
+    {
+      "name": "next-dev",
+      "port": 3000
+    }
+  ]
+}
