@@ -10,11 +10,16 @@ import { formatTitleCase } from "@/lib/format-display-text";
 
 type Db = PostgresJsDatabase<typeof schema>;
 
-/** Lokasi yang memicu tempahan automatik (padanan fleksibel). */
+/**
+ * Lokasi yang memicu tempahan automatik.
+ * Budiman: sebarang sebutan "budiman".
+ * Bestari: hanya frasa "Dewan Bestari" (dewan PPD). Nama sekolah seperti
+ * "Dewan Juara Bestari" bukan bilik terurus dan tidak memicu tempahan.
+ */
 export function resolveBookableRoomCode(lokasi: string): "BILIK_BUDIMAN" | "DEWAN_BESTARI" | null {
-  const s = lokasi.trim().toLowerCase();
+  const s = lokasi.trim().toLowerCase().replace(/\s+/g, " ");
   if (s.includes("budiman")) return "BILIK_BUDIMAN";
-  if (s.includes("bestari")) return "DEWAN_BESTARI";
+  if (/(^|[^a-z0-9])dewan bestari(?=$|[^a-z0-9])/.test(s)) return "DEWAN_BESTARI";
   return null;
 }
 

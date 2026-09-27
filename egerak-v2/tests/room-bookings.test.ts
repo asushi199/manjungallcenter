@@ -17,6 +17,9 @@ function local(value: string): Date {
 test("resolveBookableRoomCode matches supported room names flexibly", () => {
   assert.equal(resolveBookableRoomCode("Mesyuarat Bilik Budiman"), "BILIK_BUDIMAN");
   assert.equal(resolveBookableRoomCode("Program di Dewan Bestari"), "DEWAN_BESTARI");
+  assert.equal(resolveBookableRoomCode("Dewan Bestari"), "DEWAN_BESTARI");
+  assert.equal(resolveBookableRoomCode("Dewan Juara Bestari"), null);
+  assert.equal(resolveBookableRoomCode("SSTP Dewan Juara Bestari"), null);
   assert.equal(resolveBookableRoomCode("Sekolah Kebangsaan Seri Manjung"), null);
 });
 

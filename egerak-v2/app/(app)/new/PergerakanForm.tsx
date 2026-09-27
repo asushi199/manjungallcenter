@@ -17,6 +17,7 @@ import {
 } from "@/lib/actions/pergerakan";
 import { bookRoom } from "@/lib/actions/rooms";
 import { attendanceKind } from "@/lib/pergerakan-slot";
+import { resolveBookableRoomCode } from "@/lib/sync-room-bookings";
 import { resolveLokasiFields } from "@/lib/pergerakan-presets";
 import { cn } from "@/lib/cn";
 import DateTimeField from "@/components/DateTimeField";
@@ -74,8 +75,7 @@ export default function PergerakanForm({
 
   const isLainLain = lokasiSel === lokasiPresets[lokasiPresets.length - 1];
   const lokasi = isLainLain ? lokasiLain : lokasiSel;
-  const roomCode =
-    /budiman/i.test(lokasi) ? "BILIK_BUDIMAN" : /bestari/i.test(lokasi) ? "DEWAN_BESTARI" : null;
+  const roomCode = resolveBookableRoomCode(lokasi);
   const roomIdForCode = (code: "BILIK_BUDIMAN" | "DEWAN_BESTARI") =>
     rooms.find((r) => r.code === code)?.id;
 
