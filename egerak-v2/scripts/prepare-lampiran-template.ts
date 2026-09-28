@@ -82,7 +82,8 @@ if (xml.includes(narrowTarikhBlank)) {
 }
 
 // PERAKUAN KETUA JABATAN: jangan pra-tandakan "Adalah disahkan…" /
-// jangan coret "tidak perlu" — biar Tuan PPD / Ketua Jabatan pilih sendiri.
+// jangan coret "tidak perlu" atau "tidak diluluskan" — biar Pengarah /
+// Ketua Jabatan pilih sendiri.
 const checkedWps =
   '<w:r><w:sym w:font="Wingdings" w:char="F0FC"/></w:r></w:p></w:txbxContent></wps:txbx>';
 const emptyWps = "</w:p></w:txbxContent></wps:txbx>";
@@ -97,6 +98,13 @@ const plainTidakPerlu =
   '<w:r w:rsidRPr="007B14CC"><w:t>tidak perlu</w:t></w:r>';
 if (xml.includes(struckTidakPerlu)) {
   xml = xml.split(struckTidakPerlu).join(plainTidakPerlu);
+}
+const struckTidakDiluluskan =
+  '<w:r w:rsidRPr="008A37B1"><w:rPr><w:strike/></w:rPr><w:t>tidak diluluskan</w:t></w:r>';
+const plainTidakDiluluskan =
+  '<w:r w:rsidRPr="008A37B1"><w:t>tidak diluluskan</w:t></w:r>';
+if (xml.includes(struckTidakDiluluskan)) {
+  xml = xml.split(struckTidakDiluluskan).join(plainTidakDiluluskan);
 }
 
 zip.file("word/document.xml", xml);

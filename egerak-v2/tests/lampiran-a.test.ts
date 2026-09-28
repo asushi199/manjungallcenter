@@ -1,6 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { fromZonedTime } from "date-fns-tz";
+import PizZip from "pizzip";
 import { TZ } from "../lib/dates";
 import {
   buildLampiranAFields,
@@ -43,6 +46,19 @@ describe("buildLampiranAFields", () => {
     assert.equal(fields.nama, "Ong Chong Xiao");
     assert.equal(fields.bahagian, "Sektor Pembelajaran, PPD Manjung");
     assert.equal(fields.tempoh, "21/05/2026");
+  });
+});
+
+describe("lampiran A template", () => {
+  it("leaves diluluskan / tidak diluluskan unstruck for Pengarah", () => {
+    const zip = new PizZip(
+      readFileSync(join(process.cwd(), "public/templates/lampiran-a-template.docx")),
+    );
+    const xml = zip.file("word/document.xml")?.asText() ?? "";
+    const at = xml.indexOf(">tidak diluluskan<");
+    assert.ok(at > 0);
+    assert.equal(xml.slice(at - 120, at).includes("w:strike"), false);
+    assert.equal(xml.includes("<w:strike"), false);
   });
 });
 
